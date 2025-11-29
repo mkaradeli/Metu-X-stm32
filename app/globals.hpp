@@ -11,6 +11,8 @@
 #define MAX_MOTOR_COUNT 4
 #define MAX_PS_COUNT 5
 
+#define PI 3.1415926536
+
 #include <stdint.h>
 
 #include "Lidar.hpp"
@@ -25,17 +27,27 @@
 // Message Pack
 typedef struct {
     uint32_t timestamp;
-    sh2_RotationVector_t quaternion;
-    float motor_pos[4];
-    float motor_duty[4];
-    float pressure[5];
-    float PressureDemand[4];
-    float Velocity;
-    float CurrentSetPoint;
-    float eulerCalculated[3];
-    float heightFiltered;
-    uint16_t distance;
+    float motor_duty;
+    float current_measured;
+    float current_demand;
+    float encoderFront;
+    float encoderButt;
+    float encoderGeared;
+    float vel_measured;
+    float vel_demand;
+    float motor_pos_kalman;
+    float motor_pos_demand;
+    float mass_estimation;
+    float pressure_manifold;
+    float pressure_nozzle;
+    float pressure_demand;
+    float force_feedback;
+    float force_measured;
+    float thrust_demand;
+
 } SensorData_t;
+
+static_assert(sizeof(SensorData_t) == 72);
 
 typedef union {
     SensorData_t data;
@@ -60,8 +72,5 @@ extern Motor motors[MAX_MOTOR_COUNT];
 
 // SD Card Varibles
 extern TaskHandle_t sdCardTaskHandle;
-
-const float sineLookupTable[] = { 0.0, 0.4, 0.0, -0.4, 0.0
-};
 
 #endif /* GLOBALS_HPP_ */

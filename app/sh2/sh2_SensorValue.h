@@ -495,7 +495,7 @@ typedef struct sh2_SensorValue {
      * Use the structure based on the value of the sensor
      * field.
      */
-    struct {
+    union {
         sh2_RawAccelerometer_t rawAccelerometer;
         sh2_Accelerometer_t accelerometer; 
         sh2_Accelerometer_t linearAcceleration; 

@@ -25,23 +25,29 @@ static bool resetOccurred = false;
 
 static sh2_Hal_t *pSh2Hal = 0;
 sh2_RotationVector_t quaternion = {0};
-sh2_RawAccelerometer_t accels = {0};
+sh2_Accelerometer_t accels = {0};
 // Print a sensor event to the console
 static void printEvent(const sh2_SensorEvent_t * event)
 {
     static int rc;
+    static uint32_t accel_delay_flag;
+    static uint32_t rotation_delay_flag;
     rc = sh2_decodeSensorEvent(&value, event);
     if (rc != SH2_OK) {
-        printf("Error decoding sensor event: %d\n", rc);
+        // printf("Error decoding sensor event: %d\n", rc);
         return;
     }
 
     switch (value.sensorId) {
-    	case SH2_RAW_ACCELEROMETER:
-    		accels = value.un.rawAccelerometer;
+    	case SH2_LINEAR_ACCELERATION:
+    		accels = value.un.linearAcceleration;
+    		accel_delay = micros()-accel_delay_flag;
+    		accel_delay_flag = micros();
     		break;
     	case SH2_GAME_ROTATION_VECTOR:
     	    quaternion = value.un.gameRotationVector;
+    	    rotation_delay = micros()-rotation_delay_flag;
+    	    rotation_delay_flag = micros();
     	    break;
     	default:
     		break;
@@ -82,9 +88,14 @@ void IMU_Init(void){
 	}
 	sh2_setSensorCallback(sensorHandler, NULL);
 	osDelay(100);
-	sh2_SensorConfig_t config = {.reportInterval_us = 2500};
-	// Enable Game Rotation Vector
-	status = sh2_setSensorConfig(SH2_GAME_ROTATION_VECTOR, &config);
+	sh2_SensorConfig_t accel_config = {.reportInterval_us = 1};
+	status = sh2_setSensorConfig(SH2_LINEAR_ACCELERATION, &accel_config);
+	if (status != 0) {
+	  printf("Error while enabling accelerometer sensor");
+	}
+	osDelay(100);
+	sh2_SensorConfig_t rotation_config = {.reportInterval_us = 2500};
+	status = sh2_setSensorConfig(SH2_GAME_ROTATION_VECTOR, &rotation_config);
 	if (status != 0) {
 	  printf("Error while enabling rotation sensor");
 	}

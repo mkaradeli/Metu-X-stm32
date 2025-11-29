@@ -100,8 +100,8 @@ all: main-build
 main-build: metux-launch.elf secondary-outputs
 
 # Tool invocations
-metux-launch.elf metux-launch.map: $(OBJS) $(USER_OBJS) /home/karadeli/Downloads/metux-launch\ (4)/metux-launch/STM32H730VBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-g++ -o "metux-launch.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"/home/karadeli/Downloads/metux-launch (4)/metux-launch/STM32H730VBTX_FLASH.ld" -Wl,-Map="metux-launch.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+metux-launch.elf metux-launch.map: $(OBJS) $(USER_OBJS) C:\Users\alica\OneDrive\Desktop\metux-launch\STM32H730VBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-g++ -o "metux-launch.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\alica\OneDrive\Desktop\metux-launch\STM32H730VBTX_FLASH.ld" -Wl,-Map="metux-launch.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

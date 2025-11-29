@@ -1,0 +1,596 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"motor",
+				"motor_speed_demand"
+			],
+			[
+				"pre",
+				"pressure_demand"
+			],
+			[
+				"curren",
+				"current_demand"
+			],
+			[
+				"pres",
+				"pressure_nozzle"
+			],
+			[
+				"get",
+				"getBar"
+			],
+			[
+				"cu",
+				"current_measured"
+			],
+			[
+				"mo",
+				"motor_pos_kalman"
+			],
+			[
+				"__r",
+				"__repr__"
+			],
+			[
+				"by",
+				"bytes"
+			],
+			[
+				"en",
+				"entry"
+			],
+			[
+				"read",
+				"readEntry"
+			],
+			[
+				"byt",
+				"bytes"
+			],
+			[
+				"rb",
+				"'rb'"
+			],
+			[
+				"re",
+				"read"
+			],
+			[
+				"lida",
+				"lidarTask"
+			],
+			[
+				"li",
+				"lidarTask"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "Debug/metux-test.map",
+			"settings":
+			{
+				"buffer_size": 1189787,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"contents": "################################################################################\n# Automatically-generated file. Do not edit!\n# Toolchain: GNU Tools for STM32 (13.3.rel1)\n################################################################################\n\n-include ../makefile.init\n\nRM := rm -rf\n\n# All of the sources participating in the build are defined here\n-include sources.mk\n-include app/sh2/subdir.mk\n-include app/SDCard/src/subdir.mk\n-include app/PressureSensor/subdir.mk\n-include app/Motor/subdir.mk\n-include app/Lidar/subdir.mk\n-include app/IMU/subdir.mk\n-include app/Controller/src/subdir.mk\n-include app/subdir.mk\n-include Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/subdir.mk\n-include Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/subdir.mk\n-include Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/subdir.mk\n-include Middlewares/Third_Party/FreeRTOS/Source/subdir.mk\n-include Middlewares/Third_Party/FatFs/src/option/subdir.mk\n-include Middlewares/Third_Party/FatFs/src/subdir.mk\n-include FATFS/Target/subdir.mk\n-include FATFS/App/subdir.mk\n-include Drivers/STM32H7xx_HAL_Driver/Src/subdir.mk\n-include Core/Startup/subdir.mk\n-include Core/Src/subdir.mk\n-include objects.mk\n\nifneq ($(MAKECMDGOALS),clean)\nifneq ($(strip $(CC_DEPS)),)\n-include $(CC_DEPS)\nendif\nifneq ($(strip $(C++_DEPS)),)\n-include $(C++_DEPS)\nendif\nifneq ($(strip $(CCM_DEPS)),)\n-include $(CCM_DEPS)\nendif\nifneq ($(strip $(C_UPPER_DEPS)),)\n-include $(C_UPPER_DEPS)\nendif\nifneq ($(strip $(CXX_DEPS)),)\n-include $(CXX_DEPS)\nendif\nifneq ($(strip $(S_DEPS)),)\n-include $(S_DEPS)\nendif\nifneq ($(strip $(S_UPPER_DEPS)),)\n-include $(S_UPPER_DEPS)\nendif\nifneq ($(strip $(CXXM_DEPS)),)\n-include $(CXXM_DEPS)\nendif\nifneq ($(strip $(C++M_DEPS)),)\n-include $(C++M_DEPS)\nendif\nifneq ($(strip $(C_DEPS)),)\n-include $(C_DEPS)\nendif\nifneq ($(strip $(CPP_DEPS)),)\n-include $(CPP_DEPS)\nendif\nendif\n\n-include ../makefile.defs\n\nOPTIONAL_TOOL_DEPS := \\\n$(wildcard ../makefile.defs) \\\n$(wildcard ../makefile.init) \\\n$(wildcard ../makefile.targets) \\\n\n\nBUILD_ARTIFACT_NAME := metux-test\nBUILD_ARTIFACT_EXTENSION := elf\nBUILD_ARTIFACT_PREFIX :=\nBUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)\n\n# Add inputs and outputs from these tool invocations to the build variables \nEXECUTABLES += \\\nmetux-test.elf \\\n\nMAP_FILES += \\\nmetux-test.map \\\n\nSIZE_OUTPUT += \\\ndefault.size.stdout \\\n\nOBJDUMP_LIST += \\\nmetux-test.list \\\n\n\n# All Target\nall: main-build\n\n# Main-build Target\nmain-build: metux-test.elf secondary-outputs\n\n# Tool invocations\nmetux-test.elf metux-test.map: $(OBJS) $(USER_OBJS) /Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/STM32H730VBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)\n\tarm-none-eabi-g++ -o \"metux-test.elf\" @\"objects.list\" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T\"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/STM32H730VBTX_FLASH.ld\" --specs=nosys.specs -Wl,-Map=\"metux-test.map\" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group\n\t@echo 'Finished building target: $@'\n\t@echo ' '\n\ndefault.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)\n\tarm-none-eabi-size  $(EXECUTABLES)\n\t@echo 'Finished building: $@'\n\t@echo ' '\n\nmetux-test.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)\n\tarm-none-eabi-objdump -h -S $(EXECUTABLES) > \"metux-test.list\"\n\t@echo 'Finished building: $@'\n\t@echo ' '\n\n# Other Targets\nclean:\n\t-$(RM) default.size.stdout metux-test.elf metux-test.list metux-test.map\n\t-@echo ' '\n\nsecondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)\n\nfail-specified-linker-script-missing:\n\t@echo 'Error: Cannot find the specified linker script. Check the linker settings in the build configuration.'\n\t@exit 2\n\nwarn-no-linker-script-specified:\n\t@echo 'Warning: No linker script specified. Check the linker settings in the build configuration.'\n\n.PHONY: all clean dependents main-build fail-specified-linker-script-missing warn-no-linker-script-specified\n\n-include ../makefile.targets\n",
+			"file": "Debug/makefile",
+			"file_size": 4128,
+			"file_write_time": 134081421797928587,
+			"settings":
+			{
+				"buffer_size": 4126,
+				"line_ending": "Unix"
+			},
+			"undo_stack":
+			[
+				[
+					71,
+					1,
+					"toggle_comment",
+					{
+						"block": false
+					},
+					"AQAAAMcMAAAAAAAAyQwAAAAAAAAAAAAA",
+					"AwAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPC/AAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8L8AAAAAAQAAANYMAAAAAAAA1gwAAAAAAAAAAAAAAADwvw"
+				],
+				[
+					72,
+					1,
+					"toggle_comment",
+					{
+						"block": false
+					},
+					"AQAAAMcMAAAAAAAAxwwAAAAAAAACAAAAIyA",
+					"AwAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPC/AAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8L8AAAAAAQAAANgMAAAAAAAA2AwAAAAAAAAAAAAAAADwvw"
+				]
+			]
+		},
+		{
+			"file": "app/Motor/Motor.cpp",
+			"settings":
+			{
+				"buffer_size": 2783,
+				"line_ending": "Windows"
+			}
+		}
+	],
+	"build_system": "Packages/Makefile/Make.sublime-build",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/C++/C++ Single File.sublime-build",
+					""
+				],
+				[
+					"Packages/C++/C++ Single File.sublime-build",
+					"Run"
+				]
+			],
+			[
+				"Packages/C++/C++ Single File.sublime-build",
+				""
+			]
+		],
+		[
+			[
+				[
+					"Packages/LaTeXTools/Compile to PDF.sublime-build",
+					""
+				],
+				[
+					"Packages/LaTeXTools/Compile to PDF.sublime-build",
+					"Traditional Builder"
+				],
+				[
+					"Packages/LaTeXTools/Compile to PDF.sublime-build",
+					"Traditional Builder with PdfLaTeX"
+				],
+				[
+					"Packages/LaTeXTools/Compile to PDF.sublime-build",
+					"Traditional Builder with XeLaTeX"
+				],
+				[
+					"Packages/LaTeXTools/Compile to PDF.sublime-build",
+					"Traditional Builder with LuaLaTeX"
+				],
+				[
+					"Packages/LaTeXTools/Compile to PDF.sublime-build",
+					"Basic Builder"
+				],
+				[
+					"Packages/LaTeXTools/Compile to PDF.sublime-build",
+					"Basic Builder with PdfLaTeX"
+				],
+				[
+					"Packages/LaTeXTools/Compile to PDF.sublime-build",
+					"Basic Builder with XeLaTeX"
+				],
+				[
+					"Packages/LaTeXTools/Compile to PDF.sublime-build",
+					"Basic Builder with LuaLaTeX"
+				],
+				[
+					"Packages/LaTeXTools/Compile to PDF.sublime-build",
+					"Script Builder"
+				]
+			],
+			[
+				"Packages/LaTeXTools/Compile to PDF.sublime-build",
+				"Traditional Builder with LuaLaTeX"
+			]
+		],
+		[
+			[
+				[
+					"Packages/Makefile/Make.sublime-build",
+					""
+				],
+				[
+					"Packages/Makefile/Make.sublime-build",
+					"Clean"
+				]
+			],
+			[
+				"Packages/Makefile/Make.sublime-build",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"packa",
+				"Package Control: List Packages"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"insta",
+				"Package Control: Install Package"
+			],
+			[
+				"ins",
+				"Indentation: Convert to Spaces"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test",
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app",
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/Motor"
+	],
+	"file_history":
+	[
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/Motor/Motor.hpp",
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/Controller/inc/metux_controller.h",
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/globals.hpp",
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/Controller/inc/metux_controller_private.h",
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal.h",
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/app.cpp",
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/Motor/Motor.cpp",
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/Controller/metux_controller.h",
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/globals.h",
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-launch old/app/app.cpp",
+		"/Users/karadeli/Desktop/LOGS/log_processor_for_test.py",
+		"/Users/karadeli/Desktop/LOGS/log_processor.py",
+		"/Users/karadeli/Downloads/en.st-link-server_v2.1-2.1-2/st-stlink-server.2.1.1-1-linux-amd64.install.sh",
+		"/Users/karadeli/Downloads/en.st-link-server_v2.1-2.1-2/stlink-server.2.1.1-1",
+		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-launch/metux-launch Debug.cfg",
+		"/Users/karadeli/Downloads/en.st-link-server_v2.1.1-2/st-stlink-server.2.1.1-1-linux-amd64.install.sh",
+		"/Users/karadeli/Downloads/install_cli.sh",
+		"/Users/karadeli/Downloads/install_agent.sh",
+		"/Users/karadeli/Downloads/assignment-1-group-19-main/src/.clangd",
+		"/Users/karadeli/Downloads/assignment-1-group-19-main/untitled.sublime-project",
+		"/Users/karadeli/Downloads/assignment-1-group-19-main/src/png_util.c",
+		"/Users/karadeli/Downloads/assignment-1-group-19-main/makefile",
+		"/Users/karadeli/projects/Metu-X/app/app.cpp",
+		"/Users/karadeli/Library/Application Support/Steam/steamapps/common/Stardew Valley/Contents/MacOS/StardewValley",
+		"/Users/karadeli/Downloads/DW3_QM33_SDK_1/Drivers/API/Src/examples/ex_01c_tx_sleep_auto/tx_sleep_auto.c",
+		"/Users/karadeli/Downloads/DW3_QM33_SDK_1/Drivers/README.md",
+		"/Users/karadeli/Downloads/DW3_QM33_SDK_1/SDK/Tools/uwb-qorvo-tools/scripts/utils/decode_uci/README.md",
+		"/Users/karadeli/Downloads/DW3_QM33_SDK_1/SDK/Tools/uwb-qorvo-tools/scripts/utils/fp/README.md",
+		"/Users/karadeli/Downloads/DW3_QM33_SDK_1/SDK/Tools/uwb-qorvo-tools/scripts/utils/uqt_info/README.md",
+		"/Users/karadeli/Downloads/DW3_QM33_SDK_1/SDK/Tools/uwb-qorvo-tools/scripts/utils/uqt_ls/uqt_ls.py",
+		"/Users/karadeli/Downloads/DW3_QM33_SDK_1/SDK/Tools/uwb-qorvo-tools/scripts/utils/uqt_ls/README.md",
+		"/Users/karadeli/Downloads/DW3_QM33_SDK_1/SDK/Tools/uwb-qorvo-tools/scripts/utils/README.md",
+		"/Users/karadeli/Downloads/DW3_QM33_SDK_1/SDK/Tools/uwb-qorvo-tools/scripts/qorvo/run_qorvo_test_tx_cw/README.md",
+		"/Users/karadeli/Downloads/DW3_QM33_SDK_1/SDK/Tools/uwb-qorvo-tools/scripts/qorvo/run_qorvo_test_pll_lock/README.md",
+		"/Users/karadeli/Downloads/DW3_QM33_SDK_1/SDK/Tools/uwb-qorvo-tools/scripts/qorvo/README.md",
+		"/Users/karadeli/Downloads/DW3_QM33_SDK_1/README.md",
+		"/Users/karadeli/Downloads/FontPatcher/readme.md",
+		"/Users/karadeli/Downloads/NerdFontsSymbolsOnly/10-nerd-font-symbols.conf",
+		"/Users/karadeli/Downloads/Mustafa_Karadeli_Resume/resume.sublime-workspace",
+		"/Users/karadeli/Downloads/Mustafa_Karadeli_Resume/resume.tex"
+	],
+	"find":
+	{
+		"height": 24.0
+	},
+	"find_in_files":
+	{
+		"height": 98.0,
+		"where_history":
+		[
+			""
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"size",
+			"SIZE_OUTPUT",
+			"default.size.stdout",
+			"eabi-size",
+			"metux-test.elf",
+			"entry",
+			"uint32_t u",
+			"uint32_t",
+			"time_t",
+			" untime",
+			"untime",
+			"time",
+			"tıme",
+			"micros()",
+			"millis()",
+			"ExternalSetpoint",
+			"setSpeed",
+			"metux_controller_Y"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"scrollbar_highlights": true,
+		"show_context": true,
+		"use_buffer2": true,
+		"use_gitignore": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "Debug/metux-test.map",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1189787,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"lsp_uri": "file:///Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/Debug/metux-test.map",
+							"syntax": "Packages/Text/Plain text.tmLanguage",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"stack_multiselect": false,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "Debug/makefile",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 4126,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								3272,
+								3290
+							]
+						],
+						"settings":
+						{
+							"lsp_uri": "file:///Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/Debug/makefile",
+							"syntax": "Packages/Makefile/Makefile.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 1271.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"stack_multiselect": false,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "app/Motor/Motor.cpp",
+					"selected": true,
+					"semi_transient": true,
+					"settings":
+					{
+						"buffer_size": 2783,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								774,
+								791
+							]
+						],
+						"settings":
+						{
+							"auto_complete_triggers":
+							[
+								{
+									"characters": "<",
+									"selector": "text.html, text.xml"
+								},
+								{
+									"rhs_empty": true,
+									"selector": "punctuation.accessor"
+								},
+								{
+									"characters": "\\",
+									"selector": "text.tex.latex"
+								},
+								{
+									"characters": ".<>:\"/*",
+									"selector": "punctuation.accessor | (meta.preprocessor.include string - punctuation.definition.string.end)",
+									"server": "clangd"
+								}
+							],
+							"lsp_active": true,
+							"lsp_uri": "file:///Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/Motor/Motor.cpp",
+							"show_definitions": false,
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 791.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"stack_multiselect": false,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 24.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.LSP Log Panel":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.diagnostics":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.exec":
+	{
+		"height": 112.0,
+		"history":
+		[
+		]
+	},
+	"output.find_results":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.mdpopups":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"pinned_build_system": "Packages/Makefile/Make.sublime-build",
+	"project": "metux-test.sublime-project",
+	"replace":
+	{
+		"height": 44.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 501.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"",
+				"~/Desktop/LOGS/log_processing.sublime-project"
+			]
+		],
+		"width": 380.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+		"lsp_show_inlay_hints": false
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 250.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

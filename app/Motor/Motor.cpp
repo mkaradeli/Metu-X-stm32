@@ -36,8 +36,17 @@ void Motor::updatePosition(uint16_t raw_value){
 		this->positionDegree += this->encoderDeltaValue*360.0f / ADC_MAX;
 }
 
+void Motor::updateCurrent(uint16_t raw_value){
+//	float measured_voltage = raw_value/ADC_MAX * 3.3;
+	this->current_meas = (raw_value*1.0f /ADC_MAX * 3.3f - 2.5) / 0.066 ;
+}
+
 float Motor::getPositionDegree(){
 	return this->positionDegree;
+}
+
+float Motor::getCurrent(){
+	return this->current_meas;
 }
 
 void Motor::setPositionDegree(float value){
@@ -60,10 +69,10 @@ void Motor::motorBrake(){
 }
 
 void Motor::setSpeed(float normalValue){
-	if ( (this->positionDegree > 1500.0) && (normalValue > 0.0))
-		normalValue = 0;
-	if ( (this->positionDegree < 15.0) && (normalValue < 0.0))
-		normalValue = 0;
+//	if ( (this->positionDegree > 1500.0) && (normalValue > 0.0))
+//		normalValue = 0;
+//	if ( (this->positionDegree < 15.0) && (normalValue < 0.0))
+//		normalValue = 0;
 
 	if (normalValue > DUTY_DEAD_ZONE){
 		this->setDirectionCounterClockWise();

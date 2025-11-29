@@ -63,15 +63,15 @@ void q_to_ypr(float r, float i, float j, float k, float *pYaw, float *pPitch, fl
     // convert to Euler Angles
     float num = 2.0f * i * j - 2.0f * r * k;
     float den = 2.0f * r * r + 2.0f * j * j - 1.0f;
-    *pYaw = (float)(180.0f/M_PI) * (float)atan2((double)num, (double)den);
+    *pYaw = (float)atan2((double)num, (double)den);
 
     float arg = 2.0f * j * k + 2.0f * r * i;
     if (arg > 1.0f) arg = 1.0f;
     if (arg < -1.0f) arg = -1.0f;
-    *pPitch = (float)(180.0f/M_PI) * (float)asin((double)arg);
+    *pPitch = (float)asin((double)arg);
 
     num = -2.0f * i * k + 2.0f * r * j;
     den = 2.0f * r * r + 2.0f * k * k - 1.0f;
-    *pRoll = (float)(180.0f/M_PI) * (float)atan2((double)num, (double)den);
+    *pRoll = (float)atan2((double)num, (double)den);
 }
 

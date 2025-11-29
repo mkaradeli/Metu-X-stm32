@@ -25,6 +25,11 @@ class Lidar {
 		uint16_t getDistance(){
 			return this->distance;
 		}
+
+		uint16_t getStrength(){
+			return this->strength;
+		}
+
 	private:
 		UART_HandleTypeDef* uart_handle;
 		uint8_t buffer[128] = {0};

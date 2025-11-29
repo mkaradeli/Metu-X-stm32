@@ -5,11 +5,11 @@
  *
  * File: rtwtypes.h
  *
- * Code generated for Simulink model 'metux_model_6dof_only_controller'.
+ * Code generated for Simulink model 'metux_controller'.
  *
- * Model version                  : 3.95
- * Simulink Coder version         : 24.2 (R2024b) 21-Jun-2024
- * C/C++ source code generated on : Sat Aug 23 13:17:49 2025
+ * Model version                  : 5.16
+ * Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
+ * C/C++ source code generated on : Thu Nov 20 12:07:27 2025
  *
  * Target selection: ert.tlc
  * Embedded hardware selection: ARM Compatible->ARM Cortex-M

@@ -18,13 +18,6 @@
 #ifndef EULER_H
 #define EULER_H
 
-//
-typedef struct {
-	float Roll;
-	float Pitch;
-	float Yaw;
-} euler_t;
-
 // Extract yaw value from quaternion.
 float q_to_yaw(float r, float i, float j, float k);
 

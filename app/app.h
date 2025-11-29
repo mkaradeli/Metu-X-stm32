@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-#include "metux_model_6dof_only_controller.h"
+#include "metux_controller.h"
 #include "sd_functions.h"
 void app_start();
 

@@ -1,0 +1,10 @@
+../app/sh2/shtp.c:88:13:shtp_init	0	static
+../app/sh2/shtp.c:99:16:getInstance	0	static
+../app/sh2/shtp.c:179:13:rxAssemble	48	static
+../app/sh2/shtp.c:300:7:shtp_open	16	static
+../app/sh2/shtp.c:337:6:shtp_close	8	static
+../app/sh2/shtp.c:349:6:shtp_setEventCallback	0	static
+../app/sh2/shtp.c:359:5:shtp_listenChan	0	static
+../app/sh2/shtp.c:396:6:shtp_service	24	static
+../app/sh2/shtp.c:124:12:txProcess	32	static
+../app/sh2/shtp.c:377:5:shtp_send	8	static

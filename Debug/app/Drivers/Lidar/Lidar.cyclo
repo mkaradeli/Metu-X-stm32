@@ -1,5 +1,0 @@
-../app/Drivers/Lidar/Lidar.cpp:11:1:Lidar::Lidar()	1
-../app/Drivers/Lidar/Lidar.cpp:15:6:void Lidar::FrameHandler(uint8_t*, uint8_t)	6
-../app/Drivers/Lidar/Lidar.cpp:42:6:void Lidar::SaveConfig()	1
-../app/Drivers/Lidar/Lidar.cpp:49:6:void Lidar::SetFrameRate(uint16_t)	4
-../app/Drivers/Lidar/Lidar.cpp:62:6:void Lidar::Reset()	1

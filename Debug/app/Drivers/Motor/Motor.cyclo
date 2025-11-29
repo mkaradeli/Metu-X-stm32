@@ -1,8 +1,0 @@
-../app/Drivers/Motor/Motor.cpp:10:1:Motor::Motor(GPIO_TypeDef*, uint16_t, GPIO_TypeDef*, uint16_t, TIM_HandleTypeDef*, uint8_t)	1
-../app/Drivers/Motor/Motor.cpp:19:6:void Motor::updatePosition(uint16_t, uint16_t)	3
-../app/Drivers/Motor/Motor.cpp:32:7:float Motor::getPositionDegree()	1
-../app/Drivers/Motor/Motor.cpp:36:7:float Motor::getPositionRadian()	1
-../app/Drivers/Motor/Motor.cpp:41:6:void Motor::setSpeed(uint16_t)	6
-../app/Drivers/Motor/Motor.cpp:45:6:void Motor::setDirectionClockwise()	1
-../app/Drivers/Motor/Motor.cpp:50:6:void Motor::setDirectionCounterClockwise()	1
-../app/Drivers/Motor/Motor.cpp:55:6:void Motor::releaseMotor()	1
