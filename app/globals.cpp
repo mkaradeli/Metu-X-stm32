@@ -39,7 +39,7 @@ PressureSensor psSensors[MAX_PS_COUNT] = {
 // Motor Variables
 
 TaskHandle_t motorTaskHandle;
-uint16_t EncoderValues[MAX_MOTOR_COUNT] = {0};
+uint16_t EncoderValues[ADC2_BUF_LEN*ADC2_CH_COUNT] = {0};
 Motor motors[MAX_MOTOR_COUNT] = {
 		Motor(1, true, LEFT_EN_1_GPIO_Port, LEFT_EN_1_Pin, RIGHT_EN_1_GPIO_Port, RIGHT_EN_1_Pin, &htim4, TIM_CHANNEL_1),
 		Motor(2, true, LEFT_EN_2_GPIO_Port, LEFT_EN_2_Pin, RIGHT_EN_2_GPIO_Port, RIGHT_EN_2_Pin, &htim4, TIM_CHANNEL_2),
@@ -48,9 +48,11 @@ Motor motors[MAX_MOTOR_COUNT] = {
 };
 
 
-
-
-
+const char logHeader[] = "Model version: 5.16, Code Generated at: Thu Nov 20 12:07:27 2025 Reducing cycle time to tighten readings";
+const char* logHeader_ptr = &logHeader[0];
+const uint8_t logHeaderSize = sizeof(logHeader);
+const uint16_t logFormatID = 0;
+const uint16_t* logFormatID_ptr = &logFormatID;
 
 // SD Card Variables
 

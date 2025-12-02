@@ -21,18 +21,23 @@
 
 #define BUFFER_SIZE (PACKET_SIZE * BUFFER_PACKETS)
 
-static_assert(BUFFER_SIZE==910*72);
+//#define ADC2_BUF_LEN     256
+//#define ADC2_CH_COUNT    4
+
+
+//static_assert(BUFFER_SIZE==910*72);
 
 
 uint8_t bufferA[BUFFER_SIZE];
 uint8_t bufferB[BUFFER_SIZE];
 uint8_t *activeBuffer = bufferA;
 uint8_t *writeBuffer = NULL;
+uint32_t activeIndex = 0;
 
 
 uint32_t bufferIndex = 0;
 bool lastWrite = false;
-bool lastWriteDone = false;
+int lastWriteDone = false;
 SemaphoreHandle_t writeSemaphore;
 
 uint8_t myrxBuffer[5];
@@ -68,6 +73,7 @@ void lidarTask(void *pvParameters){
 void motorTask(void *pvParameters){
 	for(;;){
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+		;
 		for (int i =0 ; i<4; i++)
 			motors[i].updatePosition(EncoderValues[i]);
 		motors[0].updateCurrent(EncoderValues[3]);
@@ -88,6 +94,12 @@ void sdCardTask(void *pvParameters){
 	sd_mount();
 	sd_create_log_file();
 
+	sd_write_log_file((uint8_t*)logFormatID_ptr,sizeof(uint16_t));
+	sd_write_log_file(&logHeaderSize, sizeof(uint8_t));
+	sd_write_log_file((uint8_t*)logHeader_ptr, logHeaderSize);
+
+
+
 
 	ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 	for(;;){
@@ -98,8 +110,8 @@ void sdCardTask(void *pvParameters){
             writeBuffer = NULL;
             if (lastWrite){
             	sd_close_log_file();
-            	sd_unmount();
-            	lastWriteDone = true;
+            	lastWriteDone = sd_unmount();
+//            	lastWriteDone = ;
             	osThreadTerminate(NULL);
 
             }
@@ -153,6 +165,16 @@ void bufferDataTask(void *pvParameters){
 			txData.data.force_measured = 0;
 			txData.data.thrust_demand = metux_controller_Y.thrust_demand;
 
+			activeIndex = __HAL_DMA_GET_COUNTER(&hdma_adc2);
+
+			uint32_t written = ADC2_BUF_LEN*ADC2_CH_COUNT - activeIndex + activeIndex%4;
+			uint32_t head = written % (ADC2_BUF_LEN*ADC2_CH_COUNT);
+
+			for (uint16_t i=0; i<ADC2_BUF_LEN; i++){
+//				(start + i) % ADC2_BUF_LEN
+				txData.data.encoder_readings[i] = EncoderValues[(head + i*ADC2_CH_COUNT) % (ADC2_BUF_LEN*ADC2_CH_COUNT)];
+				txData.data.current_readings[i] = EncoderValues[(head + i*ADC2_CH_COUNT) % (ADC2_BUF_LEN*ADC2_CH_COUNT) + 3];
+			}
 
 
 
@@ -230,15 +252,15 @@ void controllerTask(void *pvParameters){
 			//	thrust_demand = metux_controller_Y.thrust_demand;
 
 		if (time_sec < 10){
-//			metux_controller_U.current_demand_ext = 0.6*sin(time_sec * 2 * PI * 2);
+			metux_controller_U.current_demand_ext = 1*sin(time_sec * 10 * PI * 2);
 
-			if (int(time_sec/0.5)%2)
-				metux_controller_U.current_demand_ext = 0.6;
-			else
-				metux_controller_U.current_demand_ext = -0.6;
+//			if (int(time_sec/0.5)%2)
+//				metux_controller_U.current_demand_ext = 1;
+//			else
+//				metux_controller_U.current_demand_ext = -1;
 		}
 		else
-			metux_controller_U.Activate = false;
+			metux_controller_U.Activate =  false;
 //		if ((micros() - start_flag) < 1 * 1e6)
 //			metux_controller_U.current_demand_ext = 0;
 //		else if ((micros()-start_flag) < (2 * 1e6))
@@ -340,7 +362,7 @@ void app_start(){
 	//HAL_ADCEx_Calibration_Start(&hadc2, ADC_CALIB_OFFSET_LINEARITY, ADC_SINGLE_ENDED);
 
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)PSValues, 5);
-	HAL_ADC_Start_DMA(&hadc2, (uint32_t *)EncoderValues, 4);
+	HAL_ADC_Start_DMA(&hadc2, (uint32_t *)EncoderValues, ADC2_CH_COUNT*ADC2_BUF_LEN);
 
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
@@ -391,7 +413,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 		portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 	}
 	else if (hadc->Instance == ADC2) {
-		HAL_ADC_Start_DMA(&hadc2, (uint32_t *)EncoderValues, MAX_MOTOR_COUNT);
+		HAL_ADC_Start_DMA(&hadc2, (uint32_t *)EncoderValues, ADC2_CH_COUNT*ADC2_BUF_LEN);
 		xHigherPriorityTaskWoken = pdFALSE;
 		vTaskNotifyGiveFromISR(motorTaskHandle, &xHigherPriorityTaskWoken);
 		portYIELD_FROM_ISR( xHigherPriorityTaskWoken );

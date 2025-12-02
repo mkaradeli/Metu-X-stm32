@@ -13,6 +13,9 @@
 
 #define PI 3.1415926536
 
+#define ADC2_BUF_LEN     48
+#define ADC2_CH_COUNT    4
+
 #include <stdint.h>
 
 #include "Lidar.hpp"
@@ -44,10 +47,12 @@ typedef struct {
     float force_feedback;
     float force_measured;
     float thrust_demand;
+    uint16_t encoder_readings[ADC2_BUF_LEN];
+    uint16_t current_readings[ADC2_BUF_LEN];
 
 } SensorData_t;
 
-static_assert(sizeof(SensorData_t) == 72);
+//static_assert(sizeof(SensorData_t) == 328);
 
 typedef union {
     SensorData_t data;
@@ -67,10 +72,17 @@ extern PressureSensor psSensors[MAX_PS_COUNT];
 
 // Motor Variables
 extern TaskHandle_t motorTaskHandle;
-extern uint16_t EncoderValues[MAX_MOTOR_COUNT];
+extern uint16_t EncoderValues[ADC2_CH_COUNT*ADC2_BUF_LEN];
 extern Motor motors[MAX_MOTOR_COUNT];
 
 // SD Card Varibles
 extern TaskHandle_t sdCardTaskHandle;
+
+//extern const uint8_t logHeader[];
+extern const char* logHeader_ptr;
+extern const uint8_t logHeaderSize;
+//extern const uint16_t logFormatID;
+extern const uint16_t* logFormatID_ptr;
+
 
 #endif /* GLOBALS_HPP_ */
