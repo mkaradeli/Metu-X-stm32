@@ -13,7 +13,7 @@
 
 #define PI 3.1415926536
 
-#define ADC2_BUF_LEN     48
+#define ADC2_BUF_LEN     24
 #define ADC2_CH_COUNT    4
 
 #include <stdint.h>
@@ -24,6 +24,8 @@
 #include "sh2_SensorValue.h"
 
 #include "cmsis_os.h"
+
+
 
 
 
@@ -83,6 +85,8 @@ extern const char* logHeader_ptr;
 extern const uint8_t logHeaderSize;
 //extern const uint16_t logFormatID;
 extern const uint16_t* logFormatID_ptr;
+
+
 
 
 #endif /* GLOBALS_HPP_ */

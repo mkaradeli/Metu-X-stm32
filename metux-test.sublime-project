@@ -2,7 +2,42 @@
 	"folders":
 	[
 		{
-			"path": "."
+			"path": ".",
+			// "name": "metux-test",
+			
 		}
-	]
+	],
+
+	"settings": {
+		"LSP": {
+			"clangd": {
+				"command": ["clangd"],
+				"settings": {
+					"clangd.compileFlags": {
+						"add":[
+							"--header-insertion=never",
+							"--all-scopes-completion",
+							"--background-index",
+
+							// Add include directories here
+							"-ICore/Inc",
+							"-ICore/Src",
+							"-IDrivers/STM32F4xx_HAL_Driver/Inc",
+							"-IDrivers/CMSIS/Device/ST/STM32F4xx/Include",
+							"-IDrivers/CMSIS/Include",
+							"-Iapp",
+							"-Iapp/Lidar",
+							"-Iapp/IMU",
+							"-Iapp/Motor",
+							"-Iapp/PressureSensor",
+							"-Iapp/SDCard/inc",
+							"-Iapp/SDCard/src",
+							"-Iapp/sh2",
+						],
+					},
+				},
+				"enabled": true,
+			},
+		},
+	},
 }

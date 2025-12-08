@@ -1,4 +1,0 @@
-../app/IMU/IMU.c:62:13:eventHandler	2
-../app/IMU/IMU.c:30:13:printEvent	4
-../app/IMU/IMU.c:57:13:sensorHandler	1
-../app/IMU/IMU.c:79:6:IMU_Init	4

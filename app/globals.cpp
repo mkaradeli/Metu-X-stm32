@@ -6,7 +6,7 @@
  */
 
 #include "globals.hpp"
-#include "globals.h"
+
 
 
 // Message Pack
@@ -57,3 +57,9 @@ const uint16_t* logFormatID_ptr = &logFormatID;
 // SD Card Variables
 
 TaskHandle_t sdCardTaskHandle;
+
+// encoder Variables;
+
+
+
+

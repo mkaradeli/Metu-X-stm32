@@ -146,6 +146,7 @@ void bufferDataTask(void *pvParameters){
 //		    float force_measured;
 //		    float thrust_demand;
 
+
 			txData.data.timestamp = micros();
 			txData.data.motor_duty = metux_controller_Y.MotorDuty;
 			txData.data.current_measured = motors[0].getCurrent();
@@ -361,8 +362,12 @@ void app_start(){
 	HAL_ADCEx_Calibration_Start(&hadc2, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 	//HAL_ADCEx_Calibration_Start(&hadc2, ADC_CALIB_OFFSET_LINEARITY, ADC_SINGLE_ENDED);
 
+
+
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)PSValues, 5);
 	HAL_ADC_Start_DMA(&hadc2, (uint32_t *)EncoderValues, ADC2_CH_COUNT*ADC2_BUF_LEN);
+
+
 
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
@@ -379,6 +384,9 @@ void app_start(){
 		motors[i].setPositionDegree(0*360.0);
 	}
 
+	for(uint8_t i=0; i<4; i++){
+//	encoderReaderInit(encoder[i],)
+	}
 
 }
 
@@ -407,13 +415,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	static BaseType_t xHigherPriorityTaskWoken;
 	if (hadc->Instance == ADC1){
-		HAL_ADC_Start_DMA(&hadc1, (uint32_t *)PSValues, MAX_PS_COUNT);
+		// TODO: HAL_ADC_Start_DMA function should only run in app start once.
+		// HAL_ADC_Start_DMA(&hadc1, (uint32_t *)PSValues, MAX_PS_COUNT);
 		xHigherPriorityTaskWoken = pdFALSE;
 		vTaskNotifyGiveFromISR(psTaskHandle, &xHigherPriorityTaskWoken);
 		portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 	}
 	else if (hadc->Instance == ADC2) {
-		HAL_ADC_Start_DMA(&hadc2, (uint32_t *)EncoderValues, ADC2_CH_COUNT*ADC2_BUF_LEN);
+		// HAL_ADC_Start_DMA(&hadc2, (uint32_t *)EncoderValues, ADC2_CH_COUNT*ADC2_BUF_LEN);
 		xHigherPriorityTaskWoken = pdFALSE;
 		vTaskNotifyGiveFromISR(motorTaskHandle, &xHigherPriorityTaskWoken);
 		portYIELD_FROM_ISR( xHigherPriorityTaskWoken );

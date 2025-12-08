@@ -72,54 +72,15 @@
 	"buffers":
 	[
 		{
-			"file": "Debug/metux-test.map",
+			"file": "Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_adc.c",
 			"settings":
 			{
-				"buffer_size": 1189787,
-				"line_ending": "Unix"
-			}
-		},
-		{
-			"contents": "################################################################################\n# Automatically-generated file. Do not edit!\n# Toolchain: GNU Tools for STM32 (13.3.rel1)\n################################################################################\n\n-include ../makefile.init\n\nRM := rm -rf\n\n# All of the sources participating in the build are defined here\n-include sources.mk\n-include app/sh2/subdir.mk\n-include app/SDCard/src/subdir.mk\n-include app/PressureSensor/subdir.mk\n-include app/Motor/subdir.mk\n-include app/Lidar/subdir.mk\n-include app/IMU/subdir.mk\n-include app/Controller/src/subdir.mk\n-include app/subdir.mk\n-include Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/subdir.mk\n-include Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/subdir.mk\n-include Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/subdir.mk\n-include Middlewares/Third_Party/FreeRTOS/Source/subdir.mk\n-include Middlewares/Third_Party/FatFs/src/option/subdir.mk\n-include Middlewares/Third_Party/FatFs/src/subdir.mk\n-include FATFS/Target/subdir.mk\n-include FATFS/App/subdir.mk\n-include Drivers/STM32H7xx_HAL_Driver/Src/subdir.mk\n-include Core/Startup/subdir.mk\n-include Core/Src/subdir.mk\n-include objects.mk\n\nifneq ($(MAKECMDGOALS),clean)\nifneq ($(strip $(CC_DEPS)),)\n-include $(CC_DEPS)\nendif\nifneq ($(strip $(C++_DEPS)),)\n-include $(C++_DEPS)\nendif\nifneq ($(strip $(CCM_DEPS)),)\n-include $(CCM_DEPS)\nendif\nifneq ($(strip $(C_UPPER_DEPS)),)\n-include $(C_UPPER_DEPS)\nendif\nifneq ($(strip $(CXX_DEPS)),)\n-include $(CXX_DEPS)\nendif\nifneq ($(strip $(S_DEPS)),)\n-include $(S_DEPS)\nendif\nifneq ($(strip $(S_UPPER_DEPS)),)\n-include $(S_UPPER_DEPS)\nendif\nifneq ($(strip $(CXXM_DEPS)),)\n-include $(CXXM_DEPS)\nendif\nifneq ($(strip $(C++M_DEPS)),)\n-include $(C++M_DEPS)\nendif\nifneq ($(strip $(C_DEPS)),)\n-include $(C_DEPS)\nendif\nifneq ($(strip $(CPP_DEPS)),)\n-include $(CPP_DEPS)\nendif\nendif\n\n-include ../makefile.defs\n\nOPTIONAL_TOOL_DEPS := \\\n$(wildcard ../makefile.defs) \\\n$(wildcard ../makefile.init) \\\n$(wildcard ../makefile.targets) \\\n\n\nBUILD_ARTIFACT_NAME := metux-test\nBUILD_ARTIFACT_EXTENSION := elf\nBUILD_ARTIFACT_PREFIX :=\nBUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)\n\n# Add inputs and outputs from these tool invocations to the build variables \nEXECUTABLES += \\\nmetux-test.elf \\\n\nMAP_FILES += \\\nmetux-test.map \\\n\nSIZE_OUTPUT += \\\ndefault.size.stdout \\\n\nOBJDUMP_LIST += \\\nmetux-test.list \\\n\n\n# All Target\nall: main-build\n\n# Main-build Target\nmain-build: metux-test.elf secondary-outputs\n\n# Tool invocations\nmetux-test.elf metux-test.map: $(OBJS) $(USER_OBJS) /Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/STM32H730VBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)\n\tarm-none-eabi-g++ -o \"metux-test.elf\" @\"objects.list\" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T\"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/STM32H730VBTX_FLASH.ld\" --specs=nosys.specs -Wl,-Map=\"metux-test.map\" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group\n\t@echo 'Finished building target: $@'\n\t@echo ' '\n\ndefault.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)\n\tarm-none-eabi-size  $(EXECUTABLES)\n\t@echo 'Finished building: $@'\n\t@echo ' '\n\nmetux-test.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)\n\tarm-none-eabi-objdump -h -S $(EXECUTABLES) > \"metux-test.list\"\n\t@echo 'Finished building: $@'\n\t@echo ' '\n\n# Other Targets\nclean:\n\t-$(RM) default.size.stdout metux-test.elf metux-test.list metux-test.map\n\t-@echo ' '\n\nsecondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)\n\nfail-specified-linker-script-missing:\n\t@echo 'Error: Cannot find the specified linker script. Check the linker settings in the build configuration.'\n\t@exit 2\n\nwarn-no-linker-script-specified:\n\t@echo 'Warning: No linker script specified. Check the linker settings in the build configuration.'\n\n.PHONY: all clean dependents main-build fail-specified-linker-script-missing warn-no-linker-script-specified\n\n-include ../makefile.targets\n",
-			"file": "Debug/makefile",
-			"file_size": 4128,
-			"file_write_time": 134081421797928587,
-			"settings":
-			{
-				"buffer_size": 4126,
+				"buffer_size": 160453,
 				"line_ending": "Unix"
 			},
 			"undo_stack":
 			[
-				[
-					71,
-					1,
-					"toggle_comment",
-					{
-						"block": false
-					},
-					"AQAAAMcMAAAAAAAAyQwAAAAAAAAAAAAA",
-					"AwAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPC/AAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8L8AAAAAAQAAANYMAAAAAAAA1gwAAAAAAAAAAAAAAADwvw"
-				],
-				[
-					72,
-					1,
-					"toggle_comment",
-					{
-						"block": false
-					},
-					"AQAAAMcMAAAAAAAAxwwAAAAAAAACAAAAIyA",
-					"AwAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPC/AAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8L8AAAAAAQAAANgMAAAAAAAA2AwAAAAAAAAAAAAAAADwvw"
-				]
 			]
-		},
-		{
-			"file": "app/Motor/Motor.cpp",
-			"settings":
-			{
-				"buffer_size": 2783,
-				"line_ending": "Windows"
-			}
 		}
 	],
 	"build_system": "Packages/Makefile/Make.sublime-build",
@@ -214,6 +175,26 @@
 		"selected_items":
 		[
 			[
+				"lsp toggle",
+				"LSP: Toggle Diagnostics Panel"
+			],
+			[
+				"lsp togg",
+				"LSP: Toggle Log Panel"
+			],
+			[
+				"lsp",
+				"LSP: Goto Diagnostic"
+			],
+			[
+				"log",
+				"LSP: Toggle Log Panel"
+			],
+			[
+				"toggle log",
+				"LSP: Toggle Log Panel"
+			],
+			[
 				"packa",
 				"Package Control: List Packages"
 			],
@@ -250,12 +231,24 @@
 	},
 	"expanded_folders":
 	[
-		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test",
-		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app",
-		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/Motor"
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Core",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Core/Inc",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Core/Src",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Debug"
 	],
 	"file_history":
 	[
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Core/Src/adc.c",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app/app.cpp",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/metux-test.sublime-project",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app/Motor/Motor.hpp",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/.clangd",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app/Lidar/Lidar.hpp",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app/Motor/Motor.cpp",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/compile_commands.json",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Debug/metux-test.map",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Debug/makefile",
 		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/Motor/Motor.hpp",
 		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/Controller/inc/metux_controller.h",
 		"/Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/globals.hpp",
@@ -299,7 +292,7 @@
 	],
 	"find":
 	{
-		"height": 24.0
+		"height": 38.0
 	},
 	"find_in_files":
 	{
@@ -314,6 +307,18 @@
 		"case_sensitive": false,
 		"find_history":
 		[
+			"Init.ContinuousConvMode",
+			"continiousConv",
+			"hal_adc_st",
+			"multimode",
+			"hal_adc",
+			"hal_adc_convcplt",
+			".h",
+			"cyclomatic-complexity",
+			"gpio.c",
+			"project_path",
+			"gpio",
+			"oversampling",
 			"size",
 			"SIZE_OUTPUT",
 			"default.size.stdout",
@@ -355,84 +360,20 @@
 			[
 				{
 					"buffer": 0,
-					"file": "Debug/metux-test.map",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 1189787,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								0,
-								0
-							]
-						],
-						"settings":
-						{
-							"lsp_uri": "file:///Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/Debug/metux-test.map",
-							"syntax": "Packages/Text/Plain text.tmLanguage",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 0.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 2,
-					"stack_multiselect": false,
-					"type": "text"
-				},
-				{
-					"buffer": 1,
-					"file": "Debug/makefile",
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 4126,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								3272,
-								3290
-							]
-						],
-						"settings":
-						{
-							"lsp_uri": "file:///Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/Debug/makefile",
-							"syntax": "Packages/Makefile/Makefile.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": false
-						},
-						"translation.x": 0.0,
-						"translation.y": 1271.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 1,
-					"stack_multiselect": false,
-					"type": "text"
-				},
-				{
-					"buffer": 2,
-					"file": "app/Motor/Motor.cpp",
+					"file": "Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_adc.c",
 					"selected": true,
-					"semi_transient": true,
+					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 2783,
+						"buffer_size": 160453,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								774,
-								791
+								87245,
+								87245
 							]
 						],
 						"settings":
@@ -458,14 +399,14 @@
 								}
 							],
 							"lsp_active": true,
-							"lsp_uri": "file:///Users/karadeli/STM32CubeIDE/workspace_1.19.0/metux-test/app/Motor/Motor.cpp",
+							"lsp_uri": "file:///Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_adc.c",
 							"show_definitions": false,
-							"syntax": "Packages/C++/C++.sublime-syntax",
+							"syntax": "Packages/C++/C.sublime-syntax",
 							"tab_size": 4,
-							"translate_tabs_to_spaces": false
+							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 791.0,
+						"translation.y": 31730.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,
@@ -508,14 +449,14 @@
 	"menu_visible": true,
 	"output.LSP Log Panel":
 	{
-		"height": 0.0,
+		"height": 517.0,
 		"history":
 		[
 		]
 	},
 	"output.diagnostics":
 	{
-		"height": 0.0,
+		"height": 112.0,
 		"history":
 		[
 		]
@@ -565,7 +506,7 @@
 		[
 			[
 				"",
-				"~/Desktop/LOGS/log_processing.sublime-project"
+				"~/Documents/Metu-X/LOGS/log_processing.sublime-project"
 			]
 		],
 		"width": 380.0
