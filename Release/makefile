@@ -10,6 +10,7 @@ RM := rm -rf
 # All of the sources participating in the build are defined here
 -include sources.mk
 -include app/sh2/subdir.mk
+-include app/encoder/subdir.mk
 -include app/SDCard/src/subdir.mk
 -include app/PressureSensor/subdir.mk
 -include app/Motor/subdir.mk
@@ -74,34 +75,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := metux-launch
+BUILD_ARTIFACT_NAME := metux-test
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-metux-launch.elf \
+metux-test.elf \
 
 MAP_FILES += \
-metux-launch.map \
+metux-test.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-metux-launch.list \
+metux-test.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: metux-launch.elf secondary-outputs
+main-build: metux-test.elf secondary-outputs
 
 # Tool invocations
-metux-launch.elf metux-launch.map: $(OBJS) $(USER_OBJS) C:\Users\alica\OneDrive\Desktop\metux-launch\STM32H730VBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-g++ -o "metux-launch.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"C:\Users\alica\OneDrive\Desktop\metux-launch\STM32H730VBTX_FLASH.ld" -Wl,-Map="metux-launch.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
+metux-test.elf metux-test.map: $(OBJS) $(USER_OBJS) /Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/STM32H730VBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-g++ -o "metux-test.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/STM32H730VBTX_FLASH.ld" -Wl,-Map="metux-test.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -lstdc++ -lsupc++ -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -110,14 +111,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-metux-launch.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "metux-launch.list"
+metux-test.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "metux-test.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) default.size.stdout metux-launch.elf metux-launch.list metux-launch.map
+	-$(RM) default.size.stdout metux-test.elf metux-test.list metux-test.map
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)

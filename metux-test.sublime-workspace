@@ -72,15 +72,59 @@
 	"buffers":
 	[
 		{
-			"file": "Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_adc.c",
+			"file": "app/globals.hpp",
 			"settings":
 			{
-				"buffer_size": 160453,
-				"line_ending": "Unix"
+				"buffer_size": 1602,
+				"line_ending": "Windows"
 			},
 			"undo_stack":
 			[
+				[
+					5,
+					1,
+					"revert",
+					null,
+					"AwAAAAAAAAAAAAAAAAAAAAAAAABLBwAALyoKICogZ2xvYmFscy5oCiAqCiAqICBDcmVhdGVkIG9uOiBBdWcgMTcsIDIwMjUKICogICAgICBBdXRob3I6IGFsaWNhCiAqLwoKI2lmbmRlZiBHTE9CQUxTX0hQUF8KI2RlZmluZSBHTE9CQUxTX0hQUF8KCiNkZWZpbmUgTUFYX01PVE9SX0NPVU5UIDQKI2RlZmluZSBNQVhfUFNfQ09VTlQgNQoKI2RlZmluZSBQSSAzLjE0MTU5MjY1MzYKCiNkZWZpbmUgQURDMl9CVUZfTEVOICAgICAyNAojZGVmaW5lIEFEQzJfQ0hfQ09VTlQgICAgNAoKI2luY2x1ZGUgPHN0ZGludC5oPgoKI2luY2x1ZGUgIkxpZGFyLmhwcCIKI2luY2x1ZGUgIk1vdG9yLmhwcCIKI2luY2x1ZGUgIlByZXNzdXJlU2Vuc29yLmhwcCIKI2luY2x1ZGUgInNoMl9TZW5zb3JWYWx1ZS5oIgoKI2luY2x1ZGUgImNtc2lzX29zLmgiCgoKCgoKLy8gTWVzc2FnZSBQYWNrCnR5cGVkZWYgc3RydWN0IHsKICAgIHVpbnQzMl90IHRpbWVzdGFtcDsKICAgIGZsb2F0IG1vdG9yX2R1dHk7CiAgICBmbG9hdCBjdXJyZW50X21lYXN1cmVkOwogICAgZmxvYXQgY3VycmVudF9kZW1hbmQ7CiAgICBmbG9hdCBlbmNvZGVyRnJvbnQ7CiAgICBmbG9hdCBlbmNvZGVyQnV0dDsKICAgIGZsb2F0IGVuY29kZXJHZWFyZWQ7CiAgICBmbG9hdCB2ZWxfbWVhc3VyZWQ7CiAgICBmbG9hdCB2ZWxfZGVtYW5kOwogICAgZmxvYXQgbW90b3JfcG9zX2thbG1hbjsKICAgIGZsb2F0IG1vdG9yX3Bvc19kZW1hbmQ7CiAgICBmbG9hdCBtYXNzX2VzdGltYXRpb247CiAgICBmbG9hdCBwcmVzc3VyZV9tYW5pZm9sZDsKICAgIGZsb2F0IHByZXNzdXJlX25venpsZTsKICAgIGZsb2F0IHByZXNzdXJlX2RlbWFuZDsKICAgIGZsb2F0IGZvcmNlX2ZlZWRiYWNrOwogICAgZmxvYXQgZm9yY2VfbWVhc3VyZWQ7CiAgICBmbG9hdCB0aHJ1c3RfZGVtYW5kOwogICAgdWludDE2X3QgZW5jb2Rlcl9yZWFkaW5nc1tBREMyX0JVRl9MRU5dOwogICAgdWludDE2X3QgY3VycmVudF9yZWFkaW5nc1tBREMyX0JVRl9MRU5dOwoKfSBTZW5zb3JEYXRhX3Q7CgovL3N0YXRpY19hc3NlcnQoc2l6ZW9mKFNlbnNvckRhdGFfdCkgPT0gMzI4KTsKCnR5cGVkZWYgdW5pb24gewogICAgU2Vuc29yRGF0YV90IGRhdGE7CiAgICB1aW50OF90IGJ5dGVzW3NpemVvZihTZW5zb3JEYXRhX3QpXTsKfSBTZW5zb3JEYXRhVW5pb25fdDsKCmV4dGVybiBTZW5zb3JEYXRhVW5pb25fdCB0eERhdGE7CgovLyBMaWRhciBWYXJpYWJsZXMKZXh0ZXJuIFRhc2tIYW5kbGVfdCBsaWRhclRhc2tIYW5kbGU7CmV4dGVybiBMaWRhciBsaWRhcjsKCi8vIFByZXNzdXJlIFNlbnNvciBWYXJpYWJsZXMKZXh0ZXJuIFRhc2tIYW5kbGVfdCBwc1Rhc2tIYW5kbGU7CmV4dGVybiB1aW50MTZfdCBQU1ZhbHVlc1tNQVhfUFNfQ09VTlRdOwpleHRlcm4gUHJlc3N1cmVTZW5zb3IgcHNTZW5zb3JzW01BWF9QU19DT1VOVF07CgovLyBNb3RvciBWYXJpYWJsZXMKZXh0ZXJuIFRhc2tIYW5kbGVfdCBtb3RvclRhc2tIYW5kbGU7CmV4dGVybiB1aW50MTZfdCBFbmNvZGVyVmFsdWVzW0FEQzJfQ0hfQ09VTlQqQURDMl9CVUZfTEVOXTsKZXh0ZXJuIE1vdG9yIG1vdG9yc1tNQVhfTU9UT1JfQ09VTlRdOwoKLy8gU0QgQ2FyZCBWYXJpYmxlcwpleHRlcm4gVGFza0hhbmRsZV90IHNkQ2FyZFRhc2tIYW5kbGU7CgovL2V4dGVybiBjb25zdCB1aW50OF90IGxvZ0hlYWRlcltdOwpleHRlcm4gY29uc3QgY2hhciogbG9nSGVhZGVyX3B0cjsKZXh0ZXJuIGNvbnN0IHVpbnQ4X3QgbG9nSGVhZGVyU2l6ZTsKLy9leHRlcm4gY29uc3QgdWludDE2X3QgbG9nRm9ybWF0SUQ7CmV4dGVybiBjb25zdCB1aW50MTZfdCogbG9nRm9ybWF0SURfcHRyOwoKZXh0ZXJuIGVuY29kZXJfdCBlbmNvZGVyWzRdOwoKCgojZW5kaWYgLyogR0xPQkFMU19IUFBfICovCgAAAAAAAAAAjgcAAAAAAAAAAAAAAAAAAAAAAABCBgAAAAAAAAAAAAA",
+					"AgAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPC/AAAAAAEAAACnAAAAAAAAAKcAAAAAAAAAAAAAAAAA8L8"
+				]
 			]
+		},
+		{
+			"file": "app/globals.h",
+			"settings":
+			{
+				"buffer_size": 573,
+				"line_ending": "Windows"
+			},
+			"undo_stack":
+			[
+				[
+					6,
+					2,
+					"left_delete",
+					null,
+					"AgAAAAYBAAAAAAAABgEAAAAAAAABAAAALwUBAAAAAAAABQEAAAAAAAABAAAALw",
+					"AgAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPC/AAAAAAEAAAAHAQAAAAAAAAcBAAAAAAAAAAAAAAAA8L8"
+				],
+				[
+					8,
+					1,
+					"revert",
+					null,
+					"AwAAAAAAAAAAAAAAAAAAAAAAAAAbAgAALyoKICogZ2xvYmFscy5oCiAqCiAqICBDcmVhdGVkIG9uOiBBdWcgMTcsIDIwMjUKICogICAgICBBdXRob3I6IGFsaWNhCiAqLwoKI2lmbmRlZiBHTE9CQUxTX0hfCiNkZWZpbmUgR0xPQkFMU19IXwoKCiNpZmRlZiBfX2NwbHVzcGx1cwpleHRlcm4gIkMiIHsKI2VuZGlmCgovLyBJTVUgVmFyaWFibGVzCiNpbmNsdWRlICJnbG9iYWxzLmgiCiNpbmNsdWRlICJJTVUuaCIKI2luY2x1ZGUgInNoMl9TZW5zb3JWYWx1ZS5oIgojaW5jbHVkZSAiY21zaXNfb3MuaCIKI2luY2x1ZGUgImVuY29kZXIuaCIKZXh0ZXJuIHNoMl9Sb3RhdGlvblZlY3Rvcl90IHF1YXRlcm5pb247CmV4dGVybiBzaDJfQWNjZWxlcm9tZXRlcl90IGFjY2VsczsKZXh0ZXJuIG9zVGhyZWFkSWQgaW11VGFza0hhbmRsZTsKZXh0ZXJuIHVpbnQzMl90IGFjY2VsX2RlbGF5OwpleHRlcm4gdWludDMyX3Qgcm90YXRpb25fZGVsYXk7CgoKLy9leHRlcm4gZW5jb2Rlcl9zIGVuY29kZXJzWzRdOwojaWZkZWYgX19jcGx1c3BsdXMKfQojZW5kaWYKCgojZW5kaWYgLyogR0xPQkFMU19IXyAqLwoAAAAAAAAAAB8CAAAAAAAAAAAAAAAAAAAAAAAAPQIAAAAAAAAAAAAA",
+					"AgAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPC/AAAAAAEAAAAFAQAAAAAAAAUBAAAAAAAAAAAAAAAA8L8"
+				]
+			]
+		},
+		{
+			"file": "app/app.cpp",
+			"settings":
+			{
+				"buffer_size": 11669,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
 		}
 	],
 	"build_system": "Packages/Makefile/Make.sublime-build",
@@ -232,18 +276,17 @@
 	"expanded_folders":
 	[
 		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test",
-		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Core",
-		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Core/Inc",
-		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Core/Src",
-		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Debug"
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app/encoder"
 	],
 	"file_history":
 	[
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/metux-test.sublime-project",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/.clangd",
+		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_adc.c",
 		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Core/Src/adc.c",
 		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app/app.cpp",
-		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/metux-test.sublime-project",
 		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app/Motor/Motor.hpp",
-		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/.clangd",
 		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app/Lidar/Lidar.hpp",
 		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app/Motor/Motor.cpp",
 		"/Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/compile_commands.json",
@@ -292,7 +335,7 @@
 	],
 	"find":
 	{
-		"height": 38.0
+		"height": 24.0
 	},
 	"find_in_files":
 	{
@@ -360,20 +403,19 @@
 			[
 				{
 					"buffer": 0,
-					"file": "Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_adc.c",
-					"selected": true,
+					"file": "app/globals.hpp",
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 160453,
+						"buffer_size": 1602,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								87245,
-								87245
+								0,
+								0
 							]
 						],
 						"settings":
@@ -399,14 +441,121 @@
 								}
 							],
 							"lsp_active": true,
-							"lsp_uri": "file:///Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_adc.c",
+							"lsp_uri": "file:///Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app/globals.hpp",
 							"show_definitions": false,
-							"syntax": "Packages/C++/C.sublime-syntax",
+							"syntax": "Packages/C++/C++.sublime-syntax",
 							"tab_size": 4,
 							"translate_tabs_to_spaces": true
 						},
 						"translation.x": 0.0,
-						"translation.y": 31730.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"stack_multiselect": false,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "app/globals.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 573,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"auto_complete_triggers":
+							[
+								{
+									"characters": "<",
+									"selector": "text.html, text.xml"
+								},
+								{
+									"rhs_empty": true,
+									"selector": "punctuation.accessor"
+								},
+								{
+									"characters": "\\",
+									"selector": "text.tex.latex"
+								},
+								{
+									"characters": ".<>:\"/*",
+									"selector": "punctuation.accessor | (meta.preprocessor.include string - punctuation.definition.string.end)",
+									"server": "clangd"
+								}
+							],
+							"lsp_active": true,
+							"lsp_uri": "file:///Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app/globals.h",
+							"show_definitions": false,
+							"syntax": "Packages/C++/C++.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"stack_multiselect": false,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "app/app.cpp",
+					"selected": true,
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 11669,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"auto_complete_triggers":
+							[
+								{
+									"characters": "<",
+									"selector": "text.html, text.xml"
+								},
+								{
+									"rhs_empty": true,
+									"selector": "punctuation.accessor"
+								},
+								{
+									"characters": "\\",
+									"selector": "text.tex.latex"
+								},
+								{
+									"characters": ".<>:\"/*",
+									"selector": "punctuation.accessor | (meta.preprocessor.include string - punctuation.definition.string.end)",
+									"server": "clangd"
+								}
+							],
+							"lsp_active": true,
+							"lsp_uri": "file:///Users/karadeli/Documents/STM32CubeIDE/workspace_1.19.0/metux-test/app/app.cpp",
+							"show_definitions": false,
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 955.0,
 						"zoom_level": 1.0
 					},
 					"stack_index": 0,

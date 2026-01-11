@@ -1,0 +1,40 @@
+CompileFlags:
+  CompilationDatabase: Debug
+
+  Add:
+    - -IInc
+    - -ISrc
+    - -ICore/Inc
+    - -IDrivers
+    - -IDrivers/CMSIS/Include
+    - -IDrivers/CMSIS/Device/ST/STM32F4xx/Include     # change to your MCU
+    - -IDrivers/STM32H7xx_HAL_Driver/Inc              # change to your MCU HAL
+    - -IDrivers/CMSIS/Device/ST/STM32H7xx/Include
+    - -IFATFS/App/
+    - -IFATFS/Target/
+    - -IDrivers/STM32H7xx_HAL_Driver/Inc/
+    - -IDrivers/STM32H7xx_HAL_Driver/Inc/Legacy/
+    - -IDrivers/CMSIS/Include/
+    - -IDrivers/CMSIS/Device/ST/STM32H7xx/Include/
+    - -ICore/Inc/
+    - -Iapp/SDCard/inc/
+    - -Iapp/sh2/
+    - -Iapp/
+    - -Iapp/Controller/inc/
+    - -Iapp/IMU/
+    - -IMiddlewares/Third_Party/FatFs/src/
+    - -IMiddlewares/Third_Party/FreeRTOS/Source/include/
+    - -IMiddlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/
+    - -IMiddlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS/
+    - -Iapp/encoder/
+
+    # CubeIDE uses GNU extensions
+    - -std=gnu11
+    - -mcpu=cortex-m7                                  # adjust for your CPU
+    - -mthumb
+
+    # prevent clang from complaining about unsupported attributes
+    - -Wno-unknown-attributes
+    - -Wno-unused-parameter
+    - -Wno-missing-braces
+

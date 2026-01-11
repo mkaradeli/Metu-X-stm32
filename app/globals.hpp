@@ -13,7 +13,7 @@
 
 #define PI 3.1415926536
 
-#define ADC2_BUF_LEN     24
+#define ADC2_BUF_LEN     64
 #define ADC2_CH_COUNT    4
 
 #include <stdint.h>
@@ -22,9 +22,9 @@
 #include "Motor.hpp"
 #include "PressureSensor.hpp"
 #include "sh2_SensorValue.h"
+#include "encoder.h"
 
 #include "cmsis_os.h"
-
 
 
 
@@ -35,25 +35,17 @@ typedef struct {
     float motor_duty;
     float current_measured;
     float current_demand;
-    float encoderFront;
     float encoderButt;
-    float encoderGeared;
     float vel_measured;
-    float vel_demand;
     float motor_pos_kalman;
-    float motor_pos_demand;
-    float mass_estimation;
-    float pressure_manifold;
-    float pressure_nozzle;
-    float pressure_demand;
-    float force_feedback;
-    float force_measured;
-    float thrust_demand;
-    uint16_t encoder_readings[ADC2_BUF_LEN];
-    uint16_t current_readings[ADC2_BUF_LEN];
+    float angleRaw;
+    uint16_t current_raw;
+
 
 } SensorData_t;
 
+
+static_assert(sizeof(SensorData_t) == 36);
 //static_assert(sizeof(SensorData_t) == 328);
 
 typedef union {
@@ -86,6 +78,7 @@ extern const uint8_t logHeaderSize;
 //extern const uint16_t logFormatID;
 extern const uint16_t* logFormatID_ptr;
 
+extern encoder_ss encoder[4];
 
 
 

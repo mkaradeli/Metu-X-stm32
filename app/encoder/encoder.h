@@ -5,6 +5,10 @@
  *      Author: karadeli
  */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "globals.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -13,7 +17,9 @@
 #define ENCODER_ENCODER_H_
 
 
-#define SUBSAMPLE_COUNT 12
+#define SUBSAMPLE_COUNT 64
+
+
 typedef struct {
 	bool wasInMiddle;
 	int16_t shifter;
@@ -23,12 +29,14 @@ typedef struct {
 	double velocity;
 	double calibration;
 
-} encoder_s;
+} encoder_ss;
 
 
-void encoderReaderInit(encoder_s* encoder, uint16_t* rawData);
-void encoderReader(encoder_s* encoder, uint16_t* rawData);
+void encoderReaderInit(encoder_ss* encoder, uint16_t* rawData);
+void encoderReader(encoder_ss* encoder, uint16_t* rawData);
 
-
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ENCODER_ENCODER_H_ */

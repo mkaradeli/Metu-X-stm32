@@ -33,6 +33,7 @@
 							"-Iapp/SDCard/inc",
 							"-Iapp/SDCard/src",
 							"-Iapp/sh2",
+							"-Iapp/encoder"
 						],
 					},
 				},

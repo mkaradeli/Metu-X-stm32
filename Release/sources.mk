@@ -56,5 +56,6 @@ app/Motor \
 app/PressureSensor \
 app/SDCard/src \
 app \
+app/encoder \
 app/sh2 \
 

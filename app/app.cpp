@@ -8,6 +8,7 @@
 #include "globals.hpp"
 #include "globals.h"
 #include "app.h"
+//#include "encoder.h"
 
 #include "adc.h"
 #include "usart.h"
@@ -27,12 +28,18 @@
 
 //static_assert(BUFFER_SIZE==910*72);
 
+uint32_t adc_clk =0;
+uint32_t adc_updatePeriod=0;
+
 
 uint8_t bufferA[BUFFER_SIZE];
 uint8_t bufferB[BUFFER_SIZE];
 uint8_t *activeBuffer = bufferA;
 uint8_t *writeBuffer = NULL;
 uint32_t activeIndex = 0;
+
+float adc_updateFreq = 0.0f;
+uint32_t micros_old[30]={0};
 
 
 uint32_t bufferIndex = 0;
@@ -74,9 +81,9 @@ void motorTask(void *pvParameters){
 	for(;;){
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 		;
-		for (int i =0 ; i<4; i++)
-			motors[i].updatePosition(EncoderValues[i]);
-		motors[0].updateCurrent(EncoderValues[3]);
+//		for (int i =0 ; i<4; i++)
+		motors[0].updatePosition(EncoderValues[0]);
+		motors[0].updateCurrent(&EncoderValues[3]);
 	}
 }
 
@@ -151,31 +158,11 @@ void bufferDataTask(void *pvParameters){
 			txData.data.motor_duty = metux_controller_Y.MotorDuty;
 			txData.data.current_measured = motors[0].getCurrent();
 			txData.data.current_demand = metux_controller_Y.current_demand;
-			txData.data.encoderFront = motors[1].getPositionDegree();
-			txData.data.encoderButt = EncoderValues[0];
-			txData.data.encoderGeared = motors[2].getPositionDegree();
-			txData.data.vel_measured = metux_controller_Y.motor_speed;
-			txData.data.vel_demand = metux_controller_Y.motor_speed_demand;
-			txData.data.motor_pos_kalman = metux_controller_Y.motor_position_kalman;
-			txData.data.motor_pos_demand = metux_controller_Y.motor_position_demand;
-			txData.data.mass_estimation = metux_controller_Y.mass_estimation;
-			txData.data.pressure_manifold = psSensors[4].getBar();
-			txData.data.pressure_nozzle = psSensors[0].getBar();
-			txData.data.pressure_demand = metux_controller_Y.pressure_demand;
-			txData.data.force_feedback = metux_controller_Y.force_feedback;
-			txData.data.force_measured = 0;
-			txData.data.thrust_demand = metux_controller_Y.thrust_demand;
-
-			activeIndex = __HAL_DMA_GET_COUNTER(&hdma_adc2);
-
-			uint32_t written = ADC2_BUF_LEN*ADC2_CH_COUNT - activeIndex + activeIndex%4;
-			uint32_t head = written % (ADC2_BUF_LEN*ADC2_CH_COUNT);
-
-			for (uint16_t i=0; i<ADC2_BUF_LEN; i++){
-//				(start + i) % ADC2_BUF_LEN
-				txData.data.encoder_readings[i] = EncoderValues[(head + i*ADC2_CH_COUNT) % (ADC2_BUF_LEN*ADC2_CH_COUNT)];
-				txData.data.current_readings[i] = EncoderValues[(head + i*ADC2_CH_COUNT) % (ADC2_BUF_LEN*ADC2_CH_COUNT) + 3];
-			}
+			txData.data.encoderButt = encoder[0].lastReading;
+			txData.data.vel_measured = 0;
+			txData.data.motor_pos_kalman = 0;
+			txData.data.angleRaw = encoder[0].angleRaw;
+			txData.data.current_raw = EncoderValues[3];
 
 
 
@@ -235,55 +222,17 @@ void controllerTask(void *pvParameters){
 		metux_controller_U.thrust_demand_ext = 0;
 
 
-			//		current_measured = motors[0].getCurrent();
-			//	current_demand = metux_controller_Y.current_demand;
-			//	encoderFront = motors[0].getPositionDegree();
-			//	encoderButt = motors[1].getPositionDegree();
-			//	encoderGeared = motors[2].getPositionDegree();
-			//	vel_measured = metux_controller_Y.motor_speed;
-			//	vel_demand = metux_controller_Y.motor_speed_demand;
-			//	motor_pos_kalman = metux_controller_Y.motor_position_kalman;
-			//	motor_pos_demand = metux_controller_Y.motor_position_demand;
-			//	mass_estimation = metux_controller_Y.mass_estimation;
-			//	pressure_manifold = psSensors[4].getBar();
-			//	pressure_nozzle = psSensors[0].getBar();
-			//	pressure_demand = metux_controller_Y.pressure_demand;
-			//	force_feedback = metux_controller_Y.force_feedback;
-			//	force_measured = 0;
-			//	thrust_demand = metux_controller_Y.thrust_demand;
-
 		if (time_sec < 10){
-			metux_controller_U.current_demand_ext = 1*sin(time_sec * 10 * PI * 2);
+//			metux_controller_U.current_demand_ext = 1*sin(time_sec * 10 * PI * 2);
 
-//			if (int(time_sec/0.5)%2)
-//				metux_controller_U.current_demand_ext = 1;
-//			else
-//				metux_controller_U.current_demand_ext = -1;
+			if (int(time_sec/2)%2)
+				metux_controller_U.current_demand_ext = 0.6;
+			else
+				metux_controller_U.current_demand_ext = -0.6;
 		}
 		else
 			metux_controller_U.Activate =  false;
-//		if ((micros() - start_flag) < 1 * 1e6)
-//			metux_controller_U.current_demand_ext = 0;
-//		else if ((micros()-start_flag) < (2 * 1e6))
-//			metux_controller_U.current_demand_ext = 0.1;
-//		else if ((micros()-start_flag) < (3 * 1e6))
-//			metux_controller_U.current_demand_ext = 0.2;
-//		else if ((micros()-start_flag) < (4 * 1e6))
-//			metux_controller_U.current_demand_ext = 0.3;
-//		else if ((micros()-start_flag) < (5 * 1e6))
-//			metux_controller_U.current_demand_ext = 0.4;
-//		else if ((micros()-start_flag) < (6 * 1e6))
-//			metux_controller_U.current_demand_ext = 0.5;
-//		else if ((micros()-start_flag) < (7 * 1e6))
-//			metux_controller_U.current_demand_ext = 0.6;
-//		else if ((micros()-start_flag) < (8 * 1e6))
-//			metux_controller_U.current_demand_ext = 0.7;
-//		else if ((micros()-start_flag) < (9 * 1e6))
-//			metux_controller_U.current_demand_ext = 0.8;
-//		else {
-//			metux_controller_U.current_demand_ext = 0;
-//			metux_controller_U.Activate = 0;
-//		}
+
 
 		metux_controller_step();
 		motors[0].setSpeed(metux_controller_Y.MotorDuty);
@@ -299,7 +248,7 @@ void controllerTask(void *pvParameters){
 
 
 void safetyConnectorTask(void *pvParameters){
-	osDelay(10000);
+	osDelay(1000);
 	for(;;){
 		osDelay(1);
 		while (HAL_GPIO_ReadPin(SAFETY_GPIO_Port, SAFETY_Pin)){
@@ -383,10 +332,12 @@ void app_start(){
 	for(uint8_t i = 0; i < 4; i++){
 		motors[i].setPositionDegree(0*360.0);
 	}
+	motors[0].initCurrent(&EncoderValues[3]);
 
 	for(uint8_t i=0; i<4; i++){
-//	encoderReaderInit(encoder[i],)
+		encoderReaderInit(&encoder[i],&EncoderValues[i]);
 	}
+
 
 }
 
@@ -412,20 +363,39 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     }
 }
 
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
+	if (hadc->Instance == ADC2){
+			encoderReader(&encoder[0], &EncoderValues[0]);
+			motors[0].updateCurrent(&EncoderValues[3]);
+	}
+}
+
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	static BaseType_t xHigherPriorityTaskWoken;
 	if (hadc->Instance == ADC1){
 		// TODO: HAL_ADC_Start_DMA function should only run in app start once.
-		// HAL_ADC_Start_DMA(&hadc1, (uint32_t *)PSValues, MAX_PS_COUNT);
+		HAL_ADC_Start_DMA(&hadc1, (uint32_t *)PSValues, MAX_PS_COUNT);
 		xHigherPriorityTaskWoken = pdFALSE;
 		vTaskNotifyGiveFromISR(psTaskHandle, &xHigherPriorityTaskWoken);
 		portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 	}
 	else if (hadc->Instance == ADC2) {
 		// HAL_ADC_Start_DMA(&hadc2, (uint32_t *)EncoderValues, ADC2_CH_COUNT*ADC2_BUF_LEN);
-		xHigherPriorityTaskWoken = pdFALSE;
-		vTaskNotifyGiveFromISR(motorTaskHandle, &xHigherPriorityTaskWoken);
-		portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+//		encoderReader(&encoder[0], &EncoderValues[48]);
+
+		adc_updatePeriod = (micros() - micros_old[29])/30.0f;
+		adc_updateFreq =  1.0f/ adc_updatePeriod* 1.0e6;
+
+		adc_clk = HAL_RCCEx_GetPeriphCLKFreq(RCC_PERIPHCLK_ADC);
+		for (int aaaa=28; aaaa>=0; aaaa--){
+			micros_old[aaaa+1] = micros_old[aaaa];
+		}
+		micros_old[0] = micros();
+		motors[0].encoderUpdate();
+		motors[0].updateCurrent(&EncoderValues[51]);
+//		xHigherPriorityTaskWoken = pdFALSE;
+//		vTaskNotifyGiveFromISR(motorTaskHandle, &xHigherPriorityTaskWoken);
+//		portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 
 	}
 }
