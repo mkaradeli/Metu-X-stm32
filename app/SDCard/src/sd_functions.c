@@ -257,12 +257,56 @@ void sd_list_files(void) {
 	sd_list_directory_recursive(sd_path, 0);
 	printf("\r\n\r\n");
 }
+//
+//int find_first_false(int max_index)
+//{
+//    int left = 0;
+//    int right = max_index;   // half-open interval [left, right)
+//
+//    while (left < right)
+//    {
+//        int mid = left + ((right - left) >> 1);
+//        if (blackbox(mid))
+//            left = mid + 1;
+//        else
+//            right = mid;
+//    }
+//    return (left < max_index) ? left : -1; // -1 = no false found
+//}
 
-void sd_create_log_file(void){
+int sd_create_log_file(void){
     uint16_t index = 0;
     char filename[32];
     FRESULT res;
+
+    uint16_t left_index = 0;
+    uint16_t right_index = 10000;
+    while(left_index < right_index) {
+    	int mid = left_index + ((right_index - left_index) >> 1);
+    	sprintf(filename, "log%04u.bin", mid);  // log0000.bin, log0001.bin ...
+    	res = f_stat(filename, NULL);             // check if file exists
+    	if (res == FR_OK)
+    		left_index = mid + 1;
+    	else
+    		right_index = mid;
+    }
+    index = left_index ;
     // Find first free filename
+
+//    index = 1000;
+//    while (index>0){
+//        sprintf(filename, "log%04u.bin", index);  // log0000.bin, log0001.bin ...
+//        res = f_stat(filename, NULL);             // check if file exists
+//        if (res ==FR_OK){
+//        	break;
+//        }
+//        index -= 100;
+//    }
+//    while (index > 0)
+
+//    	lastWriteDone = 11;
+
+
     do {
         sprintf(filename, "log%04u.bin", index);  // log0000.bin, log0001.bin ...
         res = f_stat(filename, NULL);             // check if file exists
@@ -274,6 +318,7 @@ void sd_create_log_file(void){
     } else {
         printf("Failed to create log file, error: %d\n", res);
     }
+    return res;
 }
 
 void sd_close_log_file(void){
