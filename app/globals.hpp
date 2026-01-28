@@ -1,3 +1,4 @@
+
 /*
  * globals.h
  *
@@ -22,9 +23,13 @@
 #include "Motor.hpp"
 #include "PressureSensor.hpp"
 #include "sh2_SensorValue.h"
-#include "encoder.h"
+#include "encoder.hpp"
+#include "Actuator.hpp"
 
+#include "currentController.h"
+#include "positionController.h"
 #include "cmsis_os.h"
+
 
 
 
@@ -40,13 +45,23 @@ typedef struct {
     float motor_pos_kalman;
     float angleRaw;
     uint16_t current_raw;
+    float valveAngle[4];
+    float valveAngleKalman[4];
+    float valveVelocity[4];
+    float current_subsample[8];
+    float duty_subsample[8];
+
+    float speedDemand;
+    float pos_ref;
+
+
 
 
 } SensorData_t;
 
 
-static_assert(sizeof(SensorData_t) == 36);
-//static_assert(sizeof(SensorData_t) == 328);
+// static_assert(sizeof(SensorData_t) == 48);
+// static_assert(sizeof(SensorData_t) == 328);
 
 typedef union {
     SensorData_t data;
@@ -77,9 +92,15 @@ extern const char* logHeader_ptr;
 extern const uint8_t logHeaderSize;
 //extern const uint16_t logFormatID;
 extern const uint16_t* logFormatID_ptr;
+extern const uint16_t sensorDataLength;
 
-extern encoder_ss encoder[4];
+extern HallEffect hallEffect[4];
+extern Kalman actuatorKalman[4];
 
+extern CurrentController current_controller;
+extern positionController position_controller;
 
+extern Actuator actuator[4];
 
+//extern int lastWriteDone;
 #endif /* GLOBALS_HPP_ */

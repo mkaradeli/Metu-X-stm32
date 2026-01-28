@@ -4,41 +4,60 @@
 		{
 			"path": ".",
 			// "name": "metux-test",
+			"folder_exclude_patterns":[
+				"Drivers",
+				"Debug",
+				"Release",
+				"Middlewares",
+				".settings"
+			]
 			
 		}
+
 	],
 
 	"settings": {
-		"LSP": {
-			"clangd": {
-				"command": ["clangd"],
-				"settings": {
-					"clangd.compileFlags": {
-						"add":[
-							"--header-insertion=never",
-							"--all-scopes-completion",
-							"--background-index",
+		"rulers": [100],
+        "trim_trailing_white_space_on_save": true,
+        "clangd.enabled": true,
+        "clangd.arguments":
+        [
+            "--compile-commands-dir=build",
+            "--background-index",
+            "--clang-tidy",
+            "--completion-style=detailed"
+        ]
+		// "LSP": {
 
-							// Add include directories here
-							"-ICore/Inc",
-							"-ICore/Src",
-							"-IDrivers/STM32F4xx_HAL_Driver/Inc",
-							"-IDrivers/CMSIS/Device/ST/STM32F4xx/Include",
-							"-IDrivers/CMSIS/Include",
-							"-Iapp",
-							"-Iapp/Lidar",
-							"-Iapp/IMU",
-							"-Iapp/Motor",
-							"-Iapp/PressureSensor",
-							"-Iapp/SDCard/inc",
-							"-Iapp/SDCard/src",
-							"-Iapp/sh2",
-							"-Iapp/encoder"
-						],
-					},
-				},
-				"enabled": true,
-			},
-		},
+		// 	"clangd": {
+		// 		"command": ["clangd"],
+		// 		"settings": {
+		// 			"clangd.compileFlags": {
+		// 				"add":[
+		// 					"--header-insertion=never",
+		// 					"--all-scopes-completion",
+		// 					"--background-index",
+
+		// 					// Add include directories here
+		// 					"-ICore/Inc",
+		// 					"-ICore/Src",
+		// 					"-IDrivers/STM32F4xx_HAL_Driver/Inc",
+		// 					"-IDrivers/CMSIS/Device/ST/STM32F4xx/Include",
+		// 					"-IDrivers/CMSIS/Include",
+		// 					"-Iapp",
+		// 					"-Iapp/Lidar",
+		// 					"-Iapp/IMU",
+		// 					"-Iapp/Motor",
+		// 					"-Iapp/PressureSensor",
+		// 					"-Iapp/SDCard/inc",
+		// 					"-Iapp/SDCard/src",
+		// 					"-Iapp/sh2",
+		// 					"-Iapp/encoder"
+		//				],
+		//			},
+		//		},
+		//		"enabled": true,
+		//	},
+		//},
 	},
 }

@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 
-#include "metux_controller.h"
+//#include "metux_controller.h"
 #include "sd_functions.h"
 //#include "encoder.h"
 void app_start();

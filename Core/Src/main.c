@@ -77,7 +77,7 @@ int _write(int fd, unsigned char *buf, int len) {
   * @retval int
   */
 int main(void)
-{
+	{
 
   /* USER CODE BEGIN 1 */
 
