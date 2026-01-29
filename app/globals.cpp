@@ -27,13 +27,12 @@ Lidar lidar = Lidar(&huart2);
 TaskHandle_t psTaskHandle;
 uint16_t PSValues[MAX_PS_COUNT] = {0};
 PressureSensor psSensors[MAX_PS_COUNT] = {
-		PressureSensor(1, 168.7),
-		PressureSensor(2, 165.3),
-		PressureSensor(3, 165.7),
-		PressureSensor(4, 169.0),
-		PressureSensor(5, 162.5)
+		PressureSensor(0, 300, 834, 4012),
+		PressureSensor(0, 300, 834, 4012),
+		PressureSensor(0, 300, 834, 4012),
+		PressureSensor(0, 300, 834, 4012),
+		PressureSensor(0, 300, 834, 4012)
 };
-
 
 
 // Motor Variables

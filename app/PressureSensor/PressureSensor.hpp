@@ -12,21 +12,21 @@
 
 class PressureSensor {
 public:
-	PressureSensor(uint8_t Id, float CalibrationFactor);
+	PressureSensor(float P0, float P1, uint16_t Q0, uint16_t Q1);
 	void updatePS(uint16_t raw_value);
 	float getBar(){
 		return this->bar;
 	}
 private:
-	uint8_t id;
-	float calibrationFactor;
+//	uint8_t id;
+	float P0;
+	float P1;
+	uint16_t Q0;
+	uint16_t Q1;
+	bool calibrateQ0;
+	bool calibrateQ1;
 	float bar;
 };
-
-
-
-
-
 
 
 #endif /* PRESSURESENSOR_PRESSURESENSOR_HPP_ */
