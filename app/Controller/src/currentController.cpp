@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'currentController'.
 //
-// Model version                  : 1.19
+// Model version                  : 1.77
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Wed Jan 28 20:30:42 2026
+// C/C++ source code generated on : Sun Feb  1 20:52:22 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -21,54 +21,52 @@
 #include "currentController.h"
 #include "rtwtypes.h"
 
-// Exported block parameters
-struct_WlbPQVH06SMTAC0rh3ezxC currentControllerGains{
-  {
-    0.00784151815F,
-    712.09436F,
-    1.0F,
-    -1.0F,
-    0.000125
-  },
-
-  {
-    0.00375567912F,
-    0.0252739377F,
-    10.0F,
-    -10.0F,
-    0.001
-  },
-
-  {
-    62.831852F,
-    3000.0F,
-    -3000.0F,
-    0.001
-  }
-} ;                                    // Variable: controllerGains
-                                          //  Referenced by:
-                                          //    '<S1>/Discrete-Time Integrator'
-                                          //    '<S1>/Gain'
-                                          //    '<S1>/Gain1'
-                                          //    '<S1>/Gain2'
-                                          //    '<S1>/Saturation'
-
-
 // Model step function
 void CurrentController::step()
 {
+  real32_T rtb_Gain2;
+  real32_T rtb_Saturation;
+  real32_T rtb_Saturation_g;
   real32_T rtb_Sum;
-  real32_T rtb_Sum1;
 
-  // Outputs for Enabled SubSystem: '<Root>/PI_Controller' incorporates:
-  //   EnablePort: '<S1>/Enable'
+  // Outputs for Enabled SubSystem: '<Root>/Subsystem3' incorporates:
+  //   EnablePort: '<S1>/enabled'
 
   // Inport: '<Root>/enabled'
   if (rtU.enabled) {
-    if (!rtDW.PI_Controller_MODE) {
-      // InitializeConditions for DiscreteIntegrator: '<S1>/Discrete-Time Integrator' 
-      rtDW.DiscreteTimeIntegrator_DSTATE = rtP.DiscreteTimeIntegrator_IC;
-      rtDW.PI_Controller_MODE = true;
+    if (!rtDW.Subsystem3_MODE) {
+      // InitializeConditions for UnitDelay: '<S2>/Delay Input'
+      //
+      //  Block description for '<S2>/Delay Input':
+      //
+      //   Store in Global RAM
+
+      rtDW.DelayInput_DSTATE = rtP.ChatGPT_ICPrevInput;
+
+      // InitializeConditions for UnitDelay: '<S2>/Delay Output'
+      //
+      //  Block description for '<S2>/Delay Output':
+      //
+      //   Store in Global RAM
+
+      rtDW.DelayOutput_DSTATE = rtP.ChatGPT_ICPrevOutput;
+
+      // InitializeConditions for UnitDelay: '<S3>/Delay Output'
+      //
+      //  Block description for '<S3>/Delay Output':
+      //
+      //   Store in Global RAM
+
+      rtDW.DelayOutput_DSTATE_l = rtP.GORKEM_ICPrevOutput;
+
+      // InitializeConditions for UnitDelay: '<S3>/Delay Input'
+      //
+      //  Block description for '<S3>/Delay Input':
+      //
+      //   Store in Global RAM
+
+      rtDW.DelayInput_DSTATE_p = rtP.GORKEM_ICPrevInput;
+      rtDW.Subsystem3_MODE = true;
     }
 
     // Sum: '<S1>/Sum' incorporates:
@@ -77,72 +75,188 @@ void CurrentController::step()
 
     rtb_Sum = rtU.current_ref - rtU.current_feedback;
 
-    // Sum: '<S1>/Sum1' incorporates:
-    //   DiscreteIntegrator: '<S1>/Discrete-Time Integrator'
-    //   Gain: '<S1>/Gain'
+    // Gain: '<S1>/Gain2' incorporates:
+    //   Gain: '<S1>/Gain5'
 
-    rtb_Sum1 = currentControllerGains.current.Kp * rtb_Sum +
-      rtDW.DiscreteTimeIntegrator_DSTATE;
+    rtb_Gain2 = rtP.Gain5_Gain * rtb_Sum * rtP.Gain2_Gain;
 
-    // Saturate: '<S1>/Saturation'
-    if (rtb_Sum1 > currentControllerGains.current.SatMax) {
+    // Sum: '<S2>/Sum' incorporates:
+    //   Gain: '<S2>/GainPole'
+    //   Gain: '<S2>/GainZero'
+    //   UnitDelay: '<S2>/Delay Input'
+    //   UnitDelay: '<S2>/Delay Output'
+    //
+    //  Block description for '<S2>/Sum':
+    //
+    //   Add in CPU
+    //
+    //  Block description for '<S2>/GainPole':
+    //
+    //   Multiply in CPU
+    //
+    //  Block description for '<S2>/GainZero':
+    //
+    //   Multiply in CPU
+    //
+    //  Block description for '<S2>/Delay Input':
+    //
+    //   Store in Global RAM
+    //
+    //  Block description for '<S2>/Delay Output':
+    //
+    //   Store in Global RAM
+
+    rtb_Saturation = (rtb_Gain2 - rtP.ChatGPT_ZeroZ * rtDW.DelayInput_DSTATE) +
+      rtP.ChatGPT_PoleZ * rtDW.DelayOutput_DSTATE;
+
+    // Saturate: '<S2>/Saturation'
+    if (rtb_Saturation > rtP.Saturation_UpperSat) {
+      rtb_Saturation = rtP.Saturation_UpperSat;
+    } else if (rtb_Saturation < rtP.Saturation_LowerSat) {
+      rtb_Saturation = rtP.Saturation_LowerSat;
+    }
+
+    // End of Saturate: '<S2>/Saturation'
+
+    // Gain: '<S1>/Gain4' incorporates:
+    //   Gain: '<S1>/Gain1'
+
+    rtb_Sum = rtP.Gain1_Gain * rtb_Sum * rtP.Gain4_Gain;
+
+    // Sum: '<S3>/Sum' incorporates:
+    //   Gain: '<S3>/GainPole'
+    //   Gain: '<S3>/GainZero'
+    //   UnitDelay: '<S3>/Delay Input'
+    //   UnitDelay: '<S3>/Delay Output'
+    //
+    //  Block description for '<S3>/Sum':
+    //
+    //   Add in CPU
+    //
+    //  Block description for '<S3>/GainPole':
+    //
+    //   Multiply in CPU
+    //
+    //  Block description for '<S3>/GainZero':
+    //
+    //   Multiply in CPU
+    //
+    //  Block description for '<S3>/Delay Input':
+    //
+    //   Store in Global RAM
+    //
+    //  Block description for '<S3>/Delay Output':
+    //
+    //   Store in Global RAM
+
+    rtb_Saturation_g = (rtb_Sum - rtP.GORKEM_ZeroZ * rtDW.DelayInput_DSTATE_p) +
+      rtP.GORKEM_PoleZ * rtDW.DelayOutput_DSTATE_l;
+
+    // Saturate: '<S3>/Saturation'
+    if (rtb_Saturation_g > rtP.Saturation_UpperSat_l) {
+      rtb_Saturation_g = rtP.Saturation_UpperSat_l;
+    } else if (rtb_Saturation_g < rtP.Saturation_LowerSat_j) {
+      rtb_Saturation_g = rtP.Saturation_LowerSat_j;
+    }
+
+    // End of Saturate: '<S3>/Saturation'
+
+    // ManualSwitch: '<S1>/Manual Switch'
+    if (rtP.ManualSwitch_CurrentSetting == 1) {
       // Outport: '<Root>/Duty'
-      rtY.Duty = currentControllerGains.current.SatMax;
-    } else if (rtb_Sum1 < currentControllerGains.current.SatMin) {
-      // Outport: '<Root>/Duty'
-      rtY.Duty = currentControllerGains.current.SatMin;
+      rtY.Duty = rtb_Saturation_g;
     } else {
       // Outport: '<Root>/Duty'
-      rtY.Duty = rtb_Sum1;
+      rtY.Duty = rtb_Saturation;
     }
 
-    // End of Saturate: '<S1>/Saturation'
+    // End of ManualSwitch: '<S1>/Manual Switch'
 
-    // Update for DiscreteIntegrator: '<S1>/Discrete-Time Integrator' incorporates:
-    //   Gain: '<S1>/Gain1'
-    //   Gain: '<S1>/Gain2'
-    //   Outport: '<Root>/Duty'
-    //   Sum: '<S1>/Sum2'
-    //   Sum: '<S1>/Sum3'
+    // Update for UnitDelay: '<S2>/Delay Input'
+    //
+    //  Block description for '<S2>/Delay Input':
+    //
+    //   Store in Global RAM
 
-    rtDW.DiscreteTimeIntegrator_DSTATE += (currentControllerGains.current.Ki /
-      currentControllerGains.current.Kp * (rtY.Duty - rtb_Sum1) +
-      currentControllerGains.current.Ki * rtb_Sum) *
-      rtP.DiscreteTimeIntegrator_gainval;
-    if (rtDW.DiscreteTimeIntegrator_DSTATE >
-        currentControllerGains.current.SatMax) {
-      rtDW.DiscreteTimeIntegrator_DSTATE = currentControllerGains.current.SatMax;
-    } else if (rtDW.DiscreteTimeIntegrator_DSTATE <
-               currentControllerGains.current.SatMin) {
-      rtDW.DiscreteTimeIntegrator_DSTATE = currentControllerGains.current.SatMin;
-    }
+    rtDW.DelayInput_DSTATE = rtb_Gain2;
 
-    // End of Update for DiscreteIntegrator: '<S1>/Discrete-Time Integrator'
-  } else if (rtDW.PI_Controller_MODE) {
+    // Update for UnitDelay: '<S2>/Delay Output'
+    //
+    //  Block description for '<S2>/Delay Output':
+    //
+    //   Store in Global RAM
+
+    rtDW.DelayOutput_DSTATE = rtb_Saturation;
+
+    // Update for UnitDelay: '<S3>/Delay Output'
+    //
+    //  Block description for '<S3>/Delay Output':
+    //
+    //   Store in Global RAM
+
+    rtDW.DelayOutput_DSTATE_l = rtb_Saturation_g;
+
+    // Update for UnitDelay: '<S3>/Delay Input'
+    //
+    //  Block description for '<S3>/Delay Input':
+    //
+    //   Store in Global RAM
+
+    rtDW.DelayInput_DSTATE_p = rtb_Sum;
+  } else if (rtDW.Subsystem3_MODE) {
     // Disable for Outport: '<Root>/Duty' incorporates:
-    //   Outport: '<S1>/Y'
+    //   Outport: '<S1>/Duty'
 
-    rtY.Duty = rtP.Y_Y0;
-    rtDW.PI_Controller_MODE = false;
+    rtY.Duty = rtP.Duty_Y0;
+    rtDW.Subsystem3_MODE = false;
   }
 
   // End of Inport: '<Root>/enabled'
-  // End of Outputs for SubSystem: '<Root>/PI_Controller'
+  // End of Outputs for SubSystem: '<Root>/Subsystem3'
 }
 
 // Model initialize function
 void CurrentController::initialize()
 {
-  // SystemInitialize for Enabled SubSystem: '<Root>/PI_Controller'
-  // InitializeConditions for DiscreteIntegrator: '<S1>/Discrete-Time Integrator' 
-  rtDW.DiscreteTimeIntegrator_DSTATE = rtP.DiscreteTimeIntegrator_IC;
+  // SystemInitialize for Enabled SubSystem: '<Root>/Subsystem3'
+  // InitializeConditions for UnitDelay: '<S2>/Delay Input'
+  //
+  //  Block description for '<S2>/Delay Input':
+  //
+  //   Store in Global RAM
+
+  rtDW.DelayInput_DSTATE = rtP.ChatGPT_ICPrevInput;
+
+  // InitializeConditions for UnitDelay: '<S2>/Delay Output'
+  //
+  //  Block description for '<S2>/Delay Output':
+  //
+  //   Store in Global RAM
+
+  rtDW.DelayOutput_DSTATE = rtP.ChatGPT_ICPrevOutput;
+
+  // InitializeConditions for UnitDelay: '<S3>/Delay Output'
+  //
+  //  Block description for '<S3>/Delay Output':
+  //
+  //   Store in Global RAM
+
+  rtDW.DelayOutput_DSTATE_l = rtP.GORKEM_ICPrevOutput;
+
+  // InitializeConditions for UnitDelay: '<S3>/Delay Input'
+  //
+  //  Block description for '<S3>/Delay Input':
+  //
+  //   Store in Global RAM
+
+  rtDW.DelayInput_DSTATE_p = rtP.GORKEM_ICPrevInput;
 
   // SystemInitialize for Outport: '<Root>/Duty' incorporates:
-  //   Outport: '<S1>/Y'
+  //   Outport: '<S1>/Duty'
 
-  rtY.Duty = rtP.Y_Y0;
+  rtY.Duty = rtP.Duty_Y0;
 
-  // End of SystemInitialize for SubSystem: '<Root>/PI_Controller'
+  // End of SystemInitialize for SubSystem: '<Root>/Subsystem3'
 }
 
 // Constructor

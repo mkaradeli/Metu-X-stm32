@@ -14,16 +14,14 @@
 class Profiler{
 public:
 	Profiler();
-
-	uint32_t total_time;
-	uint32_t last_delta;
 	float cpu_usage;
 	float mean_time;
-
-
+	float call_frequency;
 	void start();
 	void end();
 private:
+	uint32_t total_time;
+	uint32_t last_delta;
 	uint32_t start_call;
 	uint32_t start_global;
 	uint32_t call_count;

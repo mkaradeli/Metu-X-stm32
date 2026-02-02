@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'actuatorKalman'.
 //
-// Model version                  : 1.13
+// Model version                  : 1.22
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Mon Jan 12 22:24:02 2026
+// C/C++ source code generated on : Sun Feb  1 19:49:15 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: STMicroelectronics->ST10/Super10
@@ -28,16 +28,11 @@ class Kalman final
 {
   // public data and function members
  public:
-  // Block signals and states (default storage) for system '<Root>/Kalman'
-  struct DW_ActuatorKalman {
+  // Block signals and states (default storage) for system '<Root>'
+  struct DW {
     real_T UnitDelay_Pk_DSTATE[4];     // '<S1>/Unit Delay_Pk'
     real_T ResettableDelay_qk_DSTATE[2];// '<S1>/Resettable Delay_qk'
     boolean_T icLoad;                  // '<S1>/Resettable Delay_qk'
-  };
-
-  // Block signals and states (default storage) for system '<Root>'
-  struct DW {
-    DW_ActuatorKalman Kalman_o;        // '<Root>/Kalman'
   };
 
   // External inputs (root inport signals with default storage)
@@ -47,15 +42,18 @@ class Kalman final
 
   // External outputs (root outports fed by signals with default storage)
   struct ExtY {
-    real_T Angle;                      // '<Root>/Angle'
-    real_T vel;                        // '<Root>/vel'
+    real32_T Pos_Est;                  // '<Root>/Pos_Est'
+    real32_T Vel_Est;                  // '<Root>/Vel_Est'
   };
 
-  // Real-time Model Data Structure
-  struct RT_MODEL {
-    const char_T * volatile errorStatus;
-    const char_T* getErrorStatus() const;
-    void setErrorStatus(const char_T* const volatile aErrorStatus);
+  // Parameters (default storage)
+  struct P {
+    real_T Subsystem_lambda_RQ;        // Mask Parameter: Subsystem_lambda_RQ
+                                          //  Referenced by: '<S1>/lambda_RQ'
+
+    real_T UnitDelay_Pk_InitialCondition[4];// Expression: [0.155 65; 65 5.7e4]
+                                               //  Referenced by: '<S1>/Unit Delay_Pk'
+
   };
 
   // Copy Constructor
@@ -69,9 +67,6 @@ class Kalman final
 
   // Move Assignment Operator
   Kalman& operator= (Kalman &&) = delete;
-
-  // Real-Time Model get method
-  Kalman::RT_MODEL * getRTM();
 
   // External inputs
   ExtU rtU;
@@ -96,13 +91,8 @@ class Kalman final
   // Block states
   DW rtDW;
 
-  // private member function(s) for subsystem '<Root>/Kalman'
-  static void ActuatorKalman_Init(DW_ActuatorKalman *localDW);
-  static void ActuatorKalman(real_T rtu_z, real_T *rty_EncX_PosErrInc, real_T
-    *rty_Vel_Est, real_T rtp_lambda_RQ, DW_ActuatorKalman *localDW);
-
-  // Real-Time Model
-  RT_MODEL rtM;
+  // Tunable parameters
+  static P rtP;
 };
 
 //-
@@ -120,8 +110,8 @@ class Kalman final
 //  Here is the system hierarchy for this model
 //
 //  '<Root>' : 'actuatorKalman'
-//  '<S1>'   : 'actuatorKalman/Kalman'
-//  '<S2>'   : 'actuatorKalman/Kalman/TPE_KALMAN_spd'
+//  '<S1>'   : 'actuatorKalman/Subsystem'
+//  '<S2>'   : 'actuatorKalman/Subsystem/TPE_KALMAN_spd'
 
 #endif                                 // actuatorKalman_h_
 

@@ -27,11 +27,11 @@ Lidar lidar = Lidar(&huart2);
 TaskHandle_t psTaskHandle;
 uint16_t PSValues[MAX_PS_COUNT] = {0};
 PressureSensor psSensors[MAX_PS_COUNT] = {
-		PressureSensor(0, 300, 834, 4012),
-		PressureSensor(0, 300, 834, 4012),
-		PressureSensor(0, 300, 834, 4012),
-		PressureSensor(0, 300, 834, 4012),
-		PressureSensor(0, 300, 834, 4012)
+		PressureSensor(500, 4400, 18998, 64406),
+		PressureSensor(500, 4400, 18998, 64406),
+		PressureSensor(500, 4400, 18998, 64406),
+		PressureSensor(500, 4400, 18998, 64406),
+		PressureSensor(500, 4400, 18998, 64406),
 };
 
 
@@ -57,8 +57,8 @@ HallEffect hallEffect[4] = {
 		HallEffect(&EncoderValues[3], &actuatorKalman[3]),
 };
 
-CurrentController current_controller;
-positionController position_controller;
+CurrentController current_controller[4];
+positionController position_controller[4];
 
 Actuator actuator[4] = {
 	Actuator(&hallEffect[0], &psSensors[0], &motors[0], &actuatorKalman[0]),
@@ -68,10 +68,8 @@ Actuator actuator[4] = {
 };
 
 
-const char logHeader[] = "position controller eklendi.";
-const char* logHeader_ptr = &logHeader[0];
-const uint8_t logHeaderSize = sizeof(logHeader);
-const uint16_t logFormatID = 6;
+
+const uint16_t logFormatID = 8;
 const uint16_t* logFormatID_ptr = &logFormatID;
 const uint16_t sensorDataLength = sizeof(SensorData_t);
 
@@ -82,7 +80,9 @@ const uint16_t sensorDataLength = sizeof(SensorData_t);
 TaskHandle_t sdCardTaskHandle;
 //int lastWriteDone = 0;
 // encoder Variables;
-
+bool file_creation_ok = false;
+int left_filename_index = 0;
+int right_filename_index = 0;
 //encoder_ss encoder[4];
 
 

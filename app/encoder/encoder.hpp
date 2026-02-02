@@ -33,10 +33,10 @@ public:
 //	HallEffect& operator=(HallEffect&&) = delete;
 
 
-	uint16_t lastReading;
-	double angleRaw;
-	double angle_Filtered;
-	double velocity;
+//	uint16_t lastReading;
+//	double angleRaw;
+//	double angle_Filtered;
+//	double velocity;
 	double calibration;
 	double motorAngle;
 	double valveAngle;

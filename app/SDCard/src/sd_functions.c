@@ -22,10 +22,15 @@
 #include <stdlib.h>
 #include "ff.h"
 #include "ffconf.h"
+#include "stdbool.h"
 
 char sd_path[4];
 FATFS fs;
 FIL logFile;
+
+extern bool file_creation_ok;
+extern int left_filename_index;
+extern int right_filename_index;
 
 int sd_format(void) {
 	// Pre-mount required for legacy FatFS
@@ -285,10 +290,14 @@ int sd_create_log_file(void){
     	int mid = left_index + ((right_index - left_index) >> 1);
     	sprintf(filename, "log%04u.bin", mid);  // log0000.bin, log0001.bin ...
     	res = f_stat(filename, NULL);             // check if file exists
-    	if (res == FR_OK)
+    	if (res == FR_OK){
     		left_index = mid + 1;
-    	else
+    		left_filename_index = left_index;
+    	}
+    	else {
     		right_index = mid;
+    		right_filename_index = right_index;
+    	}
     }
     index = left_index ;
     // Find first free filename
@@ -315,7 +324,9 @@ int sd_create_log_file(void){
     res = f_open(&logFile, filename, FA_CREATE_NEW | FA_WRITE);
     if (res == FR_OK) {
         printf("Created new log file: %s\n", filename);
+        file_creation_ok = 1;
     } else {
+    	file_creation_ok = 0;
         printf("Failed to create log file, error: %d\n", res);
     }
     return res;

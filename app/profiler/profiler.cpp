@@ -14,7 +14,6 @@ Profiler::Profiler() {
 	call_count = 0;
 	mean_time = 0;
 	start_global = micros();
-
 }
 
 
@@ -25,8 +24,9 @@ void Profiler::start() {
 void Profiler::end() {
 	last_delta = micros() - start_call;
 	total_time += last_delta;
-	cpu_usage = total_time / (micros() - start_global);
+	cpu_usage = (total_time * 100) / (micros() - start_global);
 	call_count += 1;
 	mean_time =  total_time / call_count;
+	call_frequency = (1e6*call_count) / (micros() - start_global);
 
 }
