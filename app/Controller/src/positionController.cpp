@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'positionController'.
 //
-// Model version                  : 1.20
+// Model version                  : 1.21
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Feb  1 18:02:41 2026
+// C/C++ source code generated on : Tue Feb  3 13:11:18 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -69,9 +69,22 @@ struct_Wl9576dlIcRv51Sfrsst3G currentControllerGains{
 void positionController::step()
 {
   real32_T rtb_Saturation;
+  real32_T rtb_Saturation1;
   real32_T rtb_Sum1;
   real32_T rtb_Sum_a;
-  real32_T rtb_TSamp;
+
+  // Saturate: '<Root>/Saturation1' incorporates:
+  //   Inport: '<Root>/pos_ref'
+
+  if (rtU.pos_ref > 1440.0F) {
+    rtb_Saturation1 = 1440.0F;
+  } else if (rtU.pos_ref < 0.0F) {
+    rtb_Saturation1 = 0.0F;
+  } else {
+    rtb_Saturation1 = rtU.pos_ref;
+  }
+
+  // End of Saturate: '<Root>/Saturation1'
 
   // Outputs for Enabled SubSystem: '<Root>/Position Controller' incorporates:
   //   EnablePort: '<S2>/Enable'
@@ -85,10 +98,9 @@ void positionController::step()
     }
 
     // RateLimiter: '<S2>/Rate Limiter' incorporates:
-    //   Inport: '<Root>/pos_ref'
     //   Outport: '<Root>/pos_ref_rate_limited'
 
-    rtb_Sum_a = rtU.pos_ref - rtDW.PrevY_o;
+    rtb_Sum_a = rtb_Saturation1 - rtDW.PrevY_o;
     rtb_Sum1 = static_cast<real32_T>
       (currentControllerGains.position.RateLimiterMax * period);
     if (rtb_Sum_a > rtb_Sum1) {
@@ -98,7 +110,7 @@ void positionController::step()
       rtY.pos_ref_rate_limited = static_cast<real32_T>
         (currentControllerGains.position.RateLimiterMin * period) + rtDW.PrevY_o;
     } else {
-      rtY.pos_ref_rate_limited = rtU.pos_ref;
+      rtY.pos_ref_rate_limited = rtb_Saturation1;
     }
 
     rtDW.PrevY_o = rtY.pos_ref_rate_limited;
@@ -110,19 +122,19 @@ void positionController::step()
     //   Outport: '<Root>/pos_ref_rate_limited'
     //   Sum: '<S2>/Sum'
 
-    rtb_Sum_a = (rtY.pos_ref_rate_limited - rtU.pos_feedback) *
+    rtb_Saturation1 = (rtY.pos_ref_rate_limited - rtU.pos_feedback) *
       currentControllerGains.position.Kp;
 
     // Saturate: '<S2>/Saturation'
-    if (rtb_Sum_a > currentControllerGains.position.SatMax) {
+    if (rtb_Saturation1 > currentControllerGains.position.SatMax) {
       // Saturate: '<S2>/Saturation'
       rtDW.Saturation_l = currentControllerGains.position.SatMax;
-    } else if (rtb_Sum_a < currentControllerGains.position.SatMin) {
+    } else if (rtb_Saturation1 < currentControllerGains.position.SatMin) {
       // Saturate: '<S2>/Saturation'
       rtDW.Saturation_l = currentControllerGains.position.SatMin;
     } else {
       // Saturate: '<S2>/Saturation'
-      rtDW.Saturation_l = rtb_Sum_a;
+      rtDW.Saturation_l = rtb_Saturation1;
     }
 
     // End of Saturate: '<S2>/Saturation'
@@ -143,7 +155,7 @@ void positionController::step()
   //  About '<S1>/TSamp':
   //   y = u * K where K = 1 / ( w * Ts )
   //
-  rtb_TSamp = rtY.pos_ref_rate_limited * 1000.0F;
+  rtb_Saturation1 = rtY.pos_ref_rate_limited * 1000.0F;
 
   // Sum: '<Root>/Sum' incorporates:
   //   Sum: '<S1>/Diff'
@@ -157,7 +169,7 @@ void positionController::step()
   //
   //   Store in Global RAM
 
-  rtb_Saturation = (rtb_TSamp - rtDW.UD_DSTATE) + rtDW.Saturation_l;
+  rtb_Saturation = (rtb_Saturation1 - rtDW.UD_DSTATE) + rtDW.Saturation_l;
 
   // Saturate: '<Root>/Saturation'
   if (rtb_Saturation > currentControllerGains.position.SatMax) {
@@ -277,7 +289,7 @@ void positionController::step()
   //
   //   Store in Global RAM
 
-  rtDW.UD_DSTATE = rtb_TSamp;
+  rtDW.UD_DSTATE = rtb_Saturation1;
 }
 
 // Model initialize function

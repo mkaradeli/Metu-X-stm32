@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'actuatorKalman'.
 //
-// Model version                  : 1.22
+// Model version                  : 1.23
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Feb  1 19:49:15 2026
+// C/C++ source code generated on : Tue Feb  3 13:11:38 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: STMicroelectronics->ST10/Super10
