@@ -26,12 +26,18 @@ Lidar lidar = Lidar(&huart2);
 
 TaskHandle_t psTaskHandle;
 uint16_t PSValues[MAX_PS_COUNT] = {0};
+
+
+
+uint16_t psSensorsCalibration1[13] = {13000, 14293, 16685, 18902, 25937, 30628, 37523, 42237, 49214, 53846, 60952, 63122, 64406};
+uint16_t psSensorsCalibration2[13] = {13000, 14360, 16673, 18998, 25832, 30482, 37281, 42001, 49137, 53694, 60819, 62981, 64330};
+
 PressureSensor psSensors[MAX_PS_COUNT] = {
-		PressureSensor(500, 4400, 18998, 64406),
-		PressureSensor(500, 4400, 18998, 64406),
-		PressureSensor(500, 4400, 18998, 64406),
-		PressureSensor(500, 4400, 18998, 64406),
-		PressureSensor(500, 4400, 18998, 64406),
+		PressureSensor(psSensorsCalibration1),
+		PressureSensor(psSensorsCalibration2),
+		PressureSensor(psSensorsCalibration2),
+		PressureSensor(psSensorsCalibration2),
+		PressureSensor(psSensorsCalibration2),
 };
 
 
