@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'positionController'.
 //
-// Model version                  : 1.22
+// Model version                  : 1.23
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Feb  3 16:03:44 2026
+// C/C++ source code generated on : Tue Feb  3 18:10:28 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -68,7 +68,6 @@ struct_Wl9576dlIcRv51Sfrsst3G currentControllerGains{
 // Model step function
 void positionController::step()
 {
-  real32_T rtb_Saturation;
   real32_T rtb_Saturation1;
   real32_T rtb_Sum1;
   real32_T rtb_Sum_a;
@@ -89,7 +88,11 @@ void positionController::step()
   // Outputs for Enabled SubSystem: '<Root>/Position Controller' incorporates:
   //   EnablePort: '<S2>/position_enable'
 
-  // Inport: '<Root>/position_enable'
+  // Switch: '<Root>/Switch' incorporates:
+  //   Inport: '<Root>/external_speed_demand'
+  //   Inport: '<Root>/position_enable'
+  //   Sum: '<Root>/Sum'
+
   if (rtU.position_enable) {
     if (!rtDW.PositionController_MODE) {
       // InitializeConditions for RateLimiter: '<S2>/Rate Limiter'
@@ -138,54 +141,29 @@ void positionController::step()
     }
 
     // End of Saturate: '<S2>/Saturation'
-  } else if (rtDW.PositionController_MODE) {
-    // Disable for Saturate: '<S2>/Saturation' incorporates:
-    //   Outport: '<S2>/SpeedDemand'
-
-    rtDW.Saturation_l = 0.0F;
-    rtDW.PositionController_MODE = false;
-  }
-
-  // End of Outputs for SubSystem: '<Root>/Position Controller'
-
-  // SampleTimeMath: '<S1>/TSamp' incorporates:
-  //   Outport: '<Root>/pos_ref_rate_limited'
-  //
-  //  About '<S1>/TSamp':
-  //   y = u * K where K = 1 / ( w * Ts )
-  //
-  rtb_Saturation1 = rtY.pos_ref_rate_limited * 1000.0F;
-
-  // Switch: '<Root>/Switch' incorporates:
-  //   Inport: '<Root>/external_speed_demand'
-  //   Inport: '<Root>/position_enable'
-  //   Sum: '<Root>/Sum'
-  //   Sum: '<S1>/Diff'
-  //   UnitDelay: '<S1>/UD'
-  //
-  //  Block description for '<S1>/Diff':
-  //
-  //   Add in CPU
-  //
-  //  Block description for '<S1>/UD':
-  //
-  //   Store in Global RAM
-
-  if (rtU.position_enable) {
-    rtb_Sum_a = (rtb_Saturation1 - rtDW.UD_DSTATE) + rtDW.Saturation_l;
+    rtb_Sum_a = rtDW.Saturation_l;
   } else {
+    if (rtDW.PositionController_MODE) {
+      // Disable for Saturate: '<S2>/Saturation' incorporates:
+      //   Outport: '<S2>/SpeedDemand'
+
+      rtDW.Saturation_l = 0.0F;
+      rtDW.PositionController_MODE = false;
+    }
+
     rtb_Sum_a = rtU.external_speed_demand;
   }
 
   // End of Switch: '<Root>/Switch'
+  // End of Outputs for SubSystem: '<Root>/Position Controller'
 
   // Saturate: '<Root>/Saturation'
   if (rtb_Sum_a > currentControllerGains.position.SatMax) {
-    rtb_Saturation = currentControllerGains.position.SatMax;
+    rtb_Saturation1 = currentControllerGains.position.SatMax;
   } else if (rtb_Sum_a < currentControllerGains.position.SatMin) {
-    rtb_Saturation = currentControllerGains.position.SatMin;
+    rtb_Saturation1 = currentControllerGains.position.SatMin;
   } else {
-    rtb_Saturation = rtb_Sum_a;
+    rtb_Saturation1 = rtb_Sum_a;
   }
 
   // End of Saturate: '<Root>/Saturation'
@@ -208,7 +186,7 @@ void positionController::step()
     rtDW.Ui = rtDW.DiscreteTimeIntegrator_DSTATE;
 
     // RateLimiter: '<S3>/Rate Limiter'
-    rtb_Sum_a = rtb_Saturation - rtDW.PrevY;
+    rtb_Sum_a = rtb_Saturation1 - rtDW.PrevY;
     rtb_Sum1 = static_cast<real32_T>(currentControllerGains.speed.RateLimiterMax
       * period);
     if (rtb_Sum_a > rtb_Sum1) {
@@ -221,7 +199,7 @@ void positionController::step()
         (currentControllerGains.speed.RateLimiterMin * period) + rtDW.PrevY;
     } else {
       // RateLimiter: '<S3>/Rate Limiter'
-      rtDW.RateLimiter = rtb_Saturation;
+      rtDW.RateLimiter = rtb_Saturation1;
     }
 
     rtDW.PrevY = rtDW.RateLimiter;
@@ -291,15 +269,7 @@ void positionController::step()
   rtY.speedDebug.ref_rate_limited = rtDW.RateLimiter;
 
   // Outport: '<Root>/speedDemand'
-  rtY.speedDemand = rtb_Saturation;
-
-  // Update for UnitDelay: '<S1>/UD'
-  //
-  //  Block description for '<S1>/UD':
-  //
-  //   Store in Global RAM
-
-  rtDW.UD_DSTATE = rtb_Saturation1;
+  rtY.speedDemand = rtb_Saturation1;
 }
 
 // Model initialize function

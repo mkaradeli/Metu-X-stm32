@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'positionController'.
 //
-// Model version                  : 1.22
+// Model version                  : 1.23
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Feb  3 16:03:44 2026
+// C/C++ source code generated on : Tue Feb  3 18:10:28 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -124,7 +124,6 @@ class positionController final
     real32_T RateLimiter;              // '<S3>/Rate Limiter'
     real32_T Up;                       // '<S3>/Gain'
     real32_T Saturation_l;             // '<S2>/Saturation'
-    real32_T UD_DSTATE;                // '<S1>/UD'
     real32_T DiscreteTimeIntegrator_DSTATE;// '<S3>/Discrete-Time Integrator'
     real32_T PrevY;                    // '<S3>/Rate Limiter'
     real32_T PrevY_o;                  // '<S2>/Rate Limiter'
@@ -190,6 +189,9 @@ class positionController final
 //  These blocks were eliminated from the model due to optimizations:
 //
 //  Block '<S1>/Data Type Duplicate' : Unused code path elimination
+//  Block '<S1>/Diff' : Unused code path elimination
+//  Block '<S1>/TSamp' : Unused code path elimination
+//  Block '<S1>/UD' : Unused code path elimination
 //  Block '<Root>/Scope' : Unused code path elimination
 
 
