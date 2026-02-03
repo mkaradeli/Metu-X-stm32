@@ -30,8 +30,7 @@
 
 
 
-const char logHeader[] = "manifold ve nozzle basinclari loga eklenmistir."
-		" yeni log formati=8. Hala pozisyon testi devam etmektedir. Pozisyon Kp = 100";
+const char logHeader[] = "1000 derece acip, acik birakiyoruz";
 
 
 const char* logHeader_ptr = &logHeader[0];
@@ -141,7 +140,7 @@ void sdCardTask(void *pvParameters){
             writeBuffer = NULL;
             if (lastWrite){
             	sd_close_log_file();
-            	lastWriteDone = sd_unmount();
+            	lastWriteDone = sd_unmount() == FR_OK;
 //            	lastWriteDone = ;
             	osThreadTerminate(NULL);
 
@@ -232,19 +231,14 @@ void controllerTask(void *pvParameters){
 
 
 		// USER CODE START
-		if (time_sec<0.1)
-			for (int i=0; i<4; i++)
-				position_controller[i].rtU.pos_ref = 360*5;
-		else if (time_sec>1.5 and time_sec<3)
-			for (int i=0; i<4; i++)
-				position_controller[i].rtU.pos_ref = 360*5 - 360*5/3*(time_sec);
-		else if (time_sec > 3 and time_sec < 6)
-			for (int i=0; i<4; i++)
-				position_controller[i].rtU.pos_ref = 100 * sin(time_sec * 2*PI* 5);
-		else if (time_sec > 6 and time_sec < 10)
-			for (int i=0; i<4; i++)
-				position_controller[i].rtU.pos_ref = 20 * sin(time_sec * 2*PI* 50);
 
+
+		if (time_sec<0.1)
+			position_controller[0].rtU.pos_ref = 1000;
+//		else if (time_sec>0.5 and time_sec<4.5)
+//			position_controller[0].rtU.pos_ref = (time_sec-0.5)*90;
+//		else if (time_sec>4.5 and time_sec<5)
+//			position_controller[0].rtU.pos_ref = 360;
 
 
 

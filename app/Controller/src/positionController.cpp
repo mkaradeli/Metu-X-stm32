@@ -36,8 +36,8 @@ struct_Wl9576dlIcRv51Sfrsst3G currentControllerGains{
   {
     0.00563351857F,
     0.0252739377F,
-    10.0F,
-    -10.0F,
+    15.0F,
+    -15.0F,
     200000.0F,
     -200000.0F,
     0.001
