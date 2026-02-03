@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'positionController'.
 //
-// Model version                  : 1.21
+// Model version                  : 1.22
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Feb  3 13:11:18 2026
+// C/C++ source code generated on : Tue Feb  3 16:03:44 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -87,7 +87,7 @@ void positionController::step()
   // End of Saturate: '<Root>/Saturation1'
 
   // Outputs for Enabled SubSystem: '<Root>/Position Controller' incorporates:
-  //   EnablePort: '<S2>/Enable'
+  //   EnablePort: '<S2>/position_enable'
 
   // Inport: '<Root>/position_enable'
   if (rtU.position_enable) {
@@ -146,7 +146,6 @@ void positionController::step()
     rtDW.PositionController_MODE = false;
   }
 
-  // End of Inport: '<Root>/position_enable'
   // End of Outputs for SubSystem: '<Root>/Position Controller'
 
   // SampleTimeMath: '<S1>/TSamp' incorporates:
@@ -157,7 +156,10 @@ void positionController::step()
   //
   rtb_Saturation1 = rtY.pos_ref_rate_limited * 1000.0F;
 
-  // Sum: '<Root>/Sum' incorporates:
+  // Switch: '<Root>/Switch' incorporates:
+  //   Inport: '<Root>/external_speed_demand'
+  //   Inport: '<Root>/position_enable'
+  //   Sum: '<Root>/Sum'
   //   Sum: '<S1>/Diff'
   //   UnitDelay: '<S1>/UD'
   //
@@ -169,13 +171,21 @@ void positionController::step()
   //
   //   Store in Global RAM
 
-  rtb_Saturation = (rtb_Saturation1 - rtDW.UD_DSTATE) + rtDW.Saturation_l;
+  if (rtU.position_enable) {
+    rtb_Sum_a = (rtb_Saturation1 - rtDW.UD_DSTATE) + rtDW.Saturation_l;
+  } else {
+    rtb_Sum_a = rtU.external_speed_demand;
+  }
+
+  // End of Switch: '<Root>/Switch'
 
   // Saturate: '<Root>/Saturation'
-  if (rtb_Saturation > currentControllerGains.position.SatMax) {
+  if (rtb_Sum_a > currentControllerGains.position.SatMax) {
     rtb_Saturation = currentControllerGains.position.SatMax;
-  } else if (rtb_Saturation < currentControllerGains.position.SatMin) {
+  } else if (rtb_Sum_a < currentControllerGains.position.SatMin) {
     rtb_Saturation = currentControllerGains.position.SatMin;
+  } else {
+    rtb_Saturation = rtb_Sum_a;
   }
 
   // End of Saturate: '<Root>/Saturation'
