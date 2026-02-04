@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'positionController'.
 //
-// Model version                  : 1.21
+// Model version                  : 1.26
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Feb  3 20:34:31 2026
+// C/C++ source code generated on : Wed Feb  4 23:12:10 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -80,12 +80,13 @@ struct struct_efjc54AtCP4u6rYRnJfUyF
 
 #endif
 
-#ifndef DEFINED_TYPEDEF_FOR_struct_TyqbJiZ6cGuY5QG2BIsU2B_
-#define DEFINED_TYPEDEF_FOR_struct_TyqbJiZ6cGuY5QG2BIsU2B_
+#ifndef DEFINED_TYPEDEF_FOR_struct_UOhA0kLqPt9jH3DECgPk1E_
+#define DEFINED_TYPEDEF_FOR_struct_UOhA0kLqPt9jH3DECgPk1E_
 
-struct struct_TyqbJiZ6cGuY5QG2BIsU2B
+struct struct_UOhA0kLqPt9jH3DECgPk1E
 {
   real32_T Kp;
+  real32_T Kff;
   real32_T SatMax;
   real32_T SatMin;
   real32_T RateLimiterMax;
@@ -95,14 +96,14 @@ struct struct_TyqbJiZ6cGuY5QG2BIsU2B
 
 #endif
 
-#ifndef DEFINED_TYPEDEF_FOR_struct_Wl9576dlIcRv51Sfrsst3G_
-#define DEFINED_TYPEDEF_FOR_struct_Wl9576dlIcRv51Sfrsst3G_
+#ifndef DEFINED_TYPEDEF_FOR_struct_bcCVSDe9ijc6YF0EEo7cx_
+#define DEFINED_TYPEDEF_FOR_struct_bcCVSDe9ijc6YF0EEo7cx_
 
-struct struct_Wl9576dlIcRv51Sfrsst3G
+struct struct_bcCVSDe9ijc6YF0EEo7cx
 {
   struct_lIrpsBx2XGeWflfk3xVByG current;
   struct_efjc54AtCP4u6rYRnJfUyF speed;
-  struct_TyqbJiZ6cGuY5QG2BIsU2B position;
+  struct_UOhA0kLqPt9jH3DECgPk1E position;
 };
 
 #endif
@@ -115,23 +116,21 @@ struct struct_Wl9576dlIcRv51Sfrsst3G
 //  these parameters and exports their symbols.
 //
 
-extern struct_Wl9576dlIcRv51Sfrsst3G currentControllerGains;// Variable: controllerGains
-                                                               //  Referenced by:
-                                                               //    '<Root>/Saturation'
-                                                               //    '<S4>/Gain'
-                                                               //    '<S4>/Rate Limiter'
-                                                               //    '<S4>/Saturation'
-                                                               //    '<S5>/Discrete-Time Integrator'
-                                                               //    '<S5>/Gain'
-                                                               //    '<S5>/Gain1'
-                                                               //    '<S5>/Gain2'
-                                                               //    '<S5>/Rate Limiter'
-                                                               //    '<S5>/Saturation'
+extern struct_bcCVSDe9ijc6YF0EEo7cx currentControllerGains;// Variable: controllerGains
+                                                              //  Referenced by:
+                                                              //    '<S3>/Gain'
+                                                              //    '<S3>/Gain1'
+                                                              //    '<S3>/Saturation'
+                                                              //    '<S4>/Discrete-Time Integrator'
+                                                              //    '<S4>/Gain'
+                                                              //    '<S4>/Gain1'
+                                                              //    '<S4>/Gain2'
+                                                              //    '<S4>/Rate Limiter'
+                                                              //    '<S4>/Saturation'
+                                                              //    '<S5>/Rate Limiter'
 
 extern controller_modes controller_mode;// Variable: controller_mode
-                                           //  Referenced by:
-                                           //    '<Root>/Constant'
-                                           //    '<Root>/Constant1'
+                                           //  Referenced by: '<Root>/controller_mode'
 
 
 // Class declaration for model positionController
@@ -141,14 +140,13 @@ class positionController final
  public:
   // Block signals and states (default storage) for system '<Root>'
   struct DW {
-    real32_T Ui;                       // '<S5>/Discrete-Time Integrator'
-    real32_T RateLimiter;              // '<S5>/Rate Limiter'
-    real32_T Up;                       // '<S5>/Gain'
-    real32_T Saturation_l;             // '<S4>/Saturation'
-    real32_T UD_DSTATE;                // '<S3>/UD'
-    real32_T DiscreteTimeIntegrator_DSTATE;// '<S5>/Discrete-Time Integrator'
+    real32_T Ui;                       // '<S4>/Discrete-Time Integrator'
+    real32_T RateLimiter;              // '<S4>/Rate Limiter'
+    real32_T Up;                       // '<S4>/Gain'
+    real32_T DiscreteTimeIntegrator_DSTATE;// '<S4>/Discrete-Time Integrator'
+    real32_T UD_DSTATE;                // '<S6>/UD'
     real32_T PrevY;                    // '<S5>/Rate Limiter'
-    real32_T PrevY_o;                  // '<S4>/Rate Limiter'
+    real32_T PrevY_i;                  // '<S4>/Rate Limiter'
     boolean_T SpeedController_MODE;    // '<Root>/Speed Controller'
     boolean_T PositionController_MODE; // '<Root>/Position Controller'
   };
@@ -207,7 +205,7 @@ class positionController final
 //-
 //  These blocks were eliminated from the model due to optimizations:
 //
-//  Block '<S3>/Data Type Duplicate' : Unused code path elimination
+//  Block '<S6>/Data Type Duplicate' : Unused code path elimination
 //  Block '<Root>/Scope' : Unused code path elimination
 
 
@@ -228,9 +226,10 @@ class positionController final
 //  '<Root>' : 'positionController'
 //  '<S1>'   : 'positionController/Compare To Constant'
 //  '<S2>'   : 'positionController/Compare To Constant1'
-//  '<S3>'   : 'positionController/Discrete Derivative'
-//  '<S4>'   : 'positionController/Position Controller'
-//  '<S5>'   : 'positionController/Speed Controller'
+//  '<S3>'   : 'positionController/Position Controller'
+//  '<S4>'   : 'positionController/Speed Controller'
+//  '<S5>'   : 'positionController/reference conditioning'
+//  '<S6>'   : 'positionController/Position Controller/Discrete Derivative'
 
 #endif                                 // positionController_h_
 
