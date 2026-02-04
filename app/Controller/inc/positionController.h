@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'positionController'.
 //
-// Model version                  : 1.23
+// Model version                  : 1.21
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Feb  3 18:10:28 2026
+// C/C++ source code generated on : Tue Feb  3 20:34:31 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -22,6 +22,22 @@
 #define positionController_h_
 #include <cmath>
 #include "rtwtypes.h"
+#ifndef DEFINED_TYPEDEF_FOR_controller_modes_
+#define DEFINED_TYPEDEF_FOR_controller_modes_
+
+enum class controller_modes
+  : int32_T {
+  DISABLE = 0,                         // Default value
+  DUTY,
+  CURRENT,
+  SPEED,
+  POSITION,
+  PRESSURE,
+  FORCE
+};
+
+#endif
+
 #ifndef DEFINED_TYPEDEF_FOR_PI_debug_
 #define DEFINED_TYPEDEF_FOR_PI_debug_
 
@@ -102,15 +118,20 @@ struct struct_Wl9576dlIcRv51Sfrsst3G
 extern struct_Wl9576dlIcRv51Sfrsst3G currentControllerGains;// Variable: controllerGains
                                                                //  Referenced by:
                                                                //    '<Root>/Saturation'
-                                                               //    '<S2>/Gain'
-                                                               //    '<S2>/Rate Limiter'
-                                                               //    '<S2>/Saturation'
-                                                               //    '<S3>/Discrete-Time Integrator'
-                                                               //    '<S3>/Gain'
-                                                               //    '<S3>/Gain1'
-                                                               //    '<S3>/Gain2'
-                                                               //    '<S3>/Rate Limiter'
-                                                               //    '<S3>/Saturation'
+                                                               //    '<S4>/Gain'
+                                                               //    '<S4>/Rate Limiter'
+                                                               //    '<S4>/Saturation'
+                                                               //    '<S5>/Discrete-Time Integrator'
+                                                               //    '<S5>/Gain'
+                                                               //    '<S5>/Gain1'
+                                                               //    '<S5>/Gain2'
+                                                               //    '<S5>/Rate Limiter'
+                                                               //    '<S5>/Saturation'
+
+extern controller_modes controller_mode;// Variable: controller_mode
+                                           //  Referenced by:
+                                           //    '<Root>/Constant'
+                                           //    '<Root>/Constant1'
 
 
 // Class declaration for model positionController
@@ -120,13 +141,14 @@ class positionController final
  public:
   // Block signals and states (default storage) for system '<Root>'
   struct DW {
-    real32_T Ui;                       // '<S3>/Discrete-Time Integrator'
-    real32_T RateLimiter;              // '<S3>/Rate Limiter'
-    real32_T Up;                       // '<S3>/Gain'
-    real32_T Saturation_l;             // '<S2>/Saturation'
-    real32_T DiscreteTimeIntegrator_DSTATE;// '<S3>/Discrete-Time Integrator'
-    real32_T PrevY;                    // '<S3>/Rate Limiter'
-    real32_T PrevY_o;                  // '<S2>/Rate Limiter'
+    real32_T Ui;                       // '<S5>/Discrete-Time Integrator'
+    real32_T RateLimiter;              // '<S5>/Rate Limiter'
+    real32_T Up;                       // '<S5>/Gain'
+    real32_T Saturation_l;             // '<S4>/Saturation'
+    real32_T UD_DSTATE;                // '<S3>/UD'
+    real32_T DiscreteTimeIntegrator_DSTATE;// '<S5>/Discrete-Time Integrator'
+    real32_T PrevY;                    // '<S5>/Rate Limiter'
+    real32_T PrevY_o;                  // '<S4>/Rate Limiter'
     boolean_T SpeedController_MODE;    // '<Root>/Speed Controller'
     boolean_T PositionController_MODE; // '<Root>/Position Controller'
   };
@@ -135,10 +157,7 @@ class positionController final
   struct ExtU {
     real32_T pos_ref;                  // '<Root>/pos_ref'
     real32_T pos_feedback;             // '<Root>/pos_feedback'
-    boolean_T position_enable;         // '<Root>/position_enable'
     real32_T SpeedFeedback;            // '<Root>/speed_feedback'
-    boolean_T speed_enable;            // '<Root>/speed_enable'
-    real32_T external_speed_demand;    // '<Root>/external_speed_demand'
   };
 
   // External outputs (root outports fed by signals with default storage)
@@ -188,10 +207,7 @@ class positionController final
 //-
 //  These blocks were eliminated from the model due to optimizations:
 //
-//  Block '<S1>/Data Type Duplicate' : Unused code path elimination
-//  Block '<S1>/Diff' : Unused code path elimination
-//  Block '<S1>/TSamp' : Unused code path elimination
-//  Block '<S1>/UD' : Unused code path elimination
+//  Block '<S3>/Data Type Duplicate' : Unused code path elimination
 //  Block '<Root>/Scope' : Unused code path elimination
 
 
@@ -210,9 +226,11 @@ class positionController final
 //  Here is the system hierarchy for this model
 //
 //  '<Root>' : 'positionController'
-//  '<S1>'   : 'positionController/Discrete Derivative'
-//  '<S2>'   : 'positionController/Position Controller'
-//  '<S3>'   : 'positionController/Speed Controller'
+//  '<S1>'   : 'positionController/Compare To Constant'
+//  '<S2>'   : 'positionController/Compare To Constant1'
+//  '<S3>'   : 'positionController/Discrete Derivative'
+//  '<S4>'   : 'positionController/Position Controller'
+//  '<S5>'   : 'positionController/Speed Controller'
 
 #endif                                 // positionController_h_
 

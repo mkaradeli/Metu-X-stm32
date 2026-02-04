@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'currentController'.
 //
-// Model version                  : 1.77
+// Model version                  : 1.82
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Feb  3 13:11:00 2026
+// C/C++ source code generated on : Tue Feb  3 20:43:00 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -30,26 +30,21 @@ void CurrentController::step()
   real32_T rtb_Sum;
 
   // Outputs for Enabled SubSystem: '<Root>/Subsystem3' incorporates:
-  //   EnablePort: '<S1>/enabled'
+  //   EnablePort: '<S2>/enabled'
 
-  // Inport: '<Root>/enabled'
-  if (rtU.enabled) {
+  // RelationalOperator: '<S1>/Compare' incorporates:
+  //   Constant: '<Root>/Constant'
+  //   Constant: '<S1>/Constant'
+
+  if (controller_mode >= rtP.CompareToConstant_const) {
     if (!rtDW.Subsystem3_MODE) {
-      // InitializeConditions for UnitDelay: '<S2>/Delay Input'
+      // InitializeConditions for UnitDelay: '<S3>/Delay Input'
       //
-      //  Block description for '<S2>/Delay Input':
+      //  Block description for '<S3>/Delay Input':
       //
       //   Store in Global RAM
 
       rtDW.DelayInput_DSTATE = rtP.ChatGPT_ICPrevInput;
-
-      // InitializeConditions for UnitDelay: '<S2>/Delay Output'
-      //
-      //  Block description for '<S2>/Delay Output':
-      //
-      //   Store in Global RAM
-
-      rtDW.DelayOutput_DSTATE = rtP.ChatGPT_ICPrevOutput;
 
       // InitializeConditions for UnitDelay: '<S3>/Delay Output'
       //
@@ -57,11 +52,19 @@ void CurrentController::step()
       //
       //   Store in Global RAM
 
+      rtDW.DelayOutput_DSTATE = rtP.ChatGPT_ICPrevOutput;
+
+      // InitializeConditions for UnitDelay: '<S4>/Delay Output'
+      //
+      //  Block description for '<S4>/Delay Output':
+      //
+      //   Store in Global RAM
+
       rtDW.DelayOutput_DSTATE_l = rtP.GORKEM_ICPrevOutput;
 
-      // InitializeConditions for UnitDelay: '<S3>/Delay Input'
+      // InitializeConditions for UnitDelay: '<S4>/Delay Input'
       //
-      //  Block description for '<S3>/Delay Input':
+      //  Block description for '<S4>/Delay Input':
       //
       //   Store in Global RAM
 
@@ -69,59 +72,16 @@ void CurrentController::step()
       rtDW.Subsystem3_MODE = true;
     }
 
-    // Sum: '<S1>/Sum' incorporates:
+    // Sum: '<S2>/Sum' incorporates:
     //   Inport: '<Root>/current_feedback'
     //   Inport: '<Root>/current_ref'
 
     rtb_Sum = rtU.current_ref - rtU.current_feedback;
 
-    // Gain: '<S1>/Gain2' incorporates:
-    //   Gain: '<S1>/Gain5'
+    // Gain: '<S2>/Gain2' incorporates:
+    //   Gain: '<S2>/Gain5'
 
     rtb_Gain2 = rtP.Gain5_Gain * rtb_Sum * rtP.Gain2_Gain;
-
-    // Sum: '<S2>/Sum' incorporates:
-    //   Gain: '<S2>/GainPole'
-    //   Gain: '<S2>/GainZero'
-    //   UnitDelay: '<S2>/Delay Input'
-    //   UnitDelay: '<S2>/Delay Output'
-    //
-    //  Block description for '<S2>/Sum':
-    //
-    //   Add in CPU
-    //
-    //  Block description for '<S2>/GainPole':
-    //
-    //   Multiply in CPU
-    //
-    //  Block description for '<S2>/GainZero':
-    //
-    //   Multiply in CPU
-    //
-    //  Block description for '<S2>/Delay Input':
-    //
-    //   Store in Global RAM
-    //
-    //  Block description for '<S2>/Delay Output':
-    //
-    //   Store in Global RAM
-
-    rtb_Saturation = (rtb_Gain2 - rtP.ChatGPT_ZeroZ * rtDW.DelayInput_DSTATE) +
-      rtP.ChatGPT_PoleZ * rtDW.DelayOutput_DSTATE;
-
-    // Saturate: '<S2>/Saturation'
-    if (rtb_Saturation > rtP.Saturation_UpperSat) {
-      rtb_Saturation = rtP.Saturation_UpperSat;
-    } else if (rtb_Saturation < rtP.Saturation_LowerSat) {
-      rtb_Saturation = rtP.Saturation_LowerSat;
-    }
-
-    // End of Saturate: '<S2>/Saturation'
-
-    // Gain: '<S1>/Gain4' incorporates:
-    //   Gain: '<S1>/Gain1'
-
-    rtb_Sum = rtP.Gain1_Gain * rtb_Sum * rtP.Gain4_Gain;
 
     // Sum: '<S3>/Sum' incorporates:
     //   Gain: '<S3>/GainPole'
@@ -149,19 +109,62 @@ void CurrentController::step()
     //
     //   Store in Global RAM
 
+    rtb_Saturation = (rtb_Gain2 - rtP.ChatGPT_ZeroZ * rtDW.DelayInput_DSTATE) +
+      rtP.ChatGPT_PoleZ * rtDW.DelayOutput_DSTATE;
+
+    // Saturate: '<S3>/Saturation'
+    if (rtb_Saturation > rtP.Saturation_UpperSat) {
+      rtb_Saturation = rtP.Saturation_UpperSat;
+    } else if (rtb_Saturation < rtP.Saturation_LowerSat) {
+      rtb_Saturation = rtP.Saturation_LowerSat;
+    }
+
+    // End of Saturate: '<S3>/Saturation'
+
+    // Gain: '<S2>/Gain4' incorporates:
+    //   Gain: '<S2>/Gain1'
+
+    rtb_Sum = rtP.Gain1_Gain * rtb_Sum * rtP.Gain4_Gain;
+
+    // Sum: '<S4>/Sum' incorporates:
+    //   Gain: '<S4>/GainPole'
+    //   Gain: '<S4>/GainZero'
+    //   UnitDelay: '<S4>/Delay Input'
+    //   UnitDelay: '<S4>/Delay Output'
+    //
+    //  Block description for '<S4>/Sum':
+    //
+    //   Add in CPU
+    //
+    //  Block description for '<S4>/GainPole':
+    //
+    //   Multiply in CPU
+    //
+    //  Block description for '<S4>/GainZero':
+    //
+    //   Multiply in CPU
+    //
+    //  Block description for '<S4>/Delay Input':
+    //
+    //   Store in Global RAM
+    //
+    //  Block description for '<S4>/Delay Output':
+    //
+    //   Store in Global RAM
+
     rtb_Saturation_g = (rtb_Sum - rtP.GORKEM_ZeroZ * rtDW.DelayInput_DSTATE_p) +
       rtP.GORKEM_PoleZ * rtDW.DelayOutput_DSTATE_l;
 
-    // Saturate: '<S3>/Saturation'
+    // Saturate: '<S4>/Saturation'
     if (rtb_Saturation_g > rtP.Saturation_UpperSat_l) {
       rtb_Saturation_g = rtP.Saturation_UpperSat_l;
     } else if (rtb_Saturation_g < rtP.Saturation_LowerSat_j) {
       rtb_Saturation_g = rtP.Saturation_LowerSat_j;
     }
 
-    // End of Saturate: '<S3>/Saturation'
+    // End of Saturate: '<S4>/Saturation'
 
-    // ManualSwitch: '<S1>/Manual Switch'
+    // ManualSwitch: '<S2>/Manual Switch'
     if (rtP.ManualSwitch_CurrentSetting == 1) {
       // Outport: '<Root>/Duty'
       rtY.Duty = rtb_Saturation_g;
@@ -170,31 +173,7 @@ void CurrentController::step()
       rtY.Duty = rtb_Saturation;
     }
 
-    // End of ManualSwitch: '<S1>/Manual Switch'
-
-    // Update for UnitDelay: '<S2>/Delay Input'
-    //
-    //  Block description for '<S2>/Delay Input':
-    //
-    //   Store in Global RAM
-
-    rtDW.DelayInput_DSTATE = rtb_Gain2;
-
-    // Update for UnitDelay: '<S2>/Delay Output'
-    //
-    //  Block description for '<S2>/Delay Output':
-    //
-    //   Store in Global RAM
-
-    rtDW.DelayOutput_DSTATE = rtb_Saturation;
-
-    // Update for UnitDelay: '<S3>/Delay Output'
-    //
-    //  Block description for '<S3>/Delay Output':
-    //
-    //   Store in Global RAM
-
-    rtDW.DelayOutput_DSTATE_l = rtb_Saturation_g;
+    // End of ManualSwitch: '<S2>/Manual Switch'
 
     // Update for UnitDelay: '<S3>/Delay Input'
     //
@@ -202,16 +181,40 @@ void CurrentController::step()
     //
     //   Store in Global RAM
 
+    rtDW.DelayInput_DSTATE = rtb_Gain2;
+
+    // Update for UnitDelay: '<S3>/Delay Output'
+    //
+    //  Block description for '<S3>/Delay Output':
+    //
+    //   Store in Global RAM
+
+    rtDW.DelayOutput_DSTATE = rtb_Saturation;
+
+    // Update for UnitDelay: '<S4>/Delay Output'
+    //
+    //  Block description for '<S4>/Delay Output':
+    //
+    //   Store in Global RAM
+
+    rtDW.DelayOutput_DSTATE_l = rtb_Saturation_g;
+
+    // Update for UnitDelay: '<S4>/Delay Input'
+    //
+    //  Block description for '<S4>/Delay Input':
+    //
+    //   Store in Global RAM
+
     rtDW.DelayInput_DSTATE_p = rtb_Sum;
   } else if (rtDW.Subsystem3_MODE) {
     // Disable for Outport: '<Root>/Duty' incorporates:
-    //   Outport: '<S1>/Duty'
+    //   Outport: '<S2>/Duty'
 
     rtY.Duty = rtP.Duty_Y0;
     rtDW.Subsystem3_MODE = false;
   }
 
-  // End of Inport: '<Root>/enabled'
+  // End of RelationalOperator: '<S1>/Compare'
   // End of Outputs for SubSystem: '<Root>/Subsystem3'
 }
 
@@ -219,21 +222,13 @@ void CurrentController::step()
 void CurrentController::initialize()
 {
   // SystemInitialize for Enabled SubSystem: '<Root>/Subsystem3'
-  // InitializeConditions for UnitDelay: '<S2>/Delay Input'
+  // InitializeConditions for UnitDelay: '<S3>/Delay Input'
   //
-  //  Block description for '<S2>/Delay Input':
+  //  Block description for '<S3>/Delay Input':
   //
   //   Store in Global RAM
 
   rtDW.DelayInput_DSTATE = rtP.ChatGPT_ICPrevInput;
-
-  // InitializeConditions for UnitDelay: '<S2>/Delay Output'
-  //
-  //  Block description for '<S2>/Delay Output':
-  //
-  //   Store in Global RAM
-
-  rtDW.DelayOutput_DSTATE = rtP.ChatGPT_ICPrevOutput;
 
   // InitializeConditions for UnitDelay: '<S3>/Delay Output'
   //
@@ -241,18 +236,26 @@ void CurrentController::initialize()
   //
   //   Store in Global RAM
 
+  rtDW.DelayOutput_DSTATE = rtP.ChatGPT_ICPrevOutput;
+
+  // InitializeConditions for UnitDelay: '<S4>/Delay Output'
+  //
+  //  Block description for '<S4>/Delay Output':
+  //
+  //   Store in Global RAM
+
   rtDW.DelayOutput_DSTATE_l = rtP.GORKEM_ICPrevOutput;
 
-  // InitializeConditions for UnitDelay: '<S3>/Delay Input'
+  // InitializeConditions for UnitDelay: '<S4>/Delay Input'
   //
-  //  Block description for '<S3>/Delay Input':
+  //  Block description for '<S4>/Delay Input':
   //
   //   Store in Global RAM
 
   rtDW.DelayInput_DSTATE_p = rtP.GORKEM_ICPrevInput;
 
   // SystemInitialize for Outport: '<Root>/Duty' incorporates:
-  //   Outport: '<S1>/Duty'
+  //   Outport: '<S2>/Duty'
 
   rtY.Duty = rtP.Duty_Y0;
 

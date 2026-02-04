@@ -216,15 +216,13 @@ void controllerTask(void *pvParameters){
 	for (int i = 0; i<4; i++)
 		position_controller[i].initialize();
 
+	controller_mode = controller_modes::POSITION;
+
 	for (int i= 0; i< 4; i++) {
-		position_controller[i].rtU.speed_enable = 1;
-		position_controller[i].rtU.position_enable = 1;
 		position_controller[i].rtU.SpeedFeedback = hallEffect[i].valveVelocity;
-//		position_controller[i].rtU.pos_ref = hallEffect[i].valveAngleKalman;
 		position_controller[i].rtU.pos_ref = 0;
-		current_controller[i].rtU.enabled = true;
 	}
-	float freq = 5;
+
 	for(;;){
 		osDelay(1);
 		profiler_position_controller.start();
@@ -265,11 +263,8 @@ void controllerTask(void *pvParameters){
 
 
 		if (time_sec <= 61 && time_sec > 60){
-			for (int i=0; i<4; i++) {
-				current_controller[i].rtU.enabled = false;
-				position_controller[i].rtU.speed_enable = false;
-				position_controller[i].rtU.position_enable = false;
-			}
+
+			controller_mode = controller_modes::DISABLE;
 		};
 
 		profiler_position_controller.end();

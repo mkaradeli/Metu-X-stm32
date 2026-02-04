@@ -66,6 +66,8 @@ typedef struct {
 } SensorData_t;
 
 
+
+
 // static_assert(sizeof(SensorData_t) == 48);
 // static_assert(sizeof(SensorData_t) == 328);
 
@@ -108,6 +110,7 @@ extern positionController position_controller[4];
 
 extern Actuator actuator[4];
 extern bool file_creation_ok;
+
 
 //extern int lastWriteDone;
 #endif /* GLOBALS_HPP_ */
