@@ -30,7 +30,8 @@
 
 
 
-const char logHeader[] = "1000 derece acip, acik birakiyoruz";
+const char logHeader[] = "540 derece 60 saniye acik kalacak sekilde ayarlandi, dolu test"
+		"10 derecede overshoot 0a yaklastigi icin, sondaki vana acikligini 10 dereceden 15 dereceye cikardik.";
 
 
 const char* logHeader_ptr = &logHeader[0];
@@ -155,7 +156,7 @@ void bufferDataTask(void *pvParameters){
 	uint32_t delay_flag = micros();
 	for(;;){
 		osDelay(1);
-		if ((micros()-start_flag) < 10 * 1e6){
+		if ((micros()-start_flag) < 60 * 1e6){    // Log alma suresi 10 saniyeden 60 saniyeye arttirildi
 
 			txData.data.timestamp = micros();
 			txData.data.current_measured = motors[0].getCurrent();
@@ -234,11 +235,11 @@ void controllerTask(void *pvParameters){
 
 
 		if (time_sec<0.1)
-			position_controller[0].rtU.pos_ref = 1000;
-//		else if (time_sec>0.5 and time_sec<4.5)
-//			position_controller[0].rtU.pos_ref = (time_sec-0.5)*90;
-//		else if (time_sec>4.5 and time_sec<5)
-//			position_controller[0].rtU.pos_ref = 360;
+			position_controller[0].rtU.pos_ref = 540;
+		else if (time_sec>1 and time_sec<59)
+			position_controller[0].rtU.pos_ref = 540;
+		else if (time_sec>59 and time_sec<60)
+			position_controller[0].rtU.pos_ref = 15;
 
 
 
@@ -263,7 +264,7 @@ void controllerTask(void *pvParameters){
 //			current_controller[0].rtU.current_ref = 0.7*sin(time_sec*2*PI*800);
 
 
-		if (time_sec <= 12 && time_sec > 11){
+		if (time_sec <= 61 && time_sec > 60){
 			for (int i=0; i<4; i++) {
 				current_controller[i].rtU.enabled = false;
 				position_controller[i].rtU.speed_enable = false;
