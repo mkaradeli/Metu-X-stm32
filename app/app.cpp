@@ -30,8 +30,7 @@
 
 
 
-const char logHeader[] = "540 derece 60 saniye acik kalacak sekilde ayarlandi, dolu test"
-		"10 derecede overshoot 0a yaklastigi icin, sondaki vana acikligini 10 dereceden 15 dereceye cikardik.";
+const char logHeader[] = "1200-30 arasi git gelli 1 snlik periyotlu basincli test";
 
 
 const char* logHeader_ptr = &logHeader[0];
@@ -223,6 +222,9 @@ void controllerTask(void *pvParameters){
 		position_controller[i].rtU.pos_ref = 0;
 	}
 
+float sayac = 1.0; // Rampa araliklarini ayarlamak icin degisken
+float period = 1.0; // 1 saniyelik periyot
+
 	for(;;){
 		osDelay(1);
 		profiler_position_controller.start();
@@ -231,15 +233,21 @@ void controllerTask(void *pvParameters){
 
 		// USER CODE START
 
+	    // İlk 1 saniye (başlangıç hareketi)
+	    if (time_sec < 0.5)
+	        position_controller[0].rtU.pos_ref = time_sec * 2400;
+	    else if (time_sec < 1.0)
+	        position_controller[0].rtU.pos_ref = 1200 - (time_sec - 0.5) * 2340;
 
-		if (time_sec<0.1)
-			position_controller[0].rtU.pos_ref = 540;
-		else if (time_sec>1 and time_sec<59)
-			position_controller[0].rtU.pos_ref = 540;
-		else if (time_sec>59 and time_sec<60)
-			position_controller[0].rtU.pos_ref = 15;
+	    // 1 saniyeden sonra tekrarlayan hareketler
+	    else {
+	        float t_local = fmod(time_sec - 1.0, period); // Her periyot için yerel zaman
 
-
+	        if (t_local < 0.5)
+	            position_controller[0].rtU.pos_ref = t_local * 2400 + 30;
+	        else
+	            position_controller[0].rtU.pos_ref = 1230 - (t_local - 0.5) * 2400;
+	    }
 
 
 		// USER CODE END
