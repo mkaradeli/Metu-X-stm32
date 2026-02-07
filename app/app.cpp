@@ -30,7 +30,8 @@
 
 
 
-const char logHeader[] = "1200-30 arasi git gelli 1 snlik periyotlu basincli test";
+const char logHeader[] = "600 derece ofsetli 25 derece magnitude 15Hz sinus fonksiyonu"
+		"basincli test";
 
 
 const char* logHeader_ptr = &logHeader[0];
@@ -225,32 +226,22 @@ void controllerTask(void *pvParameters){
 float sayac = 1.0; // Rampa araliklarini ayarlamak icin degisken
 float period = 1.0; // 1 saniyelik periyot
 
+					// Sinüs dalgası parametreleri
+float amplitude = 25.0;  // Genlik (±90 pozisyon)
+float frequency = 15.0;     // Frekans (Hz) - 1 Hz = saniyede 1 tam dalga
+float offset = 600.0;        // DC offset (ortalama pozisyon)
+
 	for(;;){
-		osDelay(1);
-		profiler_position_controller.start();
-		time_sec = (micros() - start_flag) / 1e6;
+	    osDelay(1);
+	    profiler_position_controller.start();
+	    time_sec = (micros() - start_flag) / 1e6;
 
+	    // USER CODE START
 
-		// USER CODE START
+	    // Sinüs dalgası hareketi
+	    position_controller[0].rtU.pos_ref = offset + amplitude * sin(2 * M_PI * frequency * time_sec);
 
-	    // İlk 1 saniye (başlangıç hareketi)
-	    if (time_sec < 0.5)
-	        position_controller[0].rtU.pos_ref = time_sec * 2400;
-	    else if (time_sec < 1.0)
-	        position_controller[0].rtU.pos_ref = 1200 - (time_sec - 0.5) * 2340;
-
-	    // 1 saniyeden sonra tekrarlayan hareketler
-	    else {
-	        float t_local = fmod(time_sec - 1.0, period); // Her periyot için yerel zaman
-
-	        if (t_local < 0.5)
-	            position_controller[0].rtU.pos_ref = t_local * 2400 + 30;
-	        else
-	            position_controller[0].rtU.pos_ref = 1230 - (t_local - 0.5) * 2400;
-	    }
-
-
-		// USER CODE END
+	    // USER CODE END
 
 
 		for (int i=0; i<4; i++) {
