@@ -324,9 +324,9 @@ int sd_create_log_file(void){
     res = f_open(&logFile, filename, FA_CREATE_NEW | FA_WRITE);
     if (res == FR_OK) {
         printf("Created new log file: %s\n", filename);
-        file_creation_ok = 1;
+//        file_creation_ok = 1;
     } else {
-    	file_creation_ok = 0;
+//    	file_creation_ok = 0;
         printf("Failed to create log file, error: %d\n", res);
     }
     return res;
@@ -343,4 +343,5 @@ void sd_write_log_file(const uint8_t* buffer, const UINT size){
 	f_write(&logFile, buffer, size, &written);
 	if(written != size)
 		printf("File write error.\n");
+
 }

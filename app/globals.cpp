@@ -86,7 +86,7 @@ const uint16_t sensorDataLength = sizeof(SensorData_t);
 TaskHandle_t sdCardTaskHandle;
 //int lastWriteDone = 0;
 // encoder Variables;
-bool file_creation_ok = false;
+//bool file_creation_ok = false;
 int left_filename_index = 0;
 int right_filename_index = 0;
 //encoder_ss encoder[4];

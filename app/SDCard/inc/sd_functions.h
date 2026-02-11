@@ -37,7 +37,7 @@ int sd_rename_file(const char *oldname, const char *newname);
 FRESULT sd_create_directory(const char *path);
 void sd_list_directory_recursive(const char *path, int depth);
 void sd_list_files(void);
-void sd_create_log_file(void);
+int sd_create_log_file(void);
 void sd_write_log_file(const uint8_t* buffer, const UINT size);
 void sd_close_log_file(void);
 // Space information

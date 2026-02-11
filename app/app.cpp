@@ -64,6 +64,7 @@ uint32_t activeIndex = 0;
 
 float MOTORDUTY_OVERRIDE = 0.0f;
 bool mount_ok;
+bool file_creation_ok;
 // float adc_updateFreq = 0.0f;
 // uint32_t micros_old[30]={0};
 
@@ -123,7 +124,7 @@ void psTask(void *pvParameters){
 
 void sdCardTask(void *pvParameters){
 	mount_ok = (sd_mount() == FR_OK);
-	sd_create_log_file();
+	file_creation_ok = sd_create_log_file() == FR_OK;
 
 	sd_write_log_file((uint8_t*)logFormatID_ptr,sizeof(uint16_t));
 	sd_write_log_file(&logHeaderSize, sizeof(uint8_t));
@@ -216,7 +217,8 @@ void controllerTask(void *pvParameters){
 	for (int i = 0; i<4; i++)
 		position_controller[i].initialize();
 
-	controller_mode = controller_modes::POSITION;
+	if (mount_ok and file_creation_ok)
+		controller_mode = controller_modes::POSITION;
 
 	for (int i= 0; i< 4; i++) {
 		position_controller[i].rtU.SpeedFeedback = hallEffect[i].valveVelocity;
@@ -284,6 +286,7 @@ void safetyConnectorTask(void *pvParameters){
 		if (counter > 50){
 			xTaskNotifyGive(bufferDataTaskHandle);
 			xTaskNotifyGive(sdCardTaskHandle);
+//			osDelay(100);
 			xTaskNotifyGive(controlTaskHandle);
 			osThreadTerminate(NULL);
 		}
