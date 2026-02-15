@@ -28,6 +28,8 @@
 
 #include "currentController.h"
 #include "positionController.h"
+#include "pressureController.h"
+
 #include "cmsis_os.h"
 
 
@@ -59,6 +61,9 @@ typedef struct {
 
     float manifold_pressure;
     float nozzle_pressure;
+
+    float pressure_demand;
+
 
 
 
@@ -107,6 +112,7 @@ extern Kalman actuatorKalman[4];
 
 extern CurrentController current_controller[4];
 extern positionController position_controller[4];
+extern pressureController pressure_controller[4];
 
 extern Actuator actuator[4];
 extern bool file_creation_ok;

@@ -30,8 +30,7 @@
 
 
 
-const char logHeader[] = "600 derece ofsetli 25 derece magnitude 15Hz sinus fonksiyonu"
-		"basincli test";
+const char logHeader[] = "350-850 psi 5 hz test";
 
 
 const char* logHeader_ptr = &logHeader[0];
@@ -157,7 +156,7 @@ void bufferDataTask(void *pvParameters){
 	uint32_t delay_flag = micros();
 	for(;;){
 		osDelay(1);
-		if ((micros()-start_flag) < 60 * 1e6){    // Log alma suresi 10 saniyeden 60 saniyeye arttirildi
+		if ((micros()-start_flag) < 12 * 1e6){    // Log alma suresi 10 saniyeden 60 saniyeye arttirildi
 
 			txData.data.timestamp = micros();
 			txData.data.current_measured = motors[0].getCurrent();
@@ -168,6 +167,7 @@ void bufferDataTask(void *pvParameters){
 			txData.data.speed_ref_rate_limited = position_controller[0].rtY.speedDebug.ref_rate_limited;
 			txData.data.manifold_pressure = psSensors[0].getBar();
 			txData.data.nozzle_pressure = psSensors[1].getBar();
+			txData.data.pressure_demand = pressure_controller[0].rtU.P_nozzle_demand;
 
 
 
@@ -216,22 +216,28 @@ void controllerTask(void *pvParameters){
 //	uint32_t delay_flag = micros();
 	for (int i = 0; i<4; i++)
 		position_controller[i].initialize();
+	for (uint8_t i=0; i<4; i++)
+		pressure_controller[i].initialize();
 
 	if (mount_ok and file_creation_ok)
-		controller_mode = controller_modes::POSITION;
+		controller_mode = controller_modes::PRESSURE;
 
 	for (int i= 0; i< 4; i++) {
 		position_controller[i].rtU.SpeedFeedback = hallEffect[i].valveVelocity;
-		position_controller[i].rtU.pos_ref = 0;
+		position_controller[i].rtU.pos_ref = pressure_controller[i].rtY.position_demand;
+		pressure_controller[i].rtU.P_manifold = psSensors[0].getBar();
+//		pressure_controller[i].rtU.P_manifold = 2000;
+		pressure_controller[i].rtU.P_nozzle_demand = 0.0F;
+
 	}
 
-float sayac = 1.0; // Rampa araliklarini ayarlamak icin degisken
-float period = 1.0; // 1 saniyelik periyot
+	float sayac = 1.0; // Rampa araliklarini ayarlamak icin degisken
+	float period = 1.0; // 1 saniyelik periyot
 
-					// Sinüs dalgası parametreleri
-float amplitude = 25.0;  // Genlik (±90 pozisyon)
-float frequency = 15.0;     // Frekans (Hz) - 1 Hz = saniyede 1 tam dalga
-float offset = 600.0;        // DC offset (ortalama pozisyon)
+						// Sinüs dalgası parametreleri
+	float amplitude = 60.0;  // Genlik (±90 pozisyon)
+	float frequency = 5.0;     // Frekans (Hz) - 1 Hz = saniyede 1 tam dalga
+	float offset = 600.0;        // DC offset (ortalama pozisyon)
 
 	for(;;){
 	    osDelay(1);
@@ -241,12 +247,28 @@ float offset = 600.0;        // DC offset (ortalama pozisyon)
 	    // USER CODE START
 
 	    // Sinüs dalgası hareketi
-	    position_controller[0].rtU.pos_ref = offset + amplitude * sin(2 * M_PI * frequency * time_sec);
+	    if (time_sec<10)
+	    	pressure_controller[0].rtU.P_nozzle_demand = 600+250*sin(2*M_PI*5*time_sec);
+	    else
+	    	pressure_controller[0].rtU.P_nozzle_demand = 0;
+//	    else if (time_sec<7)
+//			position_controller[0].rtU.pos_ref = offset + 30 * sin(2 * M_PI * 15 * time_sec);
+//	    else if (time_sec<10)
+//	    	position_controller[0].rtU.pos_ref = offset + 30 * sin(2 * M_PI * 50 * time_sec);
+//		else
+//	    	position_controller[0].rtU.pos_ref = 20;
 
 	    // USER CODE END
 
 
 		for (int i=0; i<4; i++) {
+			pressure_controller[i].rtU.P_manifold = psSensors[0].getBar();
+//			pressure_controller[i].rtU.P_nozzle_demand = 0.0F;
+			pressure_controller[i].step();
+
+			position_controller[i].rtU.pos_ref = pressure_controller[i].rtY.position_demand;
+
+
 			position_controller[i].rtU.SpeedFeedback = hallEffect[i].valveVelocity;
 			position_controller[i].rtU.pos_feedback = hallEffect[i].valveAngleKalman;
 			position_controller[i].step();
@@ -263,7 +285,7 @@ float offset = 600.0;        // DC offset (ortalama pozisyon)
 //			current_controller[0].rtU.current_ref = 0.7*sin(time_sec*2*PI*800);
 
 
-		if (time_sec <= 61 && time_sec > 60){
+		if (time_sec <= 12 && time_sec > 11){
 
 			controller_mode = controller_modes::DISABLE;
 		};
@@ -368,6 +390,9 @@ void app_start(){
 		actuator[i].motor->initCurrent(&EncoderValues[3]);
 		actuator[i].hallEffect->calibrate();
 	}
+
+
+
 	profiler_hallEffect = Profiler();
 	profiler_hallEffect_new = Profiler();
 	profiler_current_controller = Profiler();

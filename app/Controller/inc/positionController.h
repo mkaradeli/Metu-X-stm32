@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'positionController'.
 //
-// Model version                  : 1.26
+// Model version                  : 1.32
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Wed Feb  4 23:12:10 2026
+// C/C++ source code generated on : Sun Feb 15 20:17:41 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -118,16 +118,15 @@ struct struct_bcCVSDe9ijc6YF0EEo7cx
 
 extern struct_bcCVSDe9ijc6YF0EEo7cx currentControllerGains;// Variable: controllerGains
                                                               //  Referenced by:
-                                                              //    '<S3>/Gain'
-                                                              //    '<S3>/Gain1'
-                                                              //    '<S3>/Saturation'
-                                                              //    '<S4>/Discrete-Time Integrator'
-                                                              //    '<S4>/Gain'
-                                                              //    '<S4>/Gain1'
-                                                              //    '<S4>/Gain2'
-                                                              //    '<S4>/Rate Limiter'
-                                                              //    '<S4>/Saturation'
-                                                              //    '<S5>/Rate Limiter'
+                                                              //    '<S6>/Gain'
+                                                              //    '<S6>/Gain1'
+                                                              //    '<S6>/Saturation'
+                                                              //    '<S7>/Discrete-Time Integrator'
+                                                              //    '<S7>/Gain'
+                                                              //    '<S7>/Gain1'
+                                                              //    '<S7>/Gain2'
+                                                              //    '<S7>/Rate Limiter'
+                                                              //    '<S7>/Saturation'
 
 extern controller_modes controller_mode;// Variable: controller_mode
                                            //  Referenced by: '<Root>/controller_mode'
@@ -140,13 +139,13 @@ class positionController final
  public:
   // Block signals and states (default storage) for system '<Root>'
   struct DW {
-    real32_T Ui;                       // '<S4>/Discrete-Time Integrator'
-    real32_T RateLimiter;              // '<S4>/Rate Limiter'
-    real32_T Up;                       // '<S4>/Gain'
-    real32_T DiscreteTimeIntegrator_DSTATE;// '<S4>/Discrete-Time Integrator'
-    real32_T UD_DSTATE;                // '<S6>/UD'
-    real32_T PrevY;                    // '<S5>/Rate Limiter'
-    real32_T PrevY_i;                  // '<S4>/Rate Limiter'
+    real32_T Ui;                       // '<S7>/Discrete-Time Integrator'
+    real32_T RateLimiter;              // '<S7>/Rate Limiter'
+    real32_T Up;                       // '<S7>/Gain'
+    real32_T DiscreteTimeIntegrator_DSTATE;// '<S10>/Discrete-Time Integrator'
+    real32_T DiscreteTimeIntegrator_DSTATE_b;// '<S7>/Discrete-Time Integrator'
+    real32_T UD_DSTATE;                // '<S9>/UD'
+    real32_T PrevY;                    // '<S7>/Rate Limiter'
     boolean_T SpeedController_MODE;    // '<Root>/Speed Controller'
     boolean_T PositionController_MODE; // '<Root>/Position Controller'
   };
@@ -156,6 +155,7 @@ class positionController final
     real32_T pos_ref;                  // '<Root>/pos_ref'
     real32_T pos_feedback;             // '<Root>/pos_feedback'
     real32_T SpeedFeedback;            // '<Root>/speed_feedback'
+    real32_T speedDemandExt;           // '<Root>/speedDemandExt'
   };
 
   // External outputs (root outports fed by signals with default storage)
@@ -205,8 +205,9 @@ class positionController final
 //-
 //  These blocks were eliminated from the model due to optimizations:
 //
-//  Block '<S6>/Data Type Duplicate' : Unused code path elimination
+//  Block '<S9>/Data Type Duplicate' : Unused code path elimination
 //  Block '<Root>/Scope' : Unused code path elimination
+//  Block '<S10>/K' : Eliminated nontunable gain of 1
 
 
 //-
@@ -226,10 +227,14 @@ class positionController final
 //  '<Root>' : 'positionController'
 //  '<S1>'   : 'positionController/Compare To Constant'
 //  '<S2>'   : 'positionController/Compare To Constant1'
-//  '<S3>'   : 'positionController/Position Controller'
-//  '<S4>'   : 'positionController/Speed Controller'
-//  '<S5>'   : 'positionController/reference conditioning'
-//  '<S6>'   : 'positionController/Position Controller/Discrete Derivative'
+//  '<S3>'   : 'positionController/Compare To Constant2'
+//  '<S4>'   : 'positionController/Degrees to Radians'
+//  '<S5>'   : 'positionController/Degrees to Radians1'
+//  '<S6>'   : 'positionController/Position Controller'
+//  '<S7>'   : 'positionController/Speed Controller'
+//  '<S8>'   : 'positionController/reference conditioning'
+//  '<S9>'   : 'positionController/Position Controller/Discrete Derivative'
+//  '<S10>'  : 'positionController/reference conditioning/first order hiz limitli filtre'
 
 #endif                                 // positionController_h_
 

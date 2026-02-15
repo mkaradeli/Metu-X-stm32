@@ -74,8 +74,12 @@ Actuator actuator[4] = {
 };
 
 
+pressureController pressure_controller[4];
 
-const uint16_t logFormatID = 8;
+
+
+
+const uint16_t logFormatID = 9;
 const uint16_t* logFormatID_ptr = &logFormatID;
 const uint16_t sensorDataLength = sizeof(SensorData_t);
 
