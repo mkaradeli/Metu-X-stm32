@@ -30,7 +30,7 @@
 
 
 
-const char logHeader[] = "350-850 psi 5 hz test";
+const char logHeader[] = "logger a quaternion, linear acceleration ve lidar datalari eklendi.";
 
 
 const char* logHeader_ptr = &logHeader[0];
@@ -168,10 +168,16 @@ void bufferDataTask(void *pvParameters){
 			txData.data.manifold_pressure = psSensors[0].getBar();
 			txData.data.nozzle_pressure = psSensors[1].getBar();
 			txData.data.pressure_demand = actuator[0].pressureController.rtU.P_nozzle_demand;
+			txData.data.quaternion = quaternion;
+			txData.data.accels = accels;
+			txData.data.lidar_distance = lidar.getDistance();
+			txData.data.lidar_strength = lidar.getStrength();
 
 
 
-
+//			sh2_RotationVector_t quaternion;
+//			    uint16_t lidar_distance;
+//			    uint16_t lidar_strength;
 
 
 

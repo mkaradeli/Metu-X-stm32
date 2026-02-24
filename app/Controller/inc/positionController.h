@@ -9,7 +9,7 @@
 //
 // Model version                  : 1.33
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Feb 17 12:15:29 2026
+// C/C++ source code generated on : Tue Feb 24 22:38:00 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -96,14 +96,25 @@ struct struct_UOhA0kLqPt9jH3DECgPk1E
 
 #endif
 
-#ifndef DEFINED_TYPEDEF_FOR_struct_bcCVSDe9ijc6YF0EEo7cx_
-#define DEFINED_TYPEDEF_FOR_struct_bcCVSDe9ijc6YF0EEo7cx_
+#ifndef DEFINED_TYPEDEF_FOR_struct_nX7ssOP8Pea1vyXt0UgmRE_
+#define DEFINED_TYPEDEF_FOR_struct_nX7ssOP8Pea1vyXt0UgmRE_
 
-struct struct_bcCVSDe9ijc6YF0EEo7cx
+struct struct_nX7ssOP8Pea1vyXt0UgmRE
+{
+  real32_T Kp;
+};
+
+#endif
+
+#ifndef DEFINED_TYPEDEF_FOR_struct_In9luHMHiNdKBncTZV4w1E_
+#define DEFINED_TYPEDEF_FOR_struct_In9luHMHiNdKBncTZV4w1E_
+
+struct struct_In9luHMHiNdKBncTZV4w1E
 {
   struct_lIrpsBx2XGeWflfk3xVByG current;
   struct_efjc54AtCP4u6rYRnJfUyF speed;
   struct_UOhA0kLqPt9jH3DECgPk1E position;
+  struct_nX7ssOP8Pea1vyXt0UgmRE pressure;
 };
 
 #endif
@@ -116,17 +127,17 @@ struct struct_bcCVSDe9ijc6YF0EEo7cx
 //  these parameters and exports their symbols.
 //
 
-extern struct_bcCVSDe9ijc6YF0EEo7cx currentControllerGains;// Variable: controllerGains
-                                                              //  Referenced by:
-                                                              //    '<S6>/Gain'
-                                                              //    '<S6>/Gain1'
-                                                              //    '<S6>/Saturation'
-                                                              //    '<S7>/Discrete-Time Integrator'
-                                                              //    '<S7>/Gain'
-                                                              //    '<S7>/Gain1'
-                                                              //    '<S7>/Gain2'
-                                                              //    '<S7>/Rate Limiter'
-                                                              //    '<S7>/Saturation'
+extern struct_In9luHMHiNdKBncTZV4w1E currentControllerGains;// Variable: controllerGains
+                                                               //  Referenced by:
+                                                               //    '<S6>/Gain'
+                                                               //    '<S6>/Gain1'
+                                                               //    '<S6>/Saturation'
+                                                               //    '<S7>/Discrete-Time Integrator'
+                                                               //    '<S7>/Gain'
+                                                               //    '<S7>/Gain1'
+                                                               //    '<S7>/Gain2'
+                                                               //    '<S7>/Rate Limiter'
+                                                               //    '<S7>/Saturation'
 
 extern controller_modes controller_mode;// Variable: controller_mode
                                            //  Referenced by: '<Root>/controller_mode'

@@ -9,7 +9,7 @@
 //
 // Model version                  : 1.33
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Feb 17 12:15:29 2026
+// C/C++ source code generated on : Tue Feb 24 22:38:00 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -24,7 +24,7 @@
 const real_T period{ 0.001 };
 
 // Exported block parameters
-struct_bcCVSDe9ijc6YF0EEo7cx currentControllerGains{
+struct_In9luHMHiNdKBncTZV4w1E currentControllerGains{
   {
     0.00784151815F,
     712.09436F,
@@ -51,6 +51,10 @@ struct_bcCVSDe9ijc6YF0EEo7cx currentControllerGains{
     2400.0F,
     -2400.0F,
     0.001
+  },
+
+  {
+    0.5F
   }
 } ;                                    // Variable: controllerGains
                                           //  Referenced by:

@@ -64,6 +64,10 @@ typedef struct {
 
     float pressure_demand;
 
+    sh2_RotationVector_t quaternion;
+    uint16_t lidar_distance;
+    uint16_t lidar_strength;
+    sh2_Accelerometer_t accels;
 
 
 

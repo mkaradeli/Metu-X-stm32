@@ -79,7 +79,7 @@ Actuator actuator[4] = {
 
 
 
-const uint16_t logFormatID = 9;
+const uint16_t logFormatID = 10;
 const uint16_t* logFormatID_ptr = &logFormatID;
 const uint16_t sensorDataLength = sizeof(SensorData_t);
 
