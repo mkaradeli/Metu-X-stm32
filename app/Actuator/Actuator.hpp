@@ -12,6 +12,8 @@
 #include "PressureSensor.hpp"
 #include "encoder.hpp"
 #include "currentController.h"
+#include "pressureController.h"
+#include "positionController.h"
 
 class Actuator {
 public:
@@ -24,6 +26,9 @@ public:
 	HallEffect* hallEffect;
 	Kalman* motorKalman;
 	Motor* motor;
+	controller::pressure pressureController;
+	controller::position positionController;
+	controller::current currentController;
 private:
 
 //	CurrentController current_controller;

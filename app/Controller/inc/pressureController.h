@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'pressureController'.
 //
-// Model version                  : 1.19
+// Model version                  : 1.20
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Feb 15 20:47:12 2026
+// C/C++ source code generated on : Tue Feb 17 12:15:42 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -43,63 +43,66 @@ extern controller_modes controller_mode;// Variable: controller_mode
 
 
 // Class declaration for model pressureController
-class pressureController final
+namespace controller
 {
-  // public data and function members
- public:
-  // Block signals and states (default storage) for system '<Root>'
-  struct DW {
-    boolean_T Subsystem_MODE;          // '<Root>/Subsystem'
+  class pressure final
+  {
+    // public data and function members
+   public:
+    // Block signals and states (default storage) for system '<Root>'
+    struct DW {
+      boolean_T Subsystem_MODE;        // '<Root>/Subsystem'
+    };
+
+    // External inputs (root inport signals with default storage)
+    struct ExtU {
+      real32_T P_manifold;             // '<Root>/P_manifold'
+      real32_T P_nozzle_demand;        // '<Root>/P_nozzle_demand'
+      real32_T position_feedback;      // '<Root>/position_feedback'
+      real32_T P_nozzle;               // '<Root>/P_nozzle'
+    };
+
+    // External outputs (root outports fed by signals with default storage)
+    struct ExtY {
+      real32_T position_demand;        // '<Root>/position_demand'
+    };
+
+    // Copy Constructor
+    pressure(pressure const&) = delete;
+
+    // Assignment Operator
+    pressure& operator= (pressure const&) & = delete;
+
+    // Move Constructor
+    pressure(pressure &&) = delete;
+
+    // Move Assignment Operator
+    pressure& operator= (pressure &&) = delete;
+
+    // External inputs
+    ExtU rtU;
+
+    // External outputs
+    ExtY rtY;
+
+    // model initialize function
+    static void initialize();
+
+    // model step function
+    void step();
+
+    // Constructor
+    pressure();
+
+    // Destructor
+    ~pressure();
+
+    // private data and function members
+   private:
+    // Block states
+    DW rtDW;
   };
-
-  // External inputs (root inport signals with default storage)
-  struct ExtU {
-    real32_T P_manifold;               // '<Root>/P_manifold'
-    real32_T P_nozzle_demand;          // '<Root>/P_nozzle_demand'
-    real32_T position_feedback;        // '<Root>/position_feedback'
-    real32_T P_nozzle;                 // '<Root>/P_nozzle'
-  };
-
-  // External outputs (root outports fed by signals with default storage)
-  struct ExtY {
-    real32_T position_demand;          // '<Root>/position_demand'
-  };
-
-  // Copy Constructor
-  pressureController(pressureController const&) = delete;
-
-  // Assignment Operator
-  pressureController& operator= (pressureController const&) & = delete;
-
-  // Move Constructor
-  pressureController(pressureController &&) = delete;
-
-  // Move Assignment Operator
-  pressureController& operator= (pressureController &&) = delete;
-
-  // External inputs
-  ExtU rtU;
-
-  // External outputs
-  ExtY rtY;
-
-  // model initialize function
-  static void initialize();
-
-  // model step function
-  void step();
-
-  // Constructor
-  pressureController();
-
-  // Destructor
-  ~pressureController();
-
-  // private data and function members
- private:
-  // Block states
-  DW rtDW;
-};
+}
 
 //-
 //  These blocks were eliminated from the model due to optimizations:

@@ -63,8 +63,8 @@ HallEffect hallEffect[4] = {
 		HallEffect(&EncoderValues[3], &actuatorKalman[3]),
 };
 
-CurrentController current_controller[4];
-positionController position_controller[4];
+controller::current current_controller[4];
+controller::position position_controller[4];
 
 Actuator actuator[4] = {
 	Actuator(&hallEffect[0], &psSensors[0], &motors[0], &actuatorKalman[0]),
@@ -74,7 +74,7 @@ Actuator actuator[4] = {
 };
 
 
-pressureController pressure_controller[4];
+//controller::pressure pressure_controller[4];
 
 
 

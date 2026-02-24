@@ -110,9 +110,9 @@ extern const uint16_t sensorDataLength;
 extern HallEffect hallEffect[4];
 extern Kalman actuatorKalman[4];
 
-extern CurrentController current_controller[4];
-extern positionController position_controller[4];
-extern pressureController pressure_controller[4];
+extern controller::current current_controller[4];
+extern controller::position position_controller[4];
+//extern controller::pressure pressure_controller[4];
 
 extern Actuator actuator[4];
 extern bool file_creation_ok;

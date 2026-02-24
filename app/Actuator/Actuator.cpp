@@ -17,5 +17,8 @@ Actuator::Actuator(HallEffect* hallEffect,
 	this-> psSensor = psSensor;
 	this->motor = motor;
 	this->motorKalman = kalman;
+	pressureController.initialize();
+	positionController.initialize();
+	currentController.initialize();
 
 }

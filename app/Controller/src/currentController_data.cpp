@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'currentController'.
 //
-// Model version                  : 1.82
+// Model version                  : 1.84
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Feb  3 20:43:00 2026
+// C/C++ source code generated on : Tue Feb 17 12:15:25 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -21,7 +21,7 @@
 #include "currentController.h"
 
 // Block parameters (default storage)
-CurrentController::P CurrentController::rtP{
+controller::current::P controller::current::rtP{
   // Mask Parameter: CompareToConstant_const
   //  Referenced by: '<S1>/Constant'
 

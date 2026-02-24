@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'currentController'.
 //
-// Model version                  : 1.82
+// Model version                  : 1.84
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Feb  3 20:43:00 2026
+// C/C++ source code generated on : Tue Feb 17 12:15:25 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -43,131 +43,136 @@ extern controller_modes controller_mode;// Variable: controller_mode
 
 
 // Class declaration for model currentController
-class CurrentController final
+namespace controller
 {
-  // public data and function members
- public:
-  // Block signals and states (default storage) for system '<Root>'
-  struct DW {
-    real32_T DelayInput_DSTATE;        // '<S3>/Delay Input'
-    real32_T DelayOutput_DSTATE;       // '<S3>/Delay Output'
-    real32_T DelayOutput_DSTATE_l;     // '<S4>/Delay Output'
-    real32_T DelayInput_DSTATE_p;      // '<S4>/Delay Input'
-    boolean_T Subsystem3_MODE;         // '<Root>/Subsystem3'
-  };
+  class current final
+  {
+    // public data and function members
+   public:
+    // Block signals and states (default storage) for system '<Root>'
+    struct DW {
+      real32_T DelayInput_DSTATE;      // '<S3>/Delay Input'
+      real32_T DelayOutput_DSTATE;     // '<S3>/Delay Output'
+      real32_T DelayOutput_DSTATE_l;   // '<S4>/Delay Output'
+      real32_T DelayInput_DSTATE_p;    // '<S4>/Delay Input'
+      boolean_T Subsystem3_MODE;       // '<Root>/Subsystem3'
+    };
 
-  // External inputs (root inport signals with default storage)
-  struct ExtU {
-    real32_T current_ref;              // '<Root>/current_ref'
-    real32_T current_feedback;         // '<Root>/current_feedback'
-  };
+    // External inputs (root inport signals with default storage)
+    struct ExtU {
+      real32_T current_ref;            // '<Root>/current_ref'
+      real32_T current_feedback;       // '<Root>/current_feedback'
+    };
 
-  // External outputs (root outports fed by signals with default storage)
-  struct ExtY {
-    real32_T Duty;                     // '<Root>/Duty'
-  };
+    // External outputs (root outports fed by signals with default storage)
+    struct ExtY {
+      real32_T Duty;                   // '<Root>/Duty'
+    };
 
-  // Parameters (default storage)
-  struct P {
-    controller_modes CompareToConstant_const;
+    // Parameters (default storage)
+    struct P {
+      controller_modes CompareToConstant_const;
                                       // Mask Parameter: CompareToConstant_const
                                          //  Referenced by: '<S1>/Constant'
 
-    real32_T ChatGPT_ICPrevInput;      // Mask Parameter: ChatGPT_ICPrevInput
+      real32_T ChatGPT_ICPrevInput;    // Mask Parameter: ChatGPT_ICPrevInput
                                           //  Referenced by: '<S3>/Delay Input'
 
-    real32_T GORKEM_ICPrevInput;       // Mask Parameter: GORKEM_ICPrevInput
+      real32_T GORKEM_ICPrevInput;     // Mask Parameter: GORKEM_ICPrevInput
                                           //  Referenced by: '<S4>/Delay Input'
 
-    real32_T ChatGPT_ICPrevOutput;     // Mask Parameter: ChatGPT_ICPrevOutput
+      real32_T ChatGPT_ICPrevOutput;   // Mask Parameter: ChatGPT_ICPrevOutput
                                           //  Referenced by: '<S3>/Delay Output'
 
-    real32_T GORKEM_ICPrevOutput;      // Mask Parameter: GORKEM_ICPrevOutput
+      real32_T GORKEM_ICPrevOutput;    // Mask Parameter: GORKEM_ICPrevOutput
                                           //  Referenced by: '<S4>/Delay Output'
 
-    real32_T ChatGPT_PoleZ;            // Mask Parameter: ChatGPT_PoleZ
+      real32_T ChatGPT_PoleZ;          // Mask Parameter: ChatGPT_PoleZ
                                           //  Referenced by: '<S3>/GainPole'
 
-    real32_T GORKEM_PoleZ;             // Mask Parameter: GORKEM_PoleZ
+      real32_T GORKEM_PoleZ;           // Mask Parameter: GORKEM_PoleZ
                                           //  Referenced by: '<S4>/GainPole'
 
-    real32_T ChatGPT_ZeroZ;            // Mask Parameter: ChatGPT_ZeroZ
+      real32_T ChatGPT_ZeroZ;          // Mask Parameter: ChatGPT_ZeroZ
                                           //  Referenced by: '<S3>/GainZero'
 
-    real32_T GORKEM_ZeroZ;             // Mask Parameter: GORKEM_ZeroZ
+      real32_T GORKEM_ZeroZ;           // Mask Parameter: GORKEM_ZeroZ
                                           //  Referenced by: '<S4>/GainZero'
 
-    real32_T Duty_Y0;                  // Computed Parameter: Duty_Y0
+      real32_T Duty_Y0;                // Computed Parameter: Duty_Y0
                                           //  Referenced by: '<S2>/Duty'
 
-    real32_T Gain5_Gain;               // Computed Parameter: Gain5_Gain
+      real32_T Gain5_Gain;             // Computed Parameter: Gain5_Gain
                                           //  Referenced by: '<S2>/Gain5'
 
-    real32_T Gain2_Gain;               // Computed Parameter: Gain2_Gain
+      real32_T Gain2_Gain;             // Computed Parameter: Gain2_Gain
                                           //  Referenced by: '<S2>/Gain2'
 
-    real32_T Saturation_UpperSat;     // Computed Parameter: Saturation_UpperSat
+      real32_T Saturation_UpperSat;   // Computed Parameter: Saturation_UpperSat
                                          //  Referenced by: '<S3>/Saturation'
 
-    real32_T Saturation_LowerSat;     // Computed Parameter: Saturation_LowerSat
+      real32_T Saturation_LowerSat;   // Computed Parameter: Saturation_LowerSat
                                          //  Referenced by: '<S3>/Saturation'
 
-    real32_T Gain1_Gain;               // Computed Parameter: Gain1_Gain
+      real32_T Gain1_Gain;             // Computed Parameter: Gain1_Gain
                                           //  Referenced by: '<S2>/Gain1'
 
-    real32_T Gain4_Gain;               // Computed Parameter: Gain4_Gain
+      real32_T Gain4_Gain;             // Computed Parameter: Gain4_Gain
                                           //  Referenced by: '<S2>/Gain4'
 
-    real32_T Saturation_UpperSat_l; // Computed Parameter: Saturation_UpperSat_l
+      real32_T Saturation_UpperSat_l;
+                                    // Computed Parameter: Saturation_UpperSat_l
                                        //  Referenced by: '<S4>/Saturation'
 
-    real32_T Saturation_LowerSat_j; // Computed Parameter: Saturation_LowerSat_j
+      real32_T Saturation_LowerSat_j;
+                                    // Computed Parameter: Saturation_LowerSat_j
                                        //  Referenced by: '<S4>/Saturation'
 
-    uint8_T ManualSwitch_CurrentSetting;
+      uint8_T ManualSwitch_CurrentSetting;
                               // Computed Parameter: ManualSwitch_CurrentSetting
                                  //  Referenced by: '<S2>/Manual Switch'
 
+    };
+
+    // Copy Constructor
+    current(current const&) = delete;
+
+    // Assignment Operator
+    current& operator= (current const&) & = delete;
+
+    // Move Constructor
+    current(current &&) = delete;
+
+    // Move Assignment Operator
+    current& operator= (current &&) = delete;
+
+    // External inputs
+    ExtU rtU;
+
+    // External outputs
+    ExtY rtY;
+
+    // model initialize function
+    void initialize();
+
+    // model step function
+    void step();
+
+    // Constructor
+    current();
+
+    // Destructor
+    ~current();
+
+    // private data and function members
+   private:
+    // Block states
+    DW rtDW;
+
+    // Tunable parameters
+    static P rtP;
   };
-
-  // Copy Constructor
-  CurrentController(CurrentController const&) = delete;
-
-  // Assignment Operator
-  CurrentController& operator= (CurrentController const&) & = delete;
-
-  // Move Constructor
-  CurrentController(CurrentController &&) = delete;
-
-  // Move Assignment Operator
-  CurrentController& operator= (CurrentController &&) = delete;
-
-  // External inputs
-  ExtU rtU;
-
-  // External outputs
-  ExtY rtY;
-
-  // model initialize function
-  void initialize();
-
-  // model step function
-  void step();
-
-  // Constructor
-  CurrentController();
-
-  // Destructor
-  ~CurrentController();
-
-  // private data and function members
- private:
-  // Block states
-  DW rtDW;
-
-  // Tunable parameters
-  static P rtP;
-};
+}
 
 //-
 //  These blocks were eliminated from the model due to optimizations:

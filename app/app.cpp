@@ -167,7 +167,7 @@ void bufferDataTask(void *pvParameters){
 			txData.data.speed_ref_rate_limited = position_controller[0].rtY.speedDebug.ref_rate_limited;
 			txData.data.manifold_pressure = psSensors[0].getBar();
 			txData.data.nozzle_pressure = psSensors[1].getBar();
-			txData.data.pressure_demand = pressure_controller[0].rtU.P_nozzle_demand;
+			txData.data.pressure_demand = actuator[0].pressureController.rtU.P_nozzle_demand;
 
 
 
@@ -216,18 +216,18 @@ void controllerTask(void *pvParameters){
 //	uint32_t delay_flag = micros();
 	for (int i = 0; i<4; i++)
 		position_controller[i].initialize();
-	for (uint8_t i=0; i<4; i++)
-		pressure_controller[i].initialize();
+//	for (uint8_t i=0; i<4; i++)
+//		pressure_controller[i].initialize();
 
 	if (mount_ok and file_creation_ok)
 		controller_mode = controller_modes::PRESSURE;
 
 	for (int i= 0; i< 4; i++) {
 		position_controller[i].rtU.SpeedFeedback = hallEffect[i].valveVelocity;
-		position_controller[i].rtU.pos_ref = pressure_controller[i].rtY.position_demand;
-		pressure_controller[i].rtU.P_manifold = psSensors[0].getBar();
+		position_controller[i].rtU.pos_ref = actuator[i].pressureController.rtY.position_demand;
+		actuator[i].pressureController.rtU.P_manifold = psSensors[0].getBar();
 //		pressure_controller[i].rtU.P_manifold = 2000;
-		pressure_controller[i].rtU.P_nozzle_demand = 0.0F;
+		actuator[i].pressureController.rtU.P_nozzle_demand = 0.0F;
 
 	}
 
@@ -248,9 +248,9 @@ void controllerTask(void *pvParameters){
 
 	    // Sinüs dalgası hareketi
 	    if (time_sec<10)
-	    	pressure_controller[0].rtU.P_nozzle_demand = 600+250*sin(2*M_PI*5*time_sec);
+	    	actuator[0].pressureController.rtU.P_nozzle_demand = 600+250*sin(2*M_PI*5*time_sec);
 	    else
-	    	pressure_controller[0].rtU.P_nozzle_demand = 0;
+	    	actuator[0].pressureController.rtU.P_nozzle_demand = 0;
 //	    else if (time_sec<7)
 //			position_controller[0].rtU.pos_ref = offset + 30 * sin(2 * M_PI * 15 * time_sec);
 //	    else if (time_sec<10)
@@ -262,11 +262,11 @@ void controllerTask(void *pvParameters){
 
 
 		for (int i=0; i<4; i++) {
-			pressure_controller[i].rtU.P_manifold = psSensors[0].getBar();
+			actuator[i].pressureController.rtU.P_manifold = psSensors[0].getBar();
 //			pressure_controller[i].rtU.P_nozzle_demand = 0.0F;
-			pressure_controller[i].step();
+			actuator[i].pressureController.step();
 
-			position_controller[i].rtU.pos_ref = pressure_controller[i].rtY.position_demand;
+			position_controller[i].rtU.pos_ref = actuator[i].pressureController.rtY.position_demand;
 
 
 			position_controller[i].rtU.SpeedFeedback = hallEffect[i].valveVelocity;
