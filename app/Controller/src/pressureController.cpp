@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'pressureController'.
 //
-// Model version                  : 1.22
+// Model version                  : 1.23
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Feb 24 22:38:13 2026
+// C/C++ source code generated on : Thu Feb 26 20:06:22 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -22,165 +22,131 @@
 #include <cmath>
 #include "rtwtypes.h"
 
-// Exported block parameters
-struct_In9luHMHiNdKBncTZV4w1E currentControllerGains{
-  {
-    0.00784151815F,
-    712.09436F,
-    1.0F,
-    -1.0F,
-    0.000125
-  },
-
-  {
-    0.624023795F,
-    2.77958274F,
-    15.0F,
-    -15.0F,
-    2.0e+15F,
-    -2.0e+15F,
-    0.001
-  },
-
-  {
-    62.831852F,
-    0.8F,
-    2400.0F,
-    -2400.0F,
-    2400.0F,
-    -2400.0F,
-    0.001
-  },
-
-  {
-    0.5F
-  }
-} ;                                    // Variable: controllerGains
-                                          //  Referenced by: '<S2>/Gain1'
-
-
-// Model step function
-void pressureController::step()
+namespace controller
 {
-  real32_T rtb_Min;
-  real32_T rtb_Saturation;
+  // Model step function
+  void pressure::step()
+  {
+    real32_T rtb_Min;
+    real32_T rtb_Saturation;
 
-  // Outputs for Enabled SubSystem: '<Root>/Subsystem' incorporates:
-  //   EnablePort: '<S2>/Enable'
+    // Outputs for Enabled SubSystem: '<Root>/Subsystem' incorporates:
+    //   EnablePort: '<S2>/Enable'
 
-  // RelationalOperator: '<S1>/Compare' incorporates:
-  //   Constant: '<Root>/Constant'
-  //   Constant: '<S1>/Constant'
+    // RelationalOperator: '<S1>/Compare' incorporates:
+    //   Constant: '<Root>/Constant'
+    //   Constant: '<S1>/Constant'
 
-  if (controller_mode >= controller_modes::PRESSURE) {
-    rtDW.Subsystem_MODE = true;
+    if (controller_mode >= controller_modes::PRESSURE) {
+      rtDW.Subsystem_MODE = true;
 
-    // MinMax: '<S2>/Min' incorporates:
-    //   Gain: '<S2>/Gain'
-    //   Inport: '<Root>/P_manifold'
-    //   Inport: '<Root>/P_nozzle_demand'
-    //   Sum: '<S2>/Sum1'
+      // MinMax: '<S2>/Min' incorporates:
+      //   Gain: '<S2>/Gain'
+      //   Inport: '<Root>/P_manifold'
+      //   Inport: '<Root>/P_nozzle_demand'
+      //   Sum: '<S2>/Sum1'
 
-    rtb_Min = std::fmin(rtU.P_manifold - 0.07F * rtU.P_manifold,
-                        rtU.P_nozzle_demand);
+      rtb_Min = std::fmin(rtU.P_manifold - 0.07F * rtU.P_manifold,
+                          rtU.P_nozzle_demand);
 
-    // Saturate: '<S3>/Saturation' incorporates:
-    //   Inport: '<Root>/P_manifold'
+      // Saturate: '<S3>/Saturation' incorporates:
+      //   Inport: '<Root>/P_manifold'
 
-    if (rtU.P_manifold > 5000.0F) {
-      rtb_Saturation = 5000.0F;
-    } else if (rtU.P_manifold < 0.0F) {
-      rtb_Saturation = 0.0F;
-    } else {
-      rtb_Saturation = rtU.P_manifold;
-    }
+      if (rtU.P_manifold > 5000.0F) {
+        rtb_Saturation = 5000.0F;
+      } else if (rtU.P_manifold < 0.0F) {
+        rtb_Saturation = 0.0F;
+      } else {
+        rtb_Saturation = rtU.P_manifold;
+      }
 
-    // End of Saturate: '<S3>/Saturation'
+      // End of Saturate: '<S3>/Saturation'
 
-    // Switch: '<S4>/Switch2' incorporates:
-    //   Constant: '<S3>/Constant'
-    //   RelationalOperator: '<S4>/LowerRelop1'
-    //   RelationalOperator: '<S4>/UpperRelop'
-    //   Switch: '<S4>/Switch'
-
-    if (rtb_Min > rtb_Saturation) {
-      rtb_Min = rtb_Saturation;
-    } else if (rtb_Min < 0.0F) {
-      // Switch: '<S4>/Switch' incorporates:
+      // Switch: '<S4>/Switch2' incorporates:
       //   Constant: '<S3>/Constant'
+      //   RelationalOperator: '<S4>/LowerRelop1'
+      //   RelationalOperator: '<S4>/UpperRelop'
+      //   Switch: '<S4>/Switch'
 
-      rtb_Min = 0.0F;
-    }
+      if (rtb_Min > rtb_Saturation) {
+        rtb_Min = rtb_Saturation;
+      } else if (rtb_Min < 0.0F) {
+        // Switch: '<S4>/Switch' incorporates:
+        //   Constant: '<S3>/Constant'
 
-    // End of Switch: '<S4>/Switch2'
+        rtb_Min = 0.0F;
+      }
 
-    // Gain: '<S3>/Gain' incorporates:
-    //   Bias: '<S3>/Bias'
-    //   Product: '<S3>/Product'
-    //   UnaryMinus: '<S3>/Unary Minus'
+      // End of Switch: '<S4>/Switch2'
 
-    rtb_Min = (-(1.0F / rtb_Saturation * rtb_Min) + 1.0F) * 1.08731103F;
+      // Gain: '<S3>/Gain' incorporates:
+      //   Bias: '<S3>/Bias'
+      //   Product: '<S3>/Product'
+      //   UnaryMinus: '<S3>/Unary Minus'
 
-    // Sum: '<S2>/Sum' incorporates:
-    //   Bias: '<S3>/Bias1'
-    //   Constant: '<S3>/Constant1'
-    //   Gain: '<S2>/Gain1'
-    //   Gain: '<S3>/Gain1'
-    //   Gain: '<S3>/Gain2'
-    //   Inport: '<Root>/P_nozzle'
-    //   Inport: '<Root>/P_nozzle_demand'
-    //   MinMax: '<S3>/Max'
-    //   Product: '<S3>/Product1'
-    //   Sqrt: '<S3>/Sqrt'
-    //   Sum: '<S2>/Sum2'
+      rtb_Min = (-(1.0F / rtb_Saturation * rtb_Min) + 1.0F) * 1.08731103F;
 
-    rtb_Min = std::sqrt(std::fmax(rtb_Min / (-51.8534F * rtb_Min + 52.8534F),
-      0.0F)) * 1080.0F + (rtU.P_nozzle - rtU.P_nozzle_demand) *
-      currentControllerGains.pressure.Kp;
+      // Sum: '<S2>/Sum' incorporates:
+      //   Bias: '<S3>/Bias1'
+      //   Constant: '<S3>/Constant1'
+      //   Gain: '<S2>/Gain1'
+      //   Gain: '<S3>/Gain1'
+      //   Gain: '<S3>/Gain2'
+      //   Inport: '<Root>/P_nozzle'
+      //   Inport: '<Root>/P_nozzle_demand'
+      //   MinMax: '<S3>/Max'
+      //   Product: '<S3>/Product1'
+      //   Sqrt: '<S3>/Sqrt'
+      //   Sum: '<S2>/Sum2'
 
-    // Saturate: '<S2>/Saturation'
-    if (rtb_Min > 1080.0F) {
-      // Outport: '<Root>/position_demand'
-      rtY.position_demand = 1080.0F;
-    } else if (rtb_Min < 0.0F) {
-      // Outport: '<Root>/position_demand'
+      rtb_Min = std::sqrt(std::fmax(rtb_Min / (-51.8534F * rtb_Min + 52.8534F),
+        0.0F)) * 1080.0F + (rtU.P_nozzle - rtU.P_nozzle_demand) *
+        currentControllerGains.pressure.Kp;
+
+      // Saturate: '<S2>/Saturation'
+      if (rtb_Min > 1080.0F) {
+        // Outport: '<Root>/position_demand'
+        rtY.position_demand = 1080.0F;
+      } else if (rtb_Min < 0.0F) {
+        // Outport: '<Root>/position_demand'
+        rtY.position_demand = 0.0F;
+      } else {
+        // Outport: '<Root>/position_demand'
+        rtY.position_demand = rtb_Min;
+      }
+
+      // End of Saturate: '<S2>/Saturation'
+    } else if (rtDW.Subsystem_MODE) {
+      // Disable for Outport: '<Root>/position_demand' incorporates:
+      //   Outport: '<S2>/theta_demand'
+
       rtY.position_demand = 0.0F;
-    } else {
-      // Outport: '<Root>/position_demand'
-      rtY.position_demand = rtb_Min;
+      rtDW.Subsystem_MODE = false;
     }
 
-    // End of Saturate: '<S2>/Saturation'
-  } else if (rtDW.Subsystem_MODE) {
-    // Disable for Outport: '<Root>/position_demand' incorporates:
-    //   Outport: '<S2>/theta_demand'
-
-    rtY.position_demand = 0.0F;
-    rtDW.Subsystem_MODE = false;
+    // End of RelationalOperator: '<S1>/Compare'
+    // End of Outputs for SubSystem: '<Root>/Subsystem'
   }
 
-  // End of RelationalOperator: '<S1>/Compare'
-  // End of Outputs for SubSystem: '<Root>/Subsystem'
-}
+  // Model initialize function
+  void pressure::initialize()
+  {
+    // (no initialization code required)
+  }
 
-// Model initialize function
-void pressureController::initialize()
-{
-  // (no initialization code required)
-}
+  // Constructor
+  pressure::pressure():
+    rtU(),
+    rtY(),
+    rtDW()
+  {
+    // Currently there is no constructor body generated.
+  }
 
-// Constructor
-pressureController::pressureController():
-  rtU(),
-  rtY(),
-  rtDW()
-{
-  // Currently there is no constructor body generated.
+  // Destructor
+  // Currently there is no destructor body generated.
+  pressure::~pressure() = default;
 }
-
-// Destructor
-// Currently there is no destructor body generated.
-pressureController::~pressureController() = default;
 
 //
 // File trailer for generated code.
