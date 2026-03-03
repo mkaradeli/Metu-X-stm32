@@ -18,6 +18,25 @@ HallEffect::HallEffect(uint16_t* adc_buffer, Kalman* actuatorKalman) {
 	this->adc_buffer = adc_buffer;
 	this->shifter = 0;
 	this->shifter_subBuffer = 0;
+	calibration = 0;
+	this->kalman = actuatorKalman;
+	this->kalman->initialize();
+	this->unstableCount = 0;
+};
+HallEffect::HallEffect() {
+//	this->adc_buffer = adc_buffer;
+	this->shifter = 0;
+	this->shifter_subBuffer = 0;
+	calibration = 0;
+//	this->kalman = actuatorKalman;
+//	this->kalman->initialize();
+	this->unstableCount = 0;
+}
+
+void HallEffect::init(uint16_t* adc_buffer, Kalman* actuatorKalman) {
+	this->adc_buffer = adc_buffer;
+	this->shifter = 0;
+	this->shifter_subBuffer = 0;
 	// this->lastReading = this->adc_buffer[0];
 //	this->angleRaw = 0;
 //	this->angle_Filtered = 0;

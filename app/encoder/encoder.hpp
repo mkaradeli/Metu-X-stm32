@@ -26,17 +26,7 @@ class HallEffect{
 
 public:
 	HallEffect(uint16_t* adc_buffer, Kalman* actuatorKalman);
-//	HallEffect(const HallEffect&) = delete;
-//	HallEffect& operator=(const HallEffect&) = delete;
-//
-//	HallEffect(HallEffect&&) = delete;
-//	HallEffect& operator=(HallEffect&&) = delete;
-
-
-//	uint16_t lastReading;
-//	double angleRaw;
-//	double angle_Filtered;
-//	double velocity;
+	HallEffect();
 	double calibration;
 	double motorAngle;
 	double valveAngle;
@@ -46,14 +36,15 @@ public:
 	uint32_t time_subBuffer;
 	uint32_t time_current;
 	uint16_t unstableCount;
-
+	uint16_t* adc_buffer;
+	void init(uint16_t* adc_buffer, Kalman* actuatorKalman);
 	void calibrate();
-	void update();
+//	void update();
 	void update_subBuffer();
 
 
 private:
-	uint16_t* adc_buffer;
+
 	bool wasInMiddle;
 	bool wasInMiddle_subBuffer;
 	int32_t shifter;

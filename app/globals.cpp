@@ -54,23 +54,12 @@ Motor motors[MAX_MOTOR_COUNT] = {
 		Motor(4, true, LEFT_EN_4_GPIO_Port, LEFT_EN_4_Pin, RIGHT_EN_4_GPIO_Port, RIGHT_EN_4_Pin, &htim4, TIM_CHANNEL_4)
 };
 
-Kalman actuatorKalman[4];
-
-HallEffect hallEffect[4] = {
-		HallEffect(&EncoderValues[0], &actuatorKalman[0]),
-		HallEffect(&EncoderValues[1], &actuatorKalman[1]),
-		HallEffect(&EncoderValues[2], &actuatorKalman[2]),
-		HallEffect(&EncoderValues[3], &actuatorKalman[3]),
-};
-
-controller::current current_controller[4];
-controller::position position_controller[4];
 
 Actuator actuator[4] = {
-	Actuator(&hallEffect[0], &psSensors[0], &motors[0], &actuatorKalman[0]),
-	Actuator(&hallEffect[1], &psSensors[1], &motors[1], &actuatorKalman[1]),
-	Actuator(&hallEffect[2], &psSensors[2], &motors[2], &actuatorKalman[2]),
-	Actuator(&hallEffect[3], &psSensors[3], &motors[3], &actuatorKalman[3]),
+	Actuator(&EncoderValues[0], &psSensors[0], &motors[0]),
+	Actuator(&EncoderValues[1], &psSensors[1], &motors[1]),
+	Actuator(&EncoderValues[2], &psSensors[2], &motors[2]),
+	Actuator(&EncoderValues[3], &psSensors[3], &motors[3]),
 };
 
 

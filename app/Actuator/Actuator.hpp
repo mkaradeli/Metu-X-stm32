@@ -17,21 +17,26 @@
 
 class Actuator {
 public:
-	Actuator(HallEffect* hallEffect,
+	Actuator(uint16_t* encoder_adc_buffer,
 		PressureSensor* psSensor,
-		Motor* motor,
-		Kalman* kalman);
+		Motor* motor);
 
+	uint16_t* encoder_adc_buffer;
 	PressureSensor* psSensor;
-	HallEffect* hallEffect;
-	Kalman* motorKalman;
 	Motor* motor;
-	controller::pressure pressureController;
-	controller::position positionController;
+	HallEffect hallEffect;
+	Kalman motorKalman;
 	controller::current currentController;
+	controller::position positionController;
+	controller::pressure pressureController;
+	void updateCurrent(uint16_t* encoder_buffer);
+	void current_controller_step();
+	void position_controller_step();
+	void pressure_controller_step();
+	void updateHallEffect();
+	void calibrate();
 private:
 
-//	CurrentController current_controller;
 
 };
 

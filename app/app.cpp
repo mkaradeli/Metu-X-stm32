@@ -160,11 +160,11 @@ void bufferDataTask(void *pvParameters){
 
 			txData.data.timestamp = micros();
 			txData.data.current_measured = motors[0].getCurrent();
-			txData.data.current_demand = current_controller[0].rtU.current_ref;
-			txData.data.speedDemand = position_controller[0].rtY.speedDemand;
-			txData.data.pos_ref = position_controller[0].rtU.pos_ref;
-			txData.data.pos_ref_rate_limited = position_controller[0].rtY.pos_ref_rate_limited;
-			txData.data.speed_ref_rate_limited = position_controller[0].rtY.speedDebug.ref_rate_limited;
+			txData.data.current_demand = actuator[0].currentController.rtU.current_ref;
+			txData.data.speedDemand = actuator[0].positionController.rtY.speedDemand;
+			txData.data.pos_ref = actuator[0].positionController.rtU.pos_ref;
+			txData.data.pos_ref_rate_limited = actuator[0].positionController.rtY.pos_ref_rate_limited;
+			txData.data.speed_ref_rate_limited = actuator[0].positionController.rtY.speedDebug.ref_rate_limited;
 			txData.data.manifold_pressure = psSensors[0].getBar();
 			txData.data.nozzle_pressure = psSensors[1].getBar();
 			txData.data.pressure_demand = actuator[0].pressureController.rtU.P_nozzle_demand;
@@ -220,8 +220,8 @@ void controllerTask(void *pvParameters){
 
 	uint32_t start_flag = micros();
 //	uint32_t delay_flag = micros();
-	for (int i = 0; i<4; i++)
-		position_controller[i].initialize();
+//	for (int i = 0; i<4; i++)
+//		position_controller[i].initialize();
 //	for (uint8_t i=0; i<4; i++)
 //		pressure_controller[i].initialize();
 
@@ -229,8 +229,8 @@ void controllerTask(void *pvParameters){
 		controller_mode = controller_modes::PRESSURE;
 
 	for (int i= 0; i< 4; i++) {
-		position_controller[i].rtU.SpeedFeedback = hallEffect[i].valveVelocity;
-		position_controller[i].rtU.pos_ref = actuator[i].pressureController.rtY.position_demand;
+		actuator[i].positionController.rtU.SpeedFeedback = actuator[0].hallEffect.valveVelocity;
+		actuator[i].positionController.rtU.pos_ref = actuator[i].pressureController.rtY.position_demand;
 		actuator[i].pressureController.rtU.P_manifold = psSensors[0].getBar();
 //		pressure_controller[i].rtU.P_manifold = 2000;
 		actuator[i].pressureController.rtU.P_nozzle_demand = 0.0F;
@@ -257,39 +257,14 @@ void controllerTask(void *pvParameters){
 	    	actuator[0].pressureController.rtU.P_nozzle_demand = 600+250*sin(2*M_PI*5*time_sec);
 	    else
 	    	actuator[0].pressureController.rtU.P_nozzle_demand = 0;
-//	    else if (time_sec<7)
-//			position_controller[0].rtU.pos_ref = offset + 30 * sin(2 * M_PI * 15 * time_sec);
-//	    else if (time_sec<10)
-//	    	position_controller[0].rtU.pos_ref = offset + 30 * sin(2 * M_PI * 50 * time_sec);
-//		else
-//	    	position_controller[0].rtU.pos_ref = 20;
 
 	    // USER CODE END
 
 
 		for (int i=0; i<4; i++) {
 			actuator[i].pressureController.rtU.P_manifold = psSensors[0].getBar();
-//			pressure_controller[i].rtU.P_nozzle_demand = 0.0F;
-			actuator[i].pressureController.step();
-
-			position_controller[i].rtU.pos_ref = actuator[i].pressureController.rtY.position_demand;
-
-
-			position_controller[i].rtU.SpeedFeedback = hallEffect[i].valveVelocity;
-			position_controller[i].rtU.pos_feedback = hallEffect[i].valveAngleKalman;
-			position_controller[i].step();
-			current_controller[i].rtU.current_ref = position_controller[i].rtY.currentDemand;
-
+			actuator[i].pressure_controller_step();
 		}
-//		if (time_sec< 0.5)
-//			current_controller[0].rtU.current_ref = 1;
-//		else if (time_sec>0.5 and time_sec < 1)
-//			current_controller[0].rtU.current_ref = 0;
-//		else if (time_sec< 5)
-//			current_controller[0].rtU.current_ref = 0.7*sin(time_sec*2*PI*50);
-//		else
-//			current_controller[0].rtU.current_ref = 0.7*sin(time_sec*2*PI*800);
-
 
 		if (time_sec <= 12 && time_sec > 11){
 
@@ -385,16 +360,11 @@ void app_start(){
 	xTaskCreate(bufferDataTask, "Buffer Data", 128, NULL, 5, &bufferDataTaskHandle);
 	xTaskCreate(sdCardTask, "PS Task", 128*5, NULL, 5, &sdCardTaskHandle);
 
-//	for(uint8_t i = 0; i < 4; i++){
-//		motors[i].setPositionDegree(0*360.0);
-	// }
-	for (int i = 0; i<4; i++)
-		current_controller[i].initialize();
 
 	for(uint8_t i=0; i<4; i++){
 //		encoderReaderInit(&encoder[i],&EncoderValues[i]);
 		actuator[i].motor->initCurrent(&EncoderValues[3]);
-		actuator[i].hallEffect->calibrate();
+		actuator[i].hallEffect.calibrate();
 	}
 
 
@@ -436,25 +406,15 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef* hadc){
 	if (hadc->Instance == ADC2){
 		profiler_current_controller.start();
 
-		motors[0].updateCurrent(&EncoderValues[3]);
+
+		actuator[0].motor->updateCurrent(&EncoderValues[3]);
 		for (int i=0; i<7; i++)
 			txData.data.current_subsample[i] = txData.data.current_subsample[i+1];
-
-
-//			for (int i=0; i<4; i++) {
-//				current_controller[i].rtU.current_feedback = motors[i].getCurrent();
-//	//			current_controller.rtU.current_ref = MOTORDUTY_OVERRIDE;
-//				current_controller[i].step();
-//				motors[i].setSpeed(current_controller[i].rtY.Duty);
-//			}
-
-		current_controller[0].rtU.current_feedback = motors[0].getCurrent();
-		current_controller[0].step();
-		motors[0].setSpeed(current_controller[0].rtY.Duty);
+		actuator[0].current_controller_step();
 
 		for (int i=0; i<7; i++)
 			txData.data.duty_subsample[i] = txData.data.duty_subsample[i+1];
-		txData.data.duty_subsample[7] = current_controller[0].rtY.Duty;
+		txData.data.duty_subsample[7] = actuator[0].currentController.rtY.Duty;
 		profiler_current_controller.end();
 
 
@@ -471,16 +431,12 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 		portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 	}
 	else if (hadc->Instance == ADC2) {
-		// profiler_hallEffect.start();
-		// for (int index = 0; index < 4; index++){
-		// 	hallEffect[index].update();
-		// }
-		// profiler_hallEffect.end();
 
 
 		profiler_hallEffect_new.start();
 		for (int index = 0; index <4; index++){
-			hallEffect[index].update_subBuffer();
+			actuator[index].updateHallEffect();
+//			hallEffect[index].update_subBuffer();
 		}
 		for (int i=0;i<3; i++){
 			txData.data.valveAngle[i] = txData.data.valveAngle[i+1];
@@ -488,32 +444,22 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 			txData.data.valveVelocity[i] = txData.data.valveVelocity[i+1];
 		}
 
-		txData.data.valveAngle[3] = hallEffect[0].valveAngle;
-		txData.data.valveAngleKalman[3] = hallEffect[0].valveAngleKalman;
-		txData.data.valveVelocity[3] = hallEffect[0].valveVelocity;
+		txData.data.valveAngle[3] = actuator[0].hallEffect.valveAngle;
+		txData.data.valveAngleKalman[3] = actuator[0].hallEffect.valveAngleKalman;
+		txData.data.valveVelocity[3] = actuator[0].hallEffect.valveVelocity;
 		profiler_hallEffect_new.end();
 
 
 		profiler_current_controller.start();
-		motors[0].updateCurrent(&EncoderValues[3] + 128);
+		actuator[0].updateCurrent(&EncoderValues[3] + 128);
 		for (int i=0; i<7; i++)
 			txData.data.current_subsample[i] = txData.data.current_subsample[i+1];
 		txData.data.current_subsample[7] = motors[0].getCurrent();
-
-//		for (int i=0; i<4; i++) {
-//			current_controller[i].rtU.current_feedback = motors[i].getCurrent();
-//	//		current_controller.rtU.current_ref = MOTORDUTY_OVERRIDE;
-//			current_controller[i].step();
-//			motors[i].setSpeed(current_controller[i].rtY.Duty);
-//		}
-
-		current_controller[0].rtU.current_feedback = motors[0].getCurrent();
-		current_controller[0].step();
-		motors[0].setSpeed(current_controller[0].rtY.Duty);
+		actuator[0].current_controller_step();
 
 		for (int i=0; i<7; i++)
 			txData.data.duty_subsample[i] = txData.data.duty_subsample[i+1];
-		txData.data.duty_subsample[7] = current_controller[0].rtY.Duty;
+		txData.data.duty_subsample[7] = actuator[0].currentController.rtY.Duty;
 
 		profiler_current_controller.end();
 

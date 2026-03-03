@@ -39,14 +39,8 @@
 // Message Pack
 typedef struct {
     uint32_t timestamp;
-//    float motor_duty;
     float current_measured;
     float current_demand;
-//    float encoderButt;
-//    float vel_measured;
-//    float motor_pos_kalman;
-//    float angleRaw;
-//    uint16_t current_raw;
     float valveAngle[4];
     float valveAngleKalman[4];
     float valveVelocity[4];
@@ -111,12 +105,6 @@ extern const uint8_t logHeaderSize;
 extern const uint16_t* logFormatID_ptr;
 extern const uint16_t sensorDataLength;
 
-extern HallEffect hallEffect[4];
-extern Kalman actuatorKalman[4];
-
-extern controller::current current_controller[4];
-extern controller::position position_controller[4];
-//extern controller::pressure pressure_controller[4];
 
 extern Actuator actuator[4];
 extern bool file_creation_ok;

@@ -7,12 +7,12 @@
 //
 // Code generated for Simulink model 'actuatorKalman'.
 //
-// Model version                  : 1.22
+// Model version                  : 1.27
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Feb  1 19:49:15 2026
+// C/C++ source code generated on : Tue Mar  3 23:48:09 2026
 //
 // Target selection: ert.tlc
-// Embedded hardware selection: STMicroelectronics->ST10/Super10
+// Embedded hardware selection: ARM Compatible->ARM Cortex-M
 // Code generation objectives:
 //    1. Execution efficiency
 //    2. RAM efficiency
@@ -46,14 +46,11 @@ class Kalman final
     real32_T Vel_Est;                  // '<Root>/Vel_Est'
   };
 
-  // Parameters (default storage)
-  struct P {
-    real_T Subsystem_lambda_RQ;        // Mask Parameter: Subsystem_lambda_RQ
-                                          //  Referenced by: '<S1>/lambda_RQ'
-
-    real_T UnitDelay_Pk_InitialCondition[4];// Expression: [0.155 65; 65 5.7e4]
-                                               //  Referenced by: '<S1>/Unit Delay_Pk'
-
+  // Real-time Model Data Structure
+  struct RT_MODEL {
+    const char_T * volatile errorStatus;
+    const char_T* getErrorStatus() const;
+    void setErrorStatus(const char_T* const volatile aErrorStatus);
   };
 
   // Copy Constructor
@@ -67,6 +64,9 @@ class Kalman final
 
   // Move Assignment Operator
   Kalman& operator= (Kalman &&) = delete;
+
+  // Real-Time Model get method
+  Kalman::RT_MODEL * getRTM();
 
   // External inputs
   ExtU rtU;
@@ -91,8 +91,8 @@ class Kalman final
   // Block states
   DW rtDW;
 
-  // Tunable parameters
-  static P rtP;
+  // Real-Time Model
+  RT_MODEL rtM;
 };
 
 //-
