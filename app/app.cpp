@@ -165,8 +165,8 @@ void bufferDataTask(void *pvParameters){
 			txData.data.pos_ref = actuator[0].positionController.rtU.pos_ref;
 			txData.data.pos_ref_rate_limited = actuator[0].positionController.rtY.pos_ref_rate_limited;
 			txData.data.speed_ref_rate_limited = actuator[0].positionController.rtY.speedDebug.ref_rate_limited;
-			txData.data.manifold_pressure = psSensors[0].getBar();
-			txData.data.nozzle_pressure = psSensors[1].getBar();
+			txData.data.manifold_pressure = psSensors[0].getPsi();
+			txData.data.nozzle_pressure = psSensors[1].getPsi();
 			txData.data.pressure_demand = actuator[0].pressureController.rtU.P_nozzle_demand;
 			txData.data.quaternion = quaternion;
 			txData.data.accels = accels;
@@ -231,7 +231,7 @@ void controllerTask(void *pvParameters){
 	for (int i= 0; i< 4; i++) {
 		actuator[i].positionController.rtU.SpeedFeedback = actuator[0].hallEffect.valveVelocity;
 		actuator[i].positionController.rtU.pos_ref = actuator[i].pressureController.rtY.position_demand;
-		actuator[i].pressureController.rtU.P_manifold = psSensors[0].getBar();
+		actuator[i].pressureController.rtU.P_manifold = psSensors[0].getPsi();
 //		pressure_controller[i].rtU.P_manifold = 2000;
 		actuator[i].pressureController.rtU.P_nozzle_demand = 0.0F;
 
@@ -252,17 +252,30 @@ void controllerTask(void *pvParameters){
 
 	    // USER CODE START
 
+	    if (time_sec<3.33f)
+	    	currentControllerGains.pressure.Kp = 0.3;
+	    else if (time_sec<6.66f)
+	    	currentControllerGains.pressure.Kp = 0.2;
+	    else if (time_sec<10)
+	    	currentControllerGains.pressure.Kp = 0.1;
+
 	    // Sinüs dalgası hareketi
 	    if (time_sec<10)
-	    	actuator[0].pressureController.rtU.P_nozzle_demand = 600+250*sin(2*M_PI*5*time_sec);
-	    else
+	    	if (fmod(time_sec,1.5)<0.5)
+		  	  actuator[0].pressureController.rtU.P_nozzle_demand = 750;
+	    	else if (fmod(time_sec,1.5)<1)
+	    		actuator[0].pressureController.rtU.P_nozzle_demand = 1500;
+	    	else
+	    		actuator[0].pressureController.rtU.P_nozzle_demand = 0;
+	    else if (time_sec<12)
 	    	actuator[0].pressureController.rtU.P_nozzle_demand = 0;
 
 	    // USER CODE END
 
 
 		for (int i=0; i<4; i++) {
-			actuator[i].pressureController.rtU.P_manifold = psSensors[0].getBar();
+			actuator[i].pressureController.rtU.P_nozzle = psSensors[1].getPsi();
+			actuator[i].pressureController.rtU.P_manifold = psSensors[0].getPsi();
 			actuator[i].pressure_controller_step();
 		}
 
@@ -366,6 +379,7 @@ void app_start(){
 		actuator[i].motor->initCurrent(&EncoderValues[3]);
 		actuator[i].hallEffect.calibrate();
 	}
+	psSensors[1].calibrate();
 
 
 

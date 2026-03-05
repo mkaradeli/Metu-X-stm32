@@ -11,30 +11,38 @@
 PressureSensor::PressureSensor(uint16_t calibration[12]){
 	for (int i = 0; i<13; i++)
 		this->calibration[i] = calibration[i];
+	this->psi_shift = 0;
 }
 
+void PressureSensor::calibrate(){
+	this->psi_shift = this->psi;
+}
 void PressureSensor::updatePS(uint16_t raw_value){
 	const uint16_t y[13] = {0, 100, 300, 500, 1100, 1500, 2100, 2500, 3100, 3500, 4100, 4300, 4400};
     // Clamp to bounds
     if (raw_value <= calibration[0]) {
-        bar = y[0];
+        psi = y[0];
     }
     if (raw_value >= calibration[NUM_POINTS - 1]) {
-        bar = y[NUM_POINTS - 1];
+        psi = y[NUM_POINTS - 1];
     }
 
     // Find interval
     for (uint8_t i = 0; i < NUM_POINTS - 1; i++) {
         if (raw_value <= calibration[i + 1]) {
             float t = static_cast<float>(raw_value - calibration[i]) / static_cast<float>(calibration[i + 1] - calibration[i]);
-            bar = y[i] + t * (y[i + 1] - y[i]);
-            return;
+            psi = y[i] + t * (y[i + 1] - y[i]);
+            break;
         }
     }
 
-    // Should never happen
-    bar =  y[NUM_POINTS - 1];
+    psi = psi - psi_shift;
 
+    // Should never happen
+	//psi =  y[NUM_POINTS - 1];
+
+
+    bar = psi * 0.0689475729;
 //	bar = ((raw_value - Q0) * P1 + (Q1 - raw_value) * P0) / (Q1 - Q0);
 }
 
