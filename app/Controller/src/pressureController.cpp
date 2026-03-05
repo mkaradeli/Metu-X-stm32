@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'pressureController'.
 //
-// Model version                  : 1.35
+// Model version                  : 1.39
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Mar  3 23:56:45 2026
+// C/C++ source code generated on : Wed Mar  4 22:38:37 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -28,7 +28,7 @@ namespace controller
   void pressure::step()
   {
     real32_T rtb_Min;
-    real32_T rtb_Saturation;
+    real32_T rtb_Sum;
 
     // Outputs for Enabled SubSystem: '<Root>/Subsystem' incorporates:
     //   EnablePort: '<S2>/Enable'
@@ -45,19 +45,20 @@ namespace controller
       //   Inport: '<Root>/P_manifold'
       //   Inport: '<Root>/P_nozzle_demand'
       //   Sum: '<S2>/Sum1'
+      //   Sum: '<S2>/Sum3'
 
-      rtb_Min = std::fmin(rtU.P_manifold - 0.07F * rtU.P_manifold,
-                          rtU.P_nozzle_demand);
+      rtb_Min = std::fmax(rtU.P_manifold - 0.07F * rtU.P_manifold,
+                          rtU.P_manifold - rtU.P_nozzle_demand);
 
       // Saturate: '<S3>/Saturation' incorporates:
       //   Inport: '<Root>/P_manifold'
 
       if (rtU.P_manifold > 5000.0F) {
-        rtb_Saturation = 5000.0F;
+        rtb_Sum = 5000.0F;
       } else if (rtU.P_manifold < 0.0F) {
-        rtb_Saturation = 0.0F;
+        rtb_Sum = 0.0F;
       } else {
-        rtb_Saturation = rtU.P_manifold;
+        rtb_Sum = rtU.P_manifold;
       }
 
       // End of Saturate: '<S3>/Saturation'
@@ -68,8 +69,8 @@ namespace controller
       //   RelationalOperator: '<S4>/UpperRelop'
       //   Switch: '<S4>/Switch'
 
-      if (rtb_Min > rtb_Saturation) {
-        rtb_Min = rtb_Saturation;
+      if (rtb_Min > rtb_Sum) {
+        rtb_Min = rtb_Sum;
       } else if (rtb_Min < 0.0F) {
         // Switch: '<S4>/Switch' incorporates:
         //   Constant: '<S3>/Constant'
@@ -84,7 +85,7 @@ namespace controller
       //   Product: '<S3>/Product'
       //   UnaryMinus: '<S3>/Unary Minus'
 
-      rtb_Min = (-(1.0F / rtb_Saturation * rtb_Min) + 1.0F) * 1.08731103F;
+      rtb_Sum = (-(1.0F / rtb_Sum * rtb_Min) + 1.0F) * 1.08731103F;
 
       // Sum: '<S2>/Sum' incorporates:
       //   Bias: '<S3>/Bias1'
@@ -99,8 +100,8 @@ namespace controller
       //   Sqrt: '<S3>/Sqrt'
       //   Sum: '<S2>/Sum2'
 
-      rtb_Min = std::sqrt(std::fmax(rtb_Min / (-51.8534F * rtb_Min + 52.8534F),
-        0.0F)) * 1080.0F + (rtU.P_nozzle - rtU.P_nozzle_demand) *
+      rtb_Min = std::sqrt(std::fmax(rtb_Sum / (-51.8534F * rtb_Sum + 52.8534F),
+        0.0F)) * 1080.0F + (rtU.P_nozzle_demand - rtU.P_nozzle) *
         currentControllerGains.pressure.Kp;
 
       // Saturate: '<S2>/Saturation'

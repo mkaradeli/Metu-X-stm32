@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'currentController'.
 //
-// Model version                  : 1.113
+// Model version                  : 1.118
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Mar  3 23:43:52 2026
+// C/C++ source code generated on : Wed Mar  4 22:38:20 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -109,6 +109,7 @@ namespace controller
 //  These blocks were eliminated from the model due to optimizations:
 //
 //  Block '<S3>/DataTypeProp' : Unused code path elimination
+//  Block '<S2>/Gain3' : Unused code path elimination
 //  Block '<S3>/Downcast' : Eliminate redundant data type conversion
 
 

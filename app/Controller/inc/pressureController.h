@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'pressureController'.
 //
-// Model version                  : 1.35
+// Model version                  : 1.39
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Mar  3 23:56:45 2026
+// C/C++ source code generated on : Wed Mar  4 22:38:37 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -179,6 +179,10 @@ namespace controller
 //-
 //  These blocks were eliminated from the model due to optimizations:
 //
+//  Block '<S2>/Scope' : Unused code path elimination
+//  Block '<S2>/Scope1' : Unused code path elimination
+//  Block '<S2>/Scope2' : Unused code path elimination
+//  Block '<S2>/Scope3' : Unused code path elimination
 //  Block '<S4>/Data Type Duplicate' : Unused code path elimination
 //  Block '<S4>/Data Type Propagation' : Unused code path elimination
 

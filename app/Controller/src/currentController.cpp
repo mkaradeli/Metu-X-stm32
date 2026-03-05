@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'currentController'.
 //
-// Model version                  : 1.113
+// Model version                  : 1.118
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Mar  3 23:43:52 2026
+// C/C++ source code generated on : Wed Mar  4 22:38:20 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -57,7 +57,7 @@ namespace controller
       }
 
       // Gain: '<S2>/Gain2' incorporates:
-      //   Gain: '<S2>/Gain5'
+      //   Gain: '<S2>/Gain1'
       //   Inport: '<Root>/current_feedback'
       //   Inport: '<Root>/current_ref'
       //   Sum: '<S2>/Sum'
