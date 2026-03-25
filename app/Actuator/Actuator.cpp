@@ -18,8 +18,8 @@ Actuator::Actuator(uint16_t* encoder_adc_buffer,
 	this-> psSensor = psSensor;
 	this->motor = motor;
 //	this->motorKalman = kalman;
-	pressureController.initialize();
-	positionController.initialize();
+	actuatorController.initialize();
+//	positionController.initialize();
 	currentController.initialize();
 
 }
@@ -35,18 +35,18 @@ void Actuator::current_controller_step() {
 	this->motor->setSpeed(this->currentController.rtY.Duty);
 };
 
-void Actuator::position_controller_step() {
-	this->positionController.rtU.SpeedFeedback = this->hallEffect.valveVelocity;
-	this->positionController.rtU.pos_feedback = this->hallEffect.valveAngleKalman;
-	this->positionController.step();
-	this->currentController.rtU.current_ref = this->positionController.rtY.currentDemand;
+void Actuator::actuator_controller_step() {
+	this->actuatorController.rtU.SpeedFeedback = this->hallEffect.valveVelocity;
+	this->actuatorController.rtU.pos_feedback = this->hallEffect.valveAngleKalman;
+	this->actuatorController.step();
+	this->currentController.rtU.current_ref = this->actuatorController.rtY.currentDemand;
 }
 
-void Actuator::pressure_controller_step() {
-	this->pressureController.step();
-	this->positionController.rtU.pos_ref = this->pressureController.rtY.position_demand;
-	this->position_controller_step();
-}
+//void Actuator::pressure_controller_step() {
+//	this->pressureController.step();
+//	this->positionController.rtU.pos_ref = this->pressureController.rtY.position_demand;
+//	this->position_controller_step();
+//}
 
 void Actuator::updateHallEffect() {
 	this->hallEffect.update_subBuffer();

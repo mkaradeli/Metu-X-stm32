@@ -5,11 +5,11 @@
 //
 // File: rtwtypes.h
 //
-// Code generated for Simulink model 'pressureController'.
+// Code generated for Simulink model 'actuatorController'.
 //
-// Model version                  : 1.39
+// Model version                  : 1.43
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Wed Mar  4 22:38:37 2026
+// C/C++ source code generated on : Sat Mar 21 17:05:46 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M

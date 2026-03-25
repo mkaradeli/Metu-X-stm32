@@ -26,9 +26,12 @@
 #include "encoder.hpp"
 #include "Actuator.hpp"
 
+#include "TaskManager.hpp"
+
+
 #include "currentController.h"
-#include "positionController.h"
-#include "pressureController.h"
+#include "actuatorController.h"
+
 
 #include "cmsis_os.h"
 
@@ -109,6 +112,6 @@ extern const uint16_t sensorDataLength;
 extern Actuator actuator[4];
 extern bool file_creation_ok;
 
-
+//extern TaskManager taskManager;
 //extern int lastWriteDone;
 #endif /* GLOBALS_HPP_ */
