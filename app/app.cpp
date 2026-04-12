@@ -32,7 +32,7 @@
 
 
 
-const char logHeader[] = "logger a quaternion, linear acceleration ve lidar datalari eklendi.";
+const char logHeader[] = "Konik geniş yarıçaplı lüleler için basınç testi";
 
 
 const char* logHeader_ptr = &logHeader[0];
@@ -158,7 +158,7 @@ void bufferDataTask(void *pvParameters){
 	uint32_t delay_flag = micros();
 	for(;;){
 		osDelay(1);
-		if ((micros()-start_flag) < 30 * 1e6){    // Log alma suresi 10 saniyeden 60 saniyeye arttirildi
+		if ((micros()-start_flag) < 60 * 1e6){    // Log alma suresi 10 saniyeden 60 saniyeye arttirildi
 
 			txData.data.timestamp = micros();
 			txData.data.current_measured = motors[0].getCurrent();
@@ -228,7 +228,7 @@ void controllerTask(void *pvParameters){
 //		pressure_controller[i].initialize();
 
 	if (mount_ok and file_creation_ok)
-		controller_mode = controller_modes::PRESSURE;
+		controller_mode = controller_modes::POSITION;
 
 	for (int i= 0; i< 4; i++) {
 		actuator[i].actuatorController.rtU.pos_feedback = actuator[0].hallEffect.valveAngle;
@@ -237,14 +237,9 @@ void controllerTask(void *pvParameters){
 		actuator[i].actuatorController.rtU.P_nozzle_demand = 0.0F;
 
 	}
-
+	float dongu_sonu = 1.0;
 	float sayac = 1.0; // Rampa araliklarini ayarlamak icin degisken
-	float period = 1.0; // 1 saniyelik periyot
-
-						// Sinüs dalgası parametreleri
-	float amplitude = 60.0;  // Genlik (±90 pozisyon)
-	float frequency = 5.0;     // Frekans (Hz) - 1 Hz = saniyede 1 tam dalga
-	float offset = 600.0;        // DC offset (ortalama pozisyon)
+	float period = 0.150; // 0.150 saniyelik periyot
 
 	for(;;){
 	    osDelay(1);
@@ -253,29 +248,36 @@ void controllerTask(void *pvParameters){
 
 	    // USER CODE START
 
-//	    if (time_sec<3.33f)
-//	    	currentControllerGains.pressure.Kp = 0.3;
-//	    else if (time_sec<6.66f)
-//	    	currentControllerGains.pressure.Kp = 0.2;
-//	    else if (time_sec<10)
-//	    	currentControllerGains.pressure.Kp = 0.1;
+	    if (time_sec < 1) {
+	    		controller_mode = controller_modes::POSITION;
+	   	        actuator[0].actuatorController.rtU.pos_ref_ext = 0;
+	   	    }
+	   	    else if (time_sec < sayac + period && time_sec >= sayac && sayac <= 60) {
+	   	        actuator[0].actuatorController.rtU.pos_ref_ext = 200;
+	   	    }
+	   	    else if (time_sec < sayac + 2 * period && time_sec >= period + sayac && sayac <= 60) {
+	   	        actuator[0].actuatorController.rtU.pos_ref_ext = 300;
+	   	    }
+	   	    else if (time_sec < sayac + 3 * period && time_sec >= 2 * period + sayac && sayac <= 60) {
+	   	        actuator[0].actuatorController.rtU.pos_ref_ext = 400;
+	   	    }
+	   	    else if (time_sec < sayac + 4 * period && time_sec >= 3 * period + sayac && sayac <= 60) {
+	   	        actuator[0].actuatorController.rtU.pos_ref_ext = 500;
+	   	    }
+	   	    else if (time_sec < sayac + 5 * period && time_sec >= 4 * period + sayac && sayac <= 60) {
+	   	        actuator[0].actuatorController.rtU.pos_ref_ext = 400;
+	   	    }
+	   	    else if (time_sec < sayac + 6 * period && time_sec >= 5 * period + sayac && sayac <= 60) {
+	   	        actuator[0].actuatorController.rtU.pos_ref_ext = 300;
+	   	    }
+	   	    else if (time_sec < sayac + 7 * period && time_sec >= 6 * period + sayac && sayac <= 60) {
+	   	    	dongu_sonu = sayac + 6*period;
+	   	    	sayac = dongu_sonu;
+	   	    }
 
-	    // Sinüs dalgası hareketi
-	    if (time_sec<120)
-	    	if (fmod(time_sec,3)<0.5)
-		  	  actuator[0].actuatorController.rtU.P_nozzle_demand = 1000;
-	    	else if (fmod(time_sec,3)<1)
-	    		actuator[0].actuatorController.rtU.P_nozzle_demand = 500;
-	    	else if (fmod(time_sec,3)<2.5)
-	    		actuator[0].actuatorController.rtU.P_nozzle_demand = sin(5*PI*2*time_sec)*150 + 600;
-	    	else
-	    		actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
-	    else if (time_sec<121){
-	    	actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
-			if (controller_mode == controller_modes::PRESSURE)
-				controller_mode = controller_modes::POSITION;
-			actuator[0].actuatorController.rtU.pos_ref_ext = 0;
-	    }
+	   	    else if (time_sec < 61 && time_sec >= 60) {
+	   	        actuator[0].actuatorController.rtU.pos_ref_ext = 10; // kapat
+	   	    }
 
 	    // USER CODE END
 
