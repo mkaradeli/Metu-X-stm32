@@ -1,5 +1,0 @@
-../app/SDCard/src/sd_diskio_spi.c:22:9:SD_disk_status	2
-../app/SDCard/src/sd_diskio_spi.c:48:9:SD_disk_ioctl	6
-../app/SDCard/src/sd_diskio_spi.c:28:9:SD_disk_initialize	2
-../app/SDCard/src/sd_diskio_spi.c:35:9:SD_disk_read	3
-../app/SDCard/src/sd_diskio_spi.c:42:9:SD_disk_write	3

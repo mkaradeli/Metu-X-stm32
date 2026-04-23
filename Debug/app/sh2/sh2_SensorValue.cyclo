@@ -1,3 +1,0 @@
-../app/sh2/sh2_SensorValue.c:81:12:decodeGameRotationVector	1
-../app/sh2/sh2_SensorValue.c:91:12:decodeRawAccelerometer	1
-../app/sh2/sh2_SensorValue.c:41:5:sh2_decodeSensorEvent	4

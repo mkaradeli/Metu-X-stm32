@@ -1,8 +1,0 @@
-../app/src/app.cpp:38:6:void lidarTask(void*)	1
-../app/src/app.cpp:47:6:void psTask(void*)	1
-../app/src/app.cpp:54:6:void mpTask(void*)	2
-../app/src/app.cpp:65:6:void app_start()	1
-../app/src/app.cpp:115:6:void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef*, uint16_t)	3
-../app/src/app.cpp:125:6:void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef*)	5
-../app/src/app.cpp:139:1:void __static_initialization_and_destruction_0()	1
-../app/src/app.cpp:139:1:cpp)	1

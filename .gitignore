@@ -87,3 +87,5 @@ codegen/
 
 # Cloud based storage dotfile
 .MATLABDriveTag
+
+Debug/
