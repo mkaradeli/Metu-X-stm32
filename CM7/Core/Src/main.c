@@ -58,6 +58,8 @@ void LED_Counter_Tick(void);
 COM_InitTypeDef BspCOMInit;
 __IO uint32_t BspButtonState = BUTTON_RELEASED;
 
+TIM_HandleTypeDef htim3;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -65,13 +67,14 @@ __IO uint32_t BspButtonState = BUTTON_RELEASED;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+volatile uint32_t timer_counter=0;
 /* USER CODE END 0 */
 
 /**
@@ -138,7 +141,9 @@ Error_Handler();
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+  HAL_TIM_Base_Start_IT(&htim3);  /* _IT = interrupt ile */
 
   /* USER CODE END 2 */
 
@@ -175,9 +180,10 @@ Error_Handler();
 
   uint32_t timeOfLastToggleForGreen=uwTick;
   uint32_t timeOfLastPrint=uwTick;
+  volatile uint32_t timer_counter_last_print=0;
   printf(CLR_SCREEN);
-  uint32_t hclk = HAL_RCC_GetHCLKFreq();
-
+//  uint32_t hclk = HAL_RCC_GetHCLKFreq();
+  volatile uint32_t dummy=0;
   while (1)
   {
 
@@ -198,10 +204,14 @@ Error_Handler();
 //        	time_sec = uwTick);
 
         }
-    if (timeOfLastPrint<=uwTick+1e3){
+    if (uwTick >= timeOfLastPrint+1000){
+    	dummy=timer_counter - timer_counter_last_print;
+    	timer_counter_last_print = timer_counter;
     	printf("Welcome to STM32 world ! counter=%d\n\r", (int16_t)(uwTick/1e3));
-    	printf("%d\n",HAL_RCC_GetSysClockFreq()/1000000);
-    	timeOfLastPrint+= 1e3;
+    	printf("%ld, timer counter = %ld\n\r",HAL_RCC_GetSysClockFreq()/1000000,dummy);
+//    	timer_counter_last_print = timer_counter;
+
+    	timeOfLastPrint+= 1000;
     }
 
 
@@ -273,6 +283,51 @@ void SystemClock_Config(void)
   /** Enables the Clock Security System
   */
   HAL_RCC_EnableCSS();
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 239;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 124;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
 }
 
 /**
@@ -352,6 +407,13 @@ void LED_Counter_Tick(void)
     if (changed & (1 << 1)) BSP_LED_Toggle(LED_YELLOW);
     if (changed & (1 << 2)) BSP_LED_Toggle(LED_RED);
 }
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+//    if (htim->Instance != TIM3) return;
+    	timer_counter+=1; /* Nucleo yeşil LED → PB0 */
+}
+
 /* USER CODE END 4 */
 
 /**
