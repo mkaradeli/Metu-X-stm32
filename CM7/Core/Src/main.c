@@ -65,6 +65,7 @@ TIM_HandleTypeDef htim3;
 /* USER CODE BEGIN PV */
 volatile uint16_t adc_dma_buf[16];
 volatile uint8_t adc_data_ready = 0;
+volatile uint32_t adc_buffer_full_counter = 0;
 
 /* USER CODE END PV */
 
@@ -222,7 +223,7 @@ Error_Handler();
     	dummy=timer_counter - timer_counter_last_print;
     	timer_counter_last_print = timer_counter;
     	printf("Welcome to STM32 world ! counter=%d\n\r", (int16_t)(uwTick/1e3));
-    	printf("%ld, timer counter = %ld\n\r",HAL_RCC_GetSysClockFreq()/1000000,dummy);
+    	printf("%ld, timer counter = %ld, %ld\n\r",HAL_RCC_GetSysClockFreq()/1000000,dummy, adc_buffer_full_counter);
 //    	timer_counter_last_print = timer_counter;
 
     	timeOfLastPrint+= 1000;
@@ -562,6 +563,7 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
     if (hadc->Instance != ADC2) return;
 
     adc_data_ready = 1;
+    adc_buffer_full_counter += 1;
 }
 
 /* USER CODE END 4 */
