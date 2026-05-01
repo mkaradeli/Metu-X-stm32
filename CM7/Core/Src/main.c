@@ -57,15 +57,20 @@ void LED_Counter_Tick(void);
 
 COM_InitTypeDef BspCOMInit;
 __IO uint32_t BspButtonState = BUTTON_RELEASED;
+ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
+DMA_HandleTypeDef hdma_adc1;
 DMA_HandleTypeDef hdma_adc2;
 
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
 volatile uint16_t adc_dma_buf[16];
+volatile uint16_t adc_dma_buf_encoder[16*4];
 volatile uint8_t adc_data_ready = 0;
 volatile uint32_t adc_buffer_full_counter = 0;
+volatile uint32_t adc_buffer_full_counter_encoder = 0;
 
 /* USER CODE END PV */
 
@@ -75,6 +80,8 @@ static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM4_Init(void);
+static void MX_ADC1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -82,6 +89,8 @@ static void MX_TIM3_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 volatile uint32_t timer_counter=0;
+volatile uint32_t timer_counter_tim4=0;
+volatile uint32_t timer_counter_tim4_delta=0;
 /* USER CODE END 0 */
 
 /**
@@ -149,14 +158,21 @@ Error_Handler();
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
+//  MX_ADC1_Init();
   MX_ADC2_Init();
   MX_TIM3_Init();
+  MX_TIM4_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   HAL_ADCEx_Calibration_Start(&hadc2, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
   HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc_dma_buf, 16);
+
+  HAL_ADCEx_Calibration_Start(&hadc1, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_dma_buf_encoder, 64);
 //  HAL_TIM_Base_Start(&htim3);
 
   HAL_TIM_Base_Start_IT(&htim3);  /* _IT = interrupt ile */
+  HAL_TIM_Base_Start_IT(&htim4);  /* _IT = interrupt ile */
 
 
   /* USER CODE END 2 */
@@ -182,7 +198,7 @@ Error_Handler();
 
   /* USER CODE BEGIN BSP */
   /* -- Sample board code to send message over COM1 port ---- */
-  printf("Welcome to STM32 world !\n\r");
+//  printf("Welcome to STM32 world !\n\r");
   /* -- Sample board code to switch on leds ---- */
   BSP_LED_On(LED_GREEN);
   BSP_LED_On(LED_YELLOW);
@@ -195,6 +211,7 @@ Error_Handler();
   uint32_t timeOfLastToggleForGreen=uwTick;
   uint32_t timeOfLastPrint=uwTick;
   volatile uint32_t timer_counter_last_print=0;
+  volatile uint32_t timer_counter_last_print_tim4=0;
   printf(CLR_SCREEN);
 //  uint32_t hclk = HAL_RCC_GetHCLKFreq();
   volatile uint32_t dummy=0;
@@ -222,8 +239,36 @@ Error_Handler();
 //		printf("%ld ",__HAL_TIM_GET_COUNTER(&htim3));
     	dummy=timer_counter - timer_counter_last_print;
     	timer_counter_last_print = timer_counter;
+    	timer_counter_tim4_delta=timer_counter_tim4 - timer_counter_last_print_tim4;
+		timer_counter_last_print_tim4 = timer_counter_tim4;
+		volatile uint16_t encoder_buffer_full = adc_buffer_full_counter_encoder;
+		adc_buffer_full_counter_encoder=0;
     	printf("Welcome to STM32 world ! counter=%d\n\r", (int16_t)(uwTick/1e3));
-    	printf("%ld, timer counter = %ld, %ld\n\r",HAL_RCC_GetSysClockFreq()/1000000,dummy, adc_buffer_full_counter);
+    	printf("%ld, %ld\n\r",HAL_RCC_GetSysClockFreq()/1000000, adc_buffer_full_counter);
+    	printf("timer 3 counter = %ld, should be 8k\n\r",dummy);
+    	printf("timer 4 counter = %ld, should be 64k\n\r", timer_counter_tim4_delta);
+    	uint32_t adc_src = (RCC->D3CCIPR & RCC_D3CCIPR_ADCSEL_Msk) >> RCC_D3CCIPR_ADCSEL_Pos;
+
+    	printf("ADC src: %lu Hz\n\r", adc_src);
+
+    	printf("adc1 fill rate = %d\n\r", encoder_buffer_full);
+    	uint32_t presc = (ADC12_COMMON->CCR & ADC_CCR_PRESC_Msk) >> ADC_CCR_PRESC_Pos;
+    	printf("adc prescaler = %ld\n\r",presc);
+    	// Is PLL2 itself running?
+    	uint32_t pll2_on  = (RCC->CR & RCC_CR_PLL2ON) ? 1 : 0;
+    	uint32_t pll2_rdy = (RCC->CR & RCC_CR_PLL2RDY) ? 1 : 0;
+
+    	// Is PLL2P output enabled?
+    	uint32_t pll2p_en = (RCC->PLLCFGR & RCC_PLLCFGR_DIVP2EN) ? 1 : 0;
+
+    	printf("PLL2 ON=%lu RDY=%lu  PLL2P_EN=%lu\n", pll2_on, pll2_rdy, pll2p_en);
+    	uint32_t hclk = HAL_RCC_GetHCLKFreq();
+    	printf("HCLK: %lu Hz\n\r", hclk);
+
+    	// And the AHB prescaler that produces it from sysclk
+    	uint32_t sysclk = HAL_RCC_GetSysClockFreq();
+    	printf("SYSCLK: %lu Hz\n\r", sysclk);
+//    	adc_buffer_full_counter_encoder=0;
 //    	timer_counter_last_print = timer_counter;
 
     	timeOfLastPrint+= 1000;
@@ -231,26 +276,11 @@ Error_Handler();
     	if (adc_data_ready)
     	        {
     	            adc_data_ready = 0;
-
-//    	            uint16_t ch_3  = adc_dma_buf[0];  /* Rank 1 */
-//    	            uint16_t ch_5  = adc_dma_buf[1];  /* Rank 2 */
-//    	            uint16_t ch_6  = adc_dma_buf[2];  /* Rank 3 */
-//    	            uint16_t ch_15 = adc_dma_buf[3];  /* Rank 4 */
     	            for (int i=0;i<16;i++){
     	            	printf("%d ", adc_dma_buf[i]);
-
     	            }
-//    	            micros();
-
     	            printf("\n\r");
 
-    	            /* Voltaja çevir (3.3V, 16-bit) */
-//    	            float v0 = ch_3  * 3.3f / 65535.0f;
-//    	            float v1 = ch_5  * 3.3f / 65535.0f;
-//    	            float v2 = ch_6  * 3.3f / 65535.0f;
-//    	            float v3 = ch_15 * 3.3f / 65535.0f;
-
-//    	            printf("%d %d %d %d\n\r", ch_3, ch_5, ch_6, ch_15);
     	        }
     }
 
@@ -323,6 +353,100 @@ void SystemClock_Config(void)
   /** Enables the Clock Security System
   */
   HAL_RCC_EnableCSS();
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_MultiModeTypeDef multimode = {0};
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Common config
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.Resolution = ADC_RESOLUTION_16B;
+  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
+  hadc1.Init.LowPowerAutoWait = DISABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.NbrOfConversion = 4;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_EXTERNALTRIG_T4_TRGO;
+  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_RISING;
+  hadc1.Init.ConversionDataManagement = ADC_CONVERSIONDATA_DMA_CIRCULAR;
+  hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
+  hadc1.Init.LeftBitShift = ADC_LEFTBITSHIFT_NONE;
+  hadc1.Init.OversamplingMode = DISABLE;
+  hadc1.Init.Oversampling.Ratio = 1;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure the ADC multi-mode
+  */
+  multimode.Mode = ADC_MODE_INDEPENDENT;
+  if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_18;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  sConfig.OffsetSignedSaturation = DISABLE;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_10;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Rank = ADC_REGULAR_RANK_3;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Rank = ADC_REGULAR_RANK_4;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
 }
 
 /**
@@ -458,6 +582,51 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 124;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 29;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -470,6 +639,9 @@ static void MX_DMA_Init(void)
   /* DMA1_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
 
 }
 
@@ -554,16 +726,22 @@ void LED_Counter_Tick(void)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-//    if (htim->Instance != TIM3) return;
+    if (htim->Instance == TIM3)
     	timer_counter+=1; /* Nucleo yeşil LED → PB0 */
+    else if (htim->Instance == TIM4)
+    	timer_counter_tim4 += 1;
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-    if (hadc->Instance != ADC2) return;
+    if (hadc->Instance == ADC2){
+		adc_data_ready = 1;
+		adc_buffer_full_counter += 1;
+    }
+    else if (hadc->Instance == ADC1){
+    	adc_buffer_full_counter_encoder +=1;
+    }
 
-    adc_data_ready = 1;
-    adc_buffer_full_counter += 1;
 }
 
 /* USER CODE END 4 */
