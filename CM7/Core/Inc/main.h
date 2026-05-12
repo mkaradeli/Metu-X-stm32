@@ -49,8 +49,23 @@ extern "C" {
 
 /* Exported macro ------------------------------------------------------------*/
 /* USER CODE BEGIN EM */
+#define HX711_DOUT_GPIO_Port GPIOG
+#define HX711_DOUT_Pin GPIO_PIN_9
+
+#define HX711_SCK_GPIO_Port GPIOG
+#define HX711_SCK_Pin GPIO_PIN_12
+
+#define LEFT_EN_1_GPIO_Port GPIOE
+#define LEFT_EN_1_Pin GPIO_PIN_10
+
+#define RIGHT_EN_1_GPIO_Port GPIOE
+#define RIGHT_EN_1_Pin GPIO_PIN_12
+
+
 
 /* USER CODE END EM */
+
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
