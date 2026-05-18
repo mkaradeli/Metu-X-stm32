@@ -45,7 +45,12 @@ MEMORY
 {
 FLASH (rx)     : ORIGIN = 0x08100000, LENGTH = 1024K
 RAM (xrw)      : ORIGIN = 0x10000000, LENGTH = 288K
+RAM_D2 (xrw)   : ORIGIN = 0x30002000, LENGTH = 288K
+SHARED_RAM (xrw) : ORIGIN = 0x38000000, LENGTH = 64K
 }
+
+  
+
 
 /* Define output sections */
 SECTIONS
@@ -172,6 +177,12 @@ SECTIONS
   }
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
+  
+  .shared_memory (NOLOAD) :
+  {
+  	KEEP(*(.shared_memory))
+    KEEP(*(.shared_memory*))
+  } > SHARED_RAM
 }
 
 
