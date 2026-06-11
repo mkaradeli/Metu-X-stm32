@@ -34,7 +34,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+//#include "sd_functions.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -60,6 +60,12 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SD_CS_Pin GPIO_PIN_10
+#define SD_CS_GPIO_Port GPIOB
+#define LIDAR_UART_TX_Pin GPIO_PIN_6
+#define LIDAR_UART_TX_GPIO_Port GPIOC
+#define LIDAR_UART_RX_Pin GPIO_PIN_7
+#define LIDAR_UART_RX_GPIO_Port GPIOC
 
 /* USER CODE BEGIN Private defines */
 

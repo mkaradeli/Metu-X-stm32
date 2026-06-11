@@ -89,5 +89,6 @@ codegen/
 .MATLABDriveTag
 
 Debug/
-
+Release/
 .DS_Store
+

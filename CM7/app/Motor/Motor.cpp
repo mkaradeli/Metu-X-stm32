@@ -9,16 +9,16 @@
 #include "Motor.hpp"
 
 Motor::Motor(
-		uint8_t Id,
-		bool MagnetPolarity,
+//		uint8_t Id,
+//		bool MagnetPolarity,
 		GPIO_TypeDef* LeftPort,
 		uint16_t LeftPin,
 		GPIO_TypeDef* RightPort,
 		uint16_t RightPin,
 		TIM_HandleTypeDef* PwmTimer,
 		uint8_t PwmChannel){
-	this->id = Id;
-	this->magnetPolarity = MagnetPolarity;
+//	this->id = Id;
+//	this->magnetPolarity = MagnetPolarity;
 	this->leftPort = LeftPort;
 	this->leftPin = LeftPin;
 	this->rightPort = RightPort;

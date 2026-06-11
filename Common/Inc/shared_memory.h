@@ -7,10 +7,10 @@
 
 #ifndef INC_SHARED_MEMORY_H_
 #define INC_SHARED_MEMORY_H_
-
-#define SHARED_MEM_SIZE 64*1024
-
+//#pragma once
+#define SHARED_MEM_SIZE 10*1024
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef struct __attribute__((aligned(4))) {
     uint32_t timestamp;
@@ -43,21 +43,12 @@ typedef struct __attribute__((aligned(4))) {
 #define BUFFER_PACKET_COUNT (SHARED_MEM_SIZE / PACKET_SIZE )
 #define BUFFER_SIZE (PACKET_SIZE * BUFFER_PACKET_COUNT)
 
-//extern SensorData_t sensor_data;
-//extern SensorData_t sensor_data_buffer_a[BUFFER_PACKET_COUNT/2-1];
-//extern SensorData_t sensor_data_buffer_b[BUFFER_PACKET_COUNT/2-1];
-//extern uint8_t ready_to_write_a;
-//extern uint8_t ready_to_write_b;
 
 
-__attribute__((section(".shared_memory"), used))
-SensorData_t sensor_data_buffer_a[BUFFER_PACKET_COUNT/2-1];
-__attribute__((section(".shared_memory"), used))
-SensorData_t sensor_data_buffer_b[BUFFER_PACKET_COUNT/2-1];
-__attribute__((section(".shared_memory"), used))
-uint8_t ready_to_write_a;
-__attribute__((section(".shared_memory"), used))
-uint8_t ready_to_write_b;
-
+extern SensorData_t sensor_data_buffer_a[BUFFER_PACKET_COUNT/2-1];
+extern SensorData_t sensor_data_buffer_b[BUFFER_PACKET_COUNT/2-1];
+extern uint8_t ready_to_write_a;
+extern uint8_t ready_to_write_b;
+extern uint8_t printf_buffer[4096];
 
 #endif /* INC_SHARED_MEMORY_H_ */

@@ -30,6 +30,9 @@
 #include <sys/time.h>
 #include <sys/times.h>
 
+#include "stm32h7xx_nucleo.h"
+
+#include <shared_memory.h>
 
 /* Variables */
 extern int __io_putchar(int ch) __attribute__((weak));
@@ -76,15 +79,18 @@ __attribute__((weak)) int _read(int file, char *ptr, int len)
 
   return len;
 }
-
+extern UART_HandleTypeDef hcom_uart[1];
 __attribute__((weak)) int _write(int file, char *ptr, int len)
 {
   (void)file;
   int DataIdx;
-
+  ready_to_write_a++;
+//  uint8_t ch = 'A';
   for (DataIdx = 0; DataIdx < len; DataIdx++)
   {
     __io_putchar(*ptr++);
+
+//    HAL_UART_Transmit (&hcom_uart [0], (uint8_t *) &ch, 1, COM_POLL_TIMEOUT);
   }
   return len;
 }

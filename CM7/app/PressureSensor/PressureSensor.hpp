@@ -12,9 +12,9 @@
 
 class PressureSensor {
 public:
-	PressureSensor(uint16_t calibration[13]);
+	PressureSensor(uint16_t calibration[13], uint16_t *raw_value);
 	void calibrate();
-	void updatePS(uint16_t raw_value);
+	void updatePS();
 	float getBar(){
 		return this->bar;
 	}
@@ -23,6 +23,7 @@ public:
 	}
 private:
 //	uint8_t id;
+	uint16_t * raw_value;
 	uint16_t calibration[13];
 	float psi_shift;
 	float bar;

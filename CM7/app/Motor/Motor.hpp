@@ -26,8 +26,8 @@ enum Direction {
 class Motor{
 public:
 	Motor(
-			uint8_t Id,
-			bool MagnetPolarity,
+//			uint8_t Id,
+//			bool MagnetPolarity,
 			GPIO_TypeDef* LeftPort,
 			uint16_t LeftPin,
 			GPIO_TypeDef* RightPort,
@@ -39,7 +39,7 @@ public:
 	float getDutyCycle();
 
 private:
-	uint8_t id;
+//	uint8_t id;
 	float dutyCycle = 0;
 	Direction dir = Direction::Brake;
 
@@ -52,7 +52,7 @@ private:
     TIM_HandleTypeDef* pwmTimer;
     uint8_t pwmChannel;
 
-	bool magnetPolarity = 0;
+//	bool magnetPolarity = 0;
 	uint32_t CCR = 0;
 
 
