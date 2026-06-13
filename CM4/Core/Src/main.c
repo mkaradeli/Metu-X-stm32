@@ -18,7 +18,12 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "fatfs.h"
+#include "i2c.h"
+#include "spi.h"
+#include "usart.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -28,6 +33,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include "task_timer.h"
+//#include <stdbool.h>
 
 //#include "../../Ap/FATFS_SD/FATFS_SD.h"
 
@@ -64,19 +71,10 @@
 
 /* Private variables ---------------------------------------------------------*/
 
-I2C_HandleTypeDef hi2c1;
-
-SPI_HandleTypeDef hspi1;
-SPI_HandleTypeDef hspi2;
-DMA_HandleTypeDef hdma_spi1_rx;
-DMA_HandleTypeDef hdma_spi1_tx;
-
-UART_HandleTypeDef huart2;
-UART_HandleTypeDef huart6;
-DMA_HandleTypeDef hdma_usart2_tx;
-
 /* USER CODE BEGIN PV */
 COM_InitTypeDef BspCOMInit;
+//timeOfLastToggleForGreen
+uint32_t timeOfLastToggleForGreen=false;
 //__attribute__((section(".shared_memory"), used))
 //SensorData_t sensor_data_buffer_a[BUFFER_PACKET_COUNT/2-1];
 //__attribute__((section(".shared_memory"), used))
@@ -92,18 +90,34 @@ COM_InitTypeDef BspCOMInit;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-static void MX_DMA_Init(void);
-static void MX_GPIO_Init(void);
-static void MX_USART2_UART_Init(void);
-static void MX_SPI1_Init(void);
-static void MX_I2C1_Init(void);
-static void MX_SPI2_Init(void);
-static void MX_USART6_UART_Init(void);
 /* USER CODE BEGIN PFP */
+static void SD_Card_Test(void);
+void LED_Counter_Tick(void);
+
+FATFS FatFs;
+FIL Fil;
+FRESULT FR_Status;
+FATFS *FS_Ptr;
+UINT RWC, WWC; // Read/Write Word Counter
+DWORD FreeClusters;
+uint32_t TotalSize, FreeSpace;
+
 
 //static void SD_Card_Test(void);
 char TxBuffer[250];
+int left_filename_index = 0;
+int right_filename_index = 0;
+FIL logFile;
+FATFS FatFs;
+int sd_create_log_file(void);
+static int sd_mount();
 
+FRESULT disk_mounted= FR_DISK_ERR;
+FRESULT file_open = FR_DISK_ERR;
+
+
+
+bool disk_mounted = false;
 
 /* USER CODE END PFP */
 
@@ -114,6 +128,10 @@ static volatile uint8_t  tx_ring[TX_RING_SZ];
 static volatile uint16_t tx_head = 0;   // written by _write
 static volatile uint16_t tx_tail = 0;   // advanced when DMA completes
 static volatile uint8_t  tx_busy = 0;
+
+task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
+task_timer_t printf_task = {1000, 0};
+//task_timer_t sd_ = {100, 0}; // period ms, start ms
 
 //static uint8_t  uart_tx_buf[256];
 static volatile bool uart_tx_busy = false;
@@ -126,67 +144,6 @@ int _write(int file, char *ptr, int len)
     return (int)rb_push_n(ptr, (size_t)len);
 }
 
-/*void log_drain_dma(void)
-{
-    if (uart_tx_busy) return;
-    size_t n = log_ring_pop(uart_tx_buf, sizeof(uart_tx_buf));
-    if (n == 0) return;
-    uart_tx_busy = true;
-//    HAL_UART_Transmit_DMA(&huart1, uart_tx_buf, n);
-//    printf(uart_tx_buf, n);
-}
-
-//void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-//{
-//
-//}
-
-// in main loop or a 1 ms tick:
-//   log_drain_dma();
-
-static void start_dma_if_idle(void) {
-    if (tx_busy) return;
-    if (tx_head == tx_tail) return;
-
-    uint16_t len;
-    if (tx_head > tx_tail) {
-        len = tx_head - tx_tail;                  // contiguous
-    } else {
-        len = TX_RING_SZ - tx_tail;               // wrap; send tail→end first
-    }
-    tx_busy = 1;
-    HAL_UART_Transmit_DMA(&huart2, (uint8_t*)&tx_ring[tx_tail], len);
-}
-
-// Called by HAL when DMA TX finishes
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *h) {
-    if (h->Instance == USART2) {
-    uint16_t sent;
-    if (tx_head > tx_tail) sent = tx_head - tx_tail;
-    else                   sent = TX_RING_SZ - tx_tail;
-    tx_tail = (tx_tail + sent) % TX_RING_SZ;
-    tx_busy = 0;
-    start_dma_if_idle();        // chain next chunk
-    }
-//    if (h->Instance == huart1.Instance) {
-//            uart_tx_busy = false;
-//            log_drain_dma();                     // chain next batch if any
-//        }
-}
-
-
-int _write(int fd, char *ptr, int len) {
-    for (int i = 0; i < len; i++) {
-        uint16_t next = (tx_head + 1) % TX_RING_SZ;
-        while (next == tx_tail) {  full — spin or drop  }
-        tx_ring[tx_head] = ptr[i];
-        tx_head = next;
-    }
-    __disable_irq();
-    start_dma_if_idle();
-    __enable_irq();
-    return len;
-}*/
 /* USER CODE END 0 */
 
 /**
@@ -240,12 +197,12 @@ int main(void)
   MX_SPI2_Init();
   MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  BSP_LED_Init(LED_YELLOW);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  uint32_t local_timestep = 0;
+//  uint32_t local_timestep = 0;
 
   BspCOMInit.BaudRate   = 115200;
     BspCOMInit.WordLength = COM_WORDLENGTH_8B;
@@ -257,6 +214,8 @@ int main(void)
       Error_Handler();
     }
 
+    BSP_LED_On(LED_YELLOW);
+
 //    while (1) {};
 //    sd_mount();
   while (1)
@@ -265,11 +224,94 @@ int main(void)
 //	  printf("test test test\n\r");
 //	  HAL_Delay(1000);
 //	  local_timestep ++;
-	  if (rb_count()) {
-		  HAL_Delay(100);
-	  printf("%d %d , %d\n\r", rb_count(), head, tail);
-//    SD_Card_Test();
-		rb_flush();
+//	if (timeOfLastToggleForGreen<=uwTick+0.1e3){
+//	          	timeOfLastToggleForGreen+= 0.1e3;
+//	          	BSP_LED_Toggle(LED_GREEN);
+//	  }
+	if (task_ready(&heartbeat_task))
+		LED_Counter_Tick();
+	  //        	time_sec = uwTick);
+
+//	          }
+//	if (rb_count()){
+//		printf_task.last_trigger = uwTick;
+//	}
+	if (rb_count() || task_ready(&printf_task)) {
+//			HAL_Delay(100);
+			printf("%d %d , %d\n\r", rb_count(), head, tail);
+			printf("%d, %d\n\r",uwTick, timeOfLastToggleForGreen);
+
+			if (disk_mounted != FR_OK){
+				FR_Status = f_mount(&FatFs, "", 1);
+					if (FR_Status != FR_OK)
+					  printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
+					else
+						printf("SD Card Mounted Successfully! \r\n\n");
+					disk_mounted = FR_Status;
+			}
+			else {
+				if (file_opened == FR_OK) {
+
+				}
+			}
+
+//			if (file_opened)
+
+
+			FR_Status = f_mount(&FatFs, "", 1);
+			    if (FR_Status != FR_OK)
+			    {
+			      printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
+			      // UART_Print(TxBuffer);
+//			      break;
+			    }
+			    else {
+					printf("SD Card Mounted Successfully! \r\n\n");
+
+					f_getfree("", &FreeClusters, &FS_Ptr);
+					TotalSize = (uint32_t)((FS_Ptr->n_fatent - 2) * FS_Ptr->csize * 0.5);
+					FreeSpace = (uint32_t)(FreeClusters * FS_Ptr->csize * 0.5);
+					printf("Total SD Card Size: %lu Bytes\r\n", TotalSize);
+					// UART_Print(TxBuffer);
+					printf("Free SD Card Space: %lu Bytes\r\n\n", FreeSpace);
+					sd_create_log_file();
+
+					 FR_Status = f_mount(NULL, "", 0);
+					  if (FR_Status != FR_OK)
+					  {
+					      printf("Error! While Un-mounting SD Card, Error Code: (%i)\r\n", FR_Status);
+					      // UART_Print(TxBuffer);
+					  } else{
+					      printf("SD Card Un-mounted Successfully! \r\n");
+					      // UART_Print(TxBuffer);
+					  }
+
+			    }
+
+
+
+			rb_flush();
+//			BSP_LED_On(LED_GREEN);
+//			SD_Card_Test();
+//			if (!disk_mounted) {
+//				FRESULT FR_Status;
+//				FR_Status = sd_mount();
+//				if (!FR_Status)
+//					printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
+//				else
+//					disk_mounted = true;
+
+//			}
+//			if (sd_mount() == FR_OK) {
+//			if (disk_mounted){
+//				int res = sd_create_log_file();
+//			printf("%d\n\r", res);
+
+//			}
+//				f_mount(NULL, "", 1);
+
+
+
 	  }
 
     /* USER CODE END WHILE */
@@ -305,302 +347,188 @@ void PeriphCommonClock_Config(void)
   }
 }
 
-/**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C1_Init(void)
-{
-
-  /* USER CODE BEGIN I2C1_Init 0 */
-
-  /* USER CODE END I2C1_Init 0 */
-
-  /* USER CODE BEGIN I2C1_Init 1 */
-
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x10C0ECFF;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Analogue filter
-  */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Digital filter
-  */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2C1_Init 2 */
-
-  /* USER CODE END I2C1_Init 2 */
-
-}
-
-/**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI1_Init(void)
-{
-
-  /* USER CODE BEGIN SPI1_Init 0 */
-
-  /* USER CODE END SPI1_Init 0 */
-
-  /* USER CODE BEGIN SPI1_Init 1 */
-
-  /* USER CODE END SPI1_Init 1 */
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 0x0;
-  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
-  hspi1.Init.NSSPolarity = SPI_NSS_POLARITY_LOW;
-  hspi1.Init.FifoThreshold = SPI_FIFO_THRESHOLD_01DATA;
-  hspi1.Init.TxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
-  hspi1.Init.RxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
-  hspi1.Init.MasterSSIdleness = SPI_MASTER_SS_IDLENESS_00CYCLE;
-  hspi1.Init.MasterInterDataIdleness = SPI_MASTER_INTERDATA_IDLENESS_00CYCLE;
-  hspi1.Init.MasterReceiverAutoSusp = SPI_MASTER_RX_AUTOSUSP_DISABLE;
-  hspi1.Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_DISABLE;
-  hspi1.Init.IOSwap = SPI_IO_SWAP_DISABLE;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI1_Init 2 */
-
-  /* USER CODE END SPI1_Init 2 */
-
-}
-
-/**
-  * @brief SPI2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI2_Init(void)
-{
-
-  /* USER CODE BEGIN SPI2_Init 0 */
-
-  /* USER CODE END SPI2_Init 0 */
-
-  /* USER CODE BEGIN SPI2_Init 1 */
-
-  /* USER CODE END SPI2_Init 1 */
-  /* SPI2 parameter configuration*/
-  hspi2.Instance = SPI2;
-  hspi2.Init.Mode = SPI_MODE_MASTER;
-  hspi2.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi2.Init.DataSize = SPI_DATASIZE_4BIT;
-  hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-  hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi2.Init.CRCPolynomial = 0x0;
-  hspi2.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
-  hspi2.Init.NSSPolarity = SPI_NSS_POLARITY_LOW;
-  hspi2.Init.FifoThreshold = SPI_FIFO_THRESHOLD_01DATA;
-  hspi2.Init.TxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
-  hspi2.Init.RxCRCInitializationPattern = SPI_CRC_INITIALIZATION_ALL_ZERO_PATTERN;
-  hspi2.Init.MasterSSIdleness = SPI_MASTER_SS_IDLENESS_00CYCLE;
-  hspi2.Init.MasterInterDataIdleness = SPI_MASTER_INTERDATA_IDLENESS_00CYCLE;
-  hspi2.Init.MasterReceiverAutoSusp = SPI_MASTER_RX_AUTOSUSP_DISABLE;
-  hspi2.Init.MasterKeepIOState = SPI_MASTER_KEEP_IO_STATE_DISABLE;
-  hspi2.Init.IOSwap = SPI_IO_SWAP_DISABLE;
-  if (HAL_SPI_Init(&hspi2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI2_Init 2 */
-
-  /* USER CODE END SPI2_Init 2 */
-
-}
-
-/**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART2_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART2_Init 0 */
-
-  /* USER CODE END USART2_Init 0 */
-
-  /* USER CODE BEGIN USART2_Init 1 */
-
-  /* USER CODE END USART2_Init 1 */
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart2.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetTxFifoThreshold(&huart2, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetRxFifoThreshold(&huart2, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_DisableFifoMode(&huart2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART2_Init 2 */
-
-  /* USER CODE END USART2_Init 2 */
-
-}
-
-/**
-  * @brief USART6 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART6_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART6_Init 0 */
-
-  /* USER CODE END USART6_Init 0 */
-
-  /* USER CODE BEGIN USART6_Init 1 */
-
-  /* USER CODE END USART6_Init 1 */
-  huart6.Instance = USART6;
-  huart6.Init.BaudRate = 115200;
-  huart6.Init.WordLength = UART_WORDLENGTH_8B;
-  huart6.Init.StopBits = UART_STOPBITS_1;
-  huart6.Init.Parity = UART_PARITY_NONE;
-  huart6.Init.Mode = UART_MODE_TX_RX;
-  huart6.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart6.Init.OverSampling = UART_OVERSAMPLING_16;
-  huart6.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
-  huart6.Init.ClockPrescaler = UART_PRESCALER_DIV1;
-  huart6.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
-  if (HAL_UART_Init(&huart6) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetTxFifoThreshold(&huart6, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_SetRxFifoThreshold(&huart6, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_UARTEx_DisableFifoMode(&huart6) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART6_Init 2 */
-
-  /* USER CODE END USART6_Init 2 */
-
-}
-
-/**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
-{
-
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA1_CLK_ENABLE();
-  __HAL_RCC_DMA2_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA1_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
-  /* DMA1_Stream4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Stream4_IRQn);
-  /* DMA2_Stream0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-
-}
-
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-  /* USER CODE BEGIN MX_GPIO_Init_1 */
-
-  /* USER CODE END MX_GPIO_Init_1 */
-
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOD_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : SD_CS_Pin */
-  GPIO_InitStruct.Pin = SD_CS_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SD_CS_GPIO_Port, &GPIO_InitStruct);
-
-  /* USER CODE BEGIN MX_GPIO_Init_2 */
-
-  /* USER CODE END MX_GPIO_Init_2 */
-}
-
 /* USER CODE BEGIN 4 */
+
+
+static int sd_mount(){
+	FATFS FatFs;
+	FRESULT FR_Status;
+	FR_Status = f_mount(&FatFs, "", 1);
+	if (FR_Status != FR_OK)
+	{
+		printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
+		return FR_Status;
+	}
+	return FR_Status;
+
+
+}
+
+
+static void SD_Card_Test(void)
+{
+  FATFS FatFs;
+  FIL Fil;
+  FRESULT FR_Status;
+  FATFS *FS_Ptr;
+  UINT RWC, WWC; // Read/Write Word Counter
+  DWORD FreeClusters;
+  uint32_t TotalSize, FreeSpace;
+  char RW_Buffer[200];
+  do
+  {
+    //------------------[ Mount The SD Card ]--------------------
+    FR_Status = f_mount(&FatFs, "", 1);
+    if (FR_Status != FR_OK)
+    {
+      printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
+      // UART_Print(TxBuffer);
+      break;
+    }
+    printf("SD Card Mounted Successfully! \r\n\n");
+    // UART_Print(TxBuffer);
+    //------------------[ Get & Print The SD Card Size & Free Space ]--------------------
+    f_getfree("", &FreeClusters, &FS_Ptr);
+    TotalSize = (uint32_t)((FS_Ptr->n_fatent - 2) * FS_Ptr->csize * 0.5);
+    FreeSpace = (uint32_t)(FreeClusters * FS_Ptr->csize * 0.5);
+    printf("Total SD Card Size: %lu Bytes\r\n", TotalSize);
+    // UART_Print(TxBuffer);
+    printf("Free SD Card Space: %lu Bytes\r\n\n", FreeSpace);
+    // UART_Print(TxBuffer);
+    //------------------[ Open A Text File For Write & Write Data ]--------------------
+    //Open the file
+			    FR_Status = f_open(&Fil, "TextFileWrite.txt", FA_WRITE | FA_READ | FA_CREATE_ALWAYS);
+			    if(FR_Status != FR_OK)
+			    {
+			      printf("Error! While Creating/Opening A New Text File, Error Code: (%i)\r\n", FR_Status);
+			      // UART_Print(TxBuffer);
+			      break;
+			    }
+			    printf("Text File Created & Opened! Writing Data To The Text File..\r\n\n");
+			    // UART_Print(TxBuffer);
+			    // (1) Write Data To The Text File [ Using f_puts() Function ]
+//			    f_puts("Hello! From STM32 To SD Card Over SPI, Using f_puts()\n", &Fil);
+			    // (2) Write Data To The Text File [ Using f_write() Function ]
+			    strcpy(RW_Buffer, "Hello! From STM32 To SD Card Over SPI, Using f_write()\r\n");
+			    f_write(&Fil, RW_Buffer, strlen(RW_Buffer), &WWC);
+			    // Close The File
+			    f_close(&Fil);
+    //------------------[ Open A Text File For Read & Read Its Data ]--------------------
+    // Open The File
+    FR_Status = f_open(&Fil, "TextFileWrite.txt", FA_READ);
+    if(FR_Status != FR_OK)
+    {
+      printf("Error! While Opening (TextFileWrite.txt) File For Read.. \r\n");
+      // UART_Print(TxBuffer);
+      break;
+    }
+    // (1) Read The Text File's Data [ Using f_gets() Function ]
+    f_gets(RW_Buffer, sizeof(RW_Buffer), &Fil);
+    printf("Data Read From (TextFileWrite.txt) Using f_gets():%s", RW_Buffer);
+    // UART_Print(TxBuffer);
+    // (2) Read The Text File's Data [ Using f_read() Function ]
+    f_read(&Fil, RW_Buffer, f_size(&Fil), &RWC);
+    printf("Data Read From (TextFileWrite.txt) Using f_read():%s", RW_Buffer);
+    // UART_Print(TxBuffer);
+    // Close The File
+    f_close(&Fil);
+    printf("File Closed! \r\n\n");
+    // UART_Print(TxBuffer);
+    //------------------[ Open An Existing Text File, Update Its Content, Read It Back ]--------------------
+    // (1) Open The Existing File For Write (Update)
+    FR_Status = f_open(&Fil, "TextFileWrite.txt", FA_OPEN_EXISTING | FA_WRITE);
+    FR_Status = f_lseek(&Fil, f_size(&Fil)); // Move The File Pointer To The EOF (End-Of-File)
+    if(FR_Status != FR_OK)
+    {
+      printf("Error! While Opening (TextFileWrite.txt) File For Update.. \r\n");
+      // UART_Print(TxBuffer);
+      break;
+    }
+    // (2) Write New Line of Text Data To The File
+    FR_Status = f_puts("This New Line Was Added During Update!\r\n", &Fil);
+    f_close(&Fil);
+    memset(RW_Buffer,'\0',sizeof(RW_Buffer)); // Clear The Buffer
+    // (3) Read The Contents of The Text File After The Update
+    FR_Status = f_open(&Fil, "TextFileWrite.txt", FA_READ); // Open The File For Read
+    f_read(&Fil, RW_Buffer, f_size(&Fil), &RWC);
+    printf("Data Read From (TextFileWrite.txt) After Update:%s", RW_Buffer);
+    // UART_Print(TxBuffer);
+    f_close(&Fil);
+    //------------------[ Delete The Text File ]--------------------
+    // Delete The File
+    
+//    FR_Status = f_unlink(TextFileWrite.txt);
+//    if (FR_Status != FR_OK){
+//        printf("Error! While Deleting The (TextFileWrite.txt) File.. \r\n");
+        // UART_Print(TxBuffer);
+//    }
+    
+  } while(0);
+  //------------------[ Test Complete! Unmount The SD Card ]--------------------
+  FR_Status = f_mount(NULL, "", 0);
+  if (FR_Status != FR_OK)
+  {
+      printf("Error! While Un-mounting SD Card, Error Code: (%i)\r\n", FR_Status);
+      // UART_Print(TxBuffer);
+  } else{
+      printf("SD Card Un-mounted Successfully! \r\n");
+      // UART_Print(TxBuffer);
+  }
+}
+
+int sd_create_log_file(void){
+    uint16_t index = 0;
+    char filename[32];
+    FRESULT res;
+
+    uint16_t left_index = 0;
+    uint16_t right_index = 10000;
+    while(left_index < right_index) {
+    	int mid = left_index + ((right_index - left_index) >> 1);
+    	sprintf(filename, "log%04u.bin", mid);  // log0000.bin, log0001.bin ...
+    	res = f_stat(filename, NULL);             // check if file exists
+    	if (res == FR_OK){
+    		left_index = mid + 1;
+    		left_filename_index = left_index;
+    	}
+    	else {
+    		right_index = mid;
+    		right_filename_index = right_index;
+    	}
+    }
+    index = left_index ;
+
+
+    do {
+        sprintf(filename, "log%04u.bin", index);  // log0000.bin, log0001.bin ...
+        res = f_stat(filename, NULL);             // check if file exists
+        index++;
+    } while (res == FR_OK && index < 10000);     // stop if too many files
+    res = f_open(&logFile, filename, FA_CREATE_NEW | FA_WRITE);
+    if (res == FR_OK) {
+        printf("Created new log file: %s\n", filename);
+    f_expand(&logFile, 16*1024*1024, 1);
+//        file_creation_ok = 1;
+    } else {
+//    	file_creation_ok = 0;
+        printf("Failed to create log file, error: %d\n", res);
+    }
+    f_close(&logFile);
+    return res;
+}
+
+void LED_Counter_Tick(void)
+{
+	const static uint8_t timing[] = {1, 0, 1, 0, 0, 0, 0};
+	static uint8_t index = 0;
+	if (timing[index])
+		BSP_LED_On(LED_YELLOW);
+	else
+		BSP_LED_Off(LED_YELLOW);
+
+	index ++;
+	index %= 7;
+}
 
 /* USER CODE END 4 */
 
@@ -612,7 +540,9 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
+	BSP_LED_On(LED_YELLOW);
+	__disable_irq();
+//  BSP_LED_On(LED_YELLOW);
   while (1)
   {
   }

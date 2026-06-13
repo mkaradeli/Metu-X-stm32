@@ -65,8 +65,6 @@ extern "C" {
 
 /* USER CODE END EM */
 
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
@@ -75,26 +73,28 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define RIGHT_EN_1_Pin GPIO_PIN_7
-#define RIGHT_EN_1_GPIO_Port GPIOE
-#define RIGHT_EN_30000_Pin GPIO_PIN_8
-#define RIGHT_EN_30000_GPIO_Port GPIOE
+#define RIGHT_EN_2_Pin GPIO_PIN_7
+#define RIGHT_EN_2_GPIO_Port GPIOE
 #define LEFT_EN_1_Pin GPIO_PIN_10
 #define LEFT_EN_1_GPIO_Port GPIOE
-#define RIGHT_EN_1E12_Pin GPIO_PIN_12
-#define RIGHT_EN_1E12_GPIO_Port GPIOE
-#define LEFT_EN_2_Pin GPIO_PIN_15
-#define LEFT_EN_2_GPIO_Port GPIOE
+#define RIGHT_EN_1_Pin GPIO_PIN_12
+#define RIGHT_EN_1_GPIO_Port GPIOE
 #define LEFT_EN_3_Pin GPIO_PIN_11
 #define LEFT_EN_3_GPIO_Port GPIOB
-#define RIGHT_EN_4_Pin GPIO_PIN_12
-#define RIGHT_EN_4_GPIO_Port GPIOB
 #define USB_OTG_FS_PWR_EN_Pin GPIO_PIN_10
 #define USB_OTG_FS_PWR_EN_GPIO_Port GPIOD
-#define RIGHT_EN_3_Pin GPIO_PIN_9
-#define RIGHT_EN_3_GPIO_Port GPIOG
+#define LEFT_EN_2_Pin GPIO_PIN_14
+#define LEFT_EN_2_GPIO_Port GPIOD
+#define LEFT_EN_4_Pin GPIO_PIN_0
+#define LEFT_EN_4_GPIO_Port GPIOD
+#define RIGHT_EN_3_Pin GPIO_PIN_4
+#define RIGHT_EN_3_GPIO_Port GPIOD
+#define RIGHT_EN_4_Pin GPIO_PIN_9
+#define RIGHT_EN_4_GPIO_Port GPIOG
 #define HX711_SCK_Pin GPIO_PIN_12
 #define HX711_SCK_GPIO_Port GPIOG
+#define SAFETY_CONNECTOR_Pin GPIO_PIN_0
+#define SAFETY_CONNECTOR_GPIO_Port GPIOE
 
 /* USER CODE BEGIN Private defines */
 
