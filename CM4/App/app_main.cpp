@@ -33,7 +33,7 @@ FRESULT sd_create_log_file(char* filename);
 char filename[32] = {0};
 char RW_Buffer[200];
 //	static int sd_mount();
-
+//common_print_buffer_t isolated_print_buffer;
 
 FRESULT disk_mounted= FR_DISK_ERR;
 FRESULT file_open = FR_DISK_ERR;
@@ -45,9 +45,11 @@ FIL Fil;
 void app_init() {
 
 
+
 }
 
 void app_loop() {
+//	printf(CLR_SCREEN);
 	if (disk_mounted != FR_OK){
 					f_mount(NULL, "", 1);
 					FR_Status = f_mount(&FatFs, "", 1);
@@ -67,15 +69,15 @@ void app_loop() {
 					}
 					else {
 	//					if (file_open == FR_OK) {
-							printf("file open %s\n\r", filename);
+//							printf("file open %s\n\r", filename);
 							strcpy(RW_Buffer, "Hello! From STM32 To SD Card Over SPI, Using f_write()\r\n");
 							FR_Status = f_write(&Fil, RW_Buffer, strlen(RW_Buffer), &WWC);
 							if (strlen(RW_Buffer) == WWC){
-								printf("line written\n\r");
+//								printf("line written\n\r");
 								FR_Status = f_sync(&Fil);
-								if (FR_Status == FR_OK)
-									printf("sync successfull\n\r");
-								else{
+								if (FR_Status != FR_OK){
+//									printf("sync successfull\n\r");
+//								else{
 									printf("sync FAILED!!!!!!!\n\r");
 									disk_mounted = FR_Status;
 
@@ -96,7 +98,7 @@ void app_loop() {
 	//					}
 
 					}
-				printf("DISK STATUS = %d\n\r", disk_mounted);
+//				printf("DISK STATUS = %d\n\r", disk_mounted);
 	//			printf("FILE STATUS = %d\n\r\n\r", file_open);
 
 				}

@@ -121,7 +121,7 @@ void app_init() {
 //	  motors[0].setDuty(1.0f);
 
 //	  dummy_init();
-	  printf(CLR_SCREEN);
+//	  printf(CLR_SCREEN);
 
 	    local_sensor_data.current_demand = 2;
 	    local_sensor_data.timestamp = 0;
@@ -136,7 +136,7 @@ void app_init() {
 	    tim3_profiler.reset();
 	    tim4_profiler.reset();
 
-	    rb_init();
+	    rb_init(&common_print_buffer);
 	    setvbuf(stdout, NULL, _IONBF, 0);   /* important: disable stdio line buffering */
 
 //	    SCB_InvalidateDCache_by_Addr((uint32_t *)adc_dma_buf_encoder, sizeof(adc_dma_buf_encoder));
@@ -168,7 +168,7 @@ void app_loop() {
 
 		timeOfLastPrint+= 1000;
 
-		printf(CLR_SCREEN);
+//		printf(CLR_SCREEN);
 		local_sensor_data.timestamp+= 1;
 		printf("timestamp = %ld, %ld \n\r", uwTick, micros());
 
@@ -188,7 +188,7 @@ void app_loop() {
 //		printf("current controller mean time = %d us\n\r", (int) adc2_profiler.mean_time);
 		printf("%d\n\r",BUFFER_PACKET_COUNT);
 //		ready_to_write_a++;
-		actuator[0].setDuty(actuator[0].getDutyCycle() * -1.0f);
+//		actuator[0].setDuty(actuator[0].getDutyCycle() * -1.0f);
 		printf("%%%d\n\r", (int)(actuator[0].getDutyCycle()*100));
 		printf("timestamp = %ld, %ld \n\r", uwTick, micros());
 

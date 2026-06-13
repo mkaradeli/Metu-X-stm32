@@ -25,6 +25,9 @@ extern "C" {
 	void app_init();
 	void app_loop();
 
+	uint64_t micros();
+	extern TIM_HandleTypeDef htim5;
+
 
 
 

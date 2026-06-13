@@ -45,6 +45,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+common_print_buffer_t isolated_print_buffer;
 
 /* DUAL_CORE_BOOT_SYNC_SEQUENCE: Define for dual core boot synchronization    */
 /*                             demonstration code based on hardware semaphore */
@@ -117,7 +118,7 @@ int _write(int file, char *ptr, int len)
 {
 //	SCB_InvalidateDCache_by_Addr((uint32_t *)tail, sizeof(tail));
     (void)file;
-    return (int)rb_push_n(ptr, (size_t)len);
+    return (int)rb_push_n(&isolated_print_buffer, ptr, (size_t)len);
 }
 
 /* USER CODE END 0 */
@@ -197,6 +198,7 @@ int main(void)
 
 //    while (1) {};
 //    sd_mount();
+    rb_init(&isolated_print_buffer);
 		printf(CLR_SCREEN);
 
 		app_init();
@@ -208,11 +210,15 @@ int main(void)
 		LED_Counter_Tick();
 	}
 	app_loop();
-	if (rb_count() || task_ready(&printf_task)) {
+
+	if (task_ready(&printf_task)) {
+			printf(CLR_SCREEN);
 //			HAL_Delay(100);
-			printf("%d %ld , %ld\n\r", rb_count(), head, tail);
+			printf("%d %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);
 			printf("uwTick = %ld\n\r",uwTick);
-			rb_flush();
+
+			rb_flush(&isolated_print_buffer);
+			rb_flush(&common_print_buffer);
 
 	  }
 //			printf("time taken for sd = %d", uwTick- tick);
@@ -280,7 +286,8 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-//	BSP_LED_On(LED_YELLOW);
+	BSP_LED_On(LED_RED);
+	BSP_LED_On(LED_GREEN);
 	__disable_irq();
 //  BSP_LED_On(LED_YELLOW);
   while (1)

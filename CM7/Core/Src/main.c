@@ -45,7 +45,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ENABLE_PRINT false
+#define ENABLE_PRINT true
 
 void LED_Counter_Tick(void);
 void sd_mount_check (void);
@@ -105,9 +105,9 @@ task_timer_t sd_mount_check_task = {1000, 5000};
 int _write(int file, char *ptr, int len)
 {
 #if ENABLE_PRINT
-	SCB_InvalidateDCache_by_Addr((uint32_t *)tail, sizeof(tail));
+//	SCB_InvalidateDCache_by_Addr((uint32_t *)&common_print_buffer, sizeof(common_print_buffer));
     (void)file;
-    return (int)rb_push_n(ptr, (size_t)len);
+    return (int)rb_push_n(&common_print_buffer, ptr, (size_t)len);
 #else
 	return;
 #endif
@@ -216,7 +216,7 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
   /* USER CODE END 2 */
 
   /* Initialize leds */
-//  BSP_LED_Init(LED_GREEN);
+  BSP_LED_Init(LED_GREEN);
   BSP_LED_Init(LED_YELLOW);
   BSP_LED_Init(LED_RED);
 
