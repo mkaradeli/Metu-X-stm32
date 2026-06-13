@@ -20,7 +20,6 @@
 #include "main.h"
 #include "adc.h"
 #include "dma.h"
-#include "fatfs.h"
 #include "tim.h"
 #include "gpio.h"
 
@@ -88,19 +87,19 @@ __IO uint32_t BspButtonState = BUTTON_RELEASED;
 void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
 static void MPU_Config(void);
-static int sd_mount();
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-FIL logFile;
-FATFS FatFs;
-FRESULT FR_Status;
+//FIL logFile;
+//FATFS FatFs;
+//FRESULT FR_Status;
 
 task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
 task_timer_t sd_mount_check_task = {1000, 5000};
+//task_timer_t common_heartbeat_task = {2000,1000};
 
 
 int _write(int file, char *ptr, int len)
@@ -210,7 +209,6 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
   MX_TIM6_Init();
   MX_TIM1_Init();
   MX_TIM5_Init();
-  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -219,7 +217,7 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
 
   /* Initialize leds */
 //  BSP_LED_Init(LED_GREEN);
-//  BSP_LED_Init(LED_YELLOW);
+  BSP_LED_Init(LED_YELLOW);
   BSP_LED_Init(LED_RED);
 
   /* Initialize USER push-button, will be used to trigger an interrupt each time it's pressed.*/
@@ -242,7 +240,7 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
   /* -- Sample board code to switch on leds ---- */
 //  BSP_LED_On(LED_GREEN);
 //  BSP_LED_On(LED_YELLOW);
-  BSP_LED_On(LED_RED);
+  BSP_LED_On(LED_YELLOW);
   /* USER CODE END BSP */
 
   /* Infinite loop */
@@ -256,11 +254,15 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
     if (BspButtonState == BUTTON_PRESSED)
     {
       BspButtonState = BUTTON_RELEASED;
-      BSP_LED_Toggle(LED_RED);
+      BSP_LED_Toggle(LED_YELLOW);
     }
 
     if (task_ready(&heartbeat_task))
 		LED_Counter_Tick();
+//    if (task_ready(&common_heartbeat_task)) {
+////    	if ((uwTick/1000)%2)
+//		BSP_LED_On(LED_RED);
+//    }
     app_loop();
 
 
@@ -357,37 +359,37 @@ void PeriphCommonClock_Config(void)
   }
 }
 
-
 /* USER CODE BEGIN 4 */
 
-static int sd_mount(){
-	FATFS FatFs;
-	FRESULT FR_Status;
-	FR_Status = f_mount(&FatFs, "", 1);
-	if (FR_Status != FR_OK)
-	{
-		printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
-		return FR_Status;
-	}
-	return FR_Status;
+//static int sd_mount(){
+//	FATFS FatFs;
+//	FRESULT FR_Status;
+//	FR_Status = f_mount(&FatFs, "", 1);
+//	if (FR_Status != FR_OK)
+//	{
+//		printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
+//		return FR_Status;
+//	}
+//	return FR_Status;
+//
+//
+//}
 
-
-}
-
-void sd_mount_check () {
-
-
-
-};
+//void sd_mount_check () {
+//
+//
+//
+//};
 
 void LED_Counter_Tick(void)
 {
 	const static uint8_t timing[] = {1, 0, 1, 0, 0, 0, 0};
 	static uint8_t index = 0;
 	if (timing[index])
-		BSP_LED_On(LED_RED);
+		BSP_LED_On(LED_YELLOW);
 	else
-		BSP_LED_Off(LED_RED);
+		BSP_LED_Off(LED_YELLOW);
+
 
 	index ++;
 	index %= 7;
@@ -484,7 +486,7 @@ void BSP_PB_Callback(Button_TypeDef Button)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-	BSP_LED_On(LED_RED);
+	BSP_LED_On(LED_YELLOW);
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
   while (1)

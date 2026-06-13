@@ -27,6 +27,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "app_main.hpp"
 #include "shared_memory.h"
 #include "ring_buffer.h"
 
@@ -34,10 +35,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "task_timer.h"
-//#include <stdbool.h>
-
-//#include "../../Ap/FATFS_SD/FATFS_SD.h"
-
 
 /* USER CODE END Includes */
 
@@ -66,6 +63,7 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+//#define CLR_SCREEN      "\033[2J\033[H"
 
 /* USER CODE END PM */
 
@@ -75,15 +73,6 @@
 COM_InitTypeDef BspCOMInit;
 //timeOfLastToggleForGreen
 uint32_t timeOfLastToggleForGreen=false;
-//__attribute__((section(".shared_memory"), used))
-//SensorData_t sensor_data_buffer_a[BUFFER_PACKET_COUNT/2-1];
-//__attribute__((section(".shared_memory"), used))
-//SensorData_t sensor_data_buffer_b[BUFFER_PACKET_COUNT/2-1];
-//__attribute__((section(".shared_memory"), used))
-//uint8_t ready_to_write_a;
-//__attribute__((section(".shared_memory"), used))
-//uint8_t ready_to_write_b;
-//SensorData_t sensor_data;
 
 
 
@@ -91,33 +80,18 @@ uint32_t timeOfLastToggleForGreen=false;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
-static void SD_Card_Test(void);
+//static void SD_Card_Test(void);
 void LED_Counter_Tick(void);
 
-FATFS FatFs;
-FIL Fil;
-FRESULT FR_Status;
-FATFS *FS_Ptr;
-UINT RWC, WWC; // Read/Write Word Counter
-DWORD FreeClusters;
-uint32_t TotalSize, FreeSpace;
 
 
 //static void SD_Card_Test(void);
 char TxBuffer[250];
-int left_filename_index = 0;
-int right_filename_index = 0;
-FIL logFile;
-FATFS FatFs;
-int sd_create_log_file(void);
-static int sd_mount();
-
-FRESULT disk_mounted= FR_DISK_ERR;
-FRESULT file_open = FR_DISK_ERR;
 
 
 
-bool disk_mounted = false;
+
+//FRESULT disk_mounted = false;
 
 /* USER CODE END PFP */
 
@@ -131,6 +105,8 @@ static volatile uint8_t  tx_busy = 0;
 
 task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
 task_timer_t printf_task = {1000, 0};
+//task_timer_t common_heartbeat_task = {2000,0};
+
 //task_timer_t sd_ = {100, 0}; // period ms, start ms
 
 //static uint8_t  uart_tx_buf[256];
@@ -197,7 +173,8 @@ int main(void)
   MX_SPI2_Init();
   MX_USART6_UART_Init();
   /* USER CODE BEGIN 2 */
-  BSP_LED_Init(LED_YELLOW);
+  BSP_LED_Init(LED_RED);
+  BSP_LED_Init(LED_GREEN);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -214,105 +191,31 @@ int main(void)
       Error_Handler();
     }
 
-    BSP_LED_On(LED_YELLOW);
+
+
+//    BSP_LED_On(LED_YELLOW);
 
 //    while (1) {};
 //    sd_mount();
+		printf(CLR_SCREEN);
+
+		app_init();
+		printf_task.last_trigger = uwTick;
   while (1)
   {
 	  ready_to_write_b++;
-//	  printf("test test test\n\r");
-//	  HAL_Delay(1000);
-//	  local_timestep ++;
-//	if (timeOfLastToggleForGreen<=uwTick+0.1e3){
-//	          	timeOfLastToggleForGreen+= 0.1e3;
-//	          	BSP_LED_Toggle(LED_GREEN);
-//	  }
-	if (task_ready(&heartbeat_task))
+	if (task_ready(&heartbeat_task)){
 		LED_Counter_Tick();
-	  //        	time_sec = uwTick);
-
-//	          }
-//	if (rb_count()){
-//		printf_task.last_trigger = uwTick;
-//	}
+	}
+	app_loop();
 	if (rb_count() || task_ready(&printf_task)) {
 //			HAL_Delay(100);
-			printf("%d %d , %d\n\r", rb_count(), head, tail);
-			printf("%d, %d\n\r",uwTick, timeOfLastToggleForGreen);
-
-			if (disk_mounted != FR_OK){
-				FR_Status = f_mount(&FatFs, "", 1);
-					if (FR_Status != FR_OK)
-					  printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
-					else
-						printf("SD Card Mounted Successfully! \r\n\n");
-					disk_mounted = FR_Status;
-			}
-			else {
-				if (file_opened == FR_OK) {
-
-				}
-			}
-
-//			if (file_opened)
-
-
-			FR_Status = f_mount(&FatFs, "", 1);
-			    if (FR_Status != FR_OK)
-			    {
-			      printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
-			      // UART_Print(TxBuffer);
-//			      break;
-			    }
-			    else {
-					printf("SD Card Mounted Successfully! \r\n\n");
-
-					f_getfree("", &FreeClusters, &FS_Ptr);
-					TotalSize = (uint32_t)((FS_Ptr->n_fatent - 2) * FS_Ptr->csize * 0.5);
-					FreeSpace = (uint32_t)(FreeClusters * FS_Ptr->csize * 0.5);
-					printf("Total SD Card Size: %lu Bytes\r\n", TotalSize);
-					// UART_Print(TxBuffer);
-					printf("Free SD Card Space: %lu Bytes\r\n\n", FreeSpace);
-					sd_create_log_file();
-
-					 FR_Status = f_mount(NULL, "", 0);
-					  if (FR_Status != FR_OK)
-					  {
-					      printf("Error! While Un-mounting SD Card, Error Code: (%i)\r\n", FR_Status);
-					      // UART_Print(TxBuffer);
-					  } else{
-					      printf("SD Card Un-mounted Successfully! \r\n");
-					      // UART_Print(TxBuffer);
-					  }
-
-			    }
-
-
-
+			printf("%d %ld , %ld\n\r", rb_count(), head, tail);
+			printf("uwTick = %ld\n\r",uwTick);
 			rb_flush();
-//			BSP_LED_On(LED_GREEN);
-//			SD_Card_Test();
-//			if (!disk_mounted) {
-//				FRESULT FR_Status;
-//				FR_Status = sd_mount();
-//				if (!FR_Status)
-//					printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
-//				else
-//					disk_mounted = true;
-
-//			}
-//			if (sd_mount() == FR_OK) {
-//			if (disk_mounted){
-//				int res = sd_create_log_file();
-//			printf("%d\n\r", res);
-
-//			}
-//				f_mount(NULL, "", 1);
-
-
 
 	  }
+//			printf("time taken for sd = %d", uwTick- tick);
 
     /* USER CODE END WHILE */
 
@@ -350,181 +253,18 @@ void PeriphCommonClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 
-static int sd_mount(){
-	FATFS FatFs;
-	FRESULT FR_Status;
-	FR_Status = f_mount(&FatFs, "", 1);
-	if (FR_Status != FR_OK)
-	{
-		printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
-		return FR_Status;
-	}
-	return FR_Status;
 
 
-}
-
-
-static void SD_Card_Test(void)
-{
-  FATFS FatFs;
-  FIL Fil;
-  FRESULT FR_Status;
-  FATFS *FS_Ptr;
-  UINT RWC, WWC; // Read/Write Word Counter
-  DWORD FreeClusters;
-  uint32_t TotalSize, FreeSpace;
-  char RW_Buffer[200];
-  do
-  {
-    //------------------[ Mount The SD Card ]--------------------
-    FR_Status = f_mount(&FatFs, "", 1);
-    if (FR_Status != FR_OK)
-    {
-      printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
-      // UART_Print(TxBuffer);
-      break;
-    }
-    printf("SD Card Mounted Successfully! \r\n\n");
-    // UART_Print(TxBuffer);
-    //------------------[ Get & Print The SD Card Size & Free Space ]--------------------
-    f_getfree("", &FreeClusters, &FS_Ptr);
-    TotalSize = (uint32_t)((FS_Ptr->n_fatent - 2) * FS_Ptr->csize * 0.5);
-    FreeSpace = (uint32_t)(FreeClusters * FS_Ptr->csize * 0.5);
-    printf("Total SD Card Size: %lu Bytes\r\n", TotalSize);
-    // UART_Print(TxBuffer);
-    printf("Free SD Card Space: %lu Bytes\r\n\n", FreeSpace);
-    // UART_Print(TxBuffer);
-    //------------------[ Open A Text File For Write & Write Data ]--------------------
-    //Open the file
-			    FR_Status = f_open(&Fil, "TextFileWrite.txt", FA_WRITE | FA_READ | FA_CREATE_ALWAYS);
-			    if(FR_Status != FR_OK)
-			    {
-			      printf("Error! While Creating/Opening A New Text File, Error Code: (%i)\r\n", FR_Status);
-			      // UART_Print(TxBuffer);
-			      break;
-			    }
-			    printf("Text File Created & Opened! Writing Data To The Text File..\r\n\n");
-			    // UART_Print(TxBuffer);
-			    // (1) Write Data To The Text File [ Using f_puts() Function ]
-//			    f_puts("Hello! From STM32 To SD Card Over SPI, Using f_puts()\n", &Fil);
-			    // (2) Write Data To The Text File [ Using f_write() Function ]
-			    strcpy(RW_Buffer, "Hello! From STM32 To SD Card Over SPI, Using f_write()\r\n");
-			    f_write(&Fil, RW_Buffer, strlen(RW_Buffer), &WWC);
-			    // Close The File
-			    f_close(&Fil);
-    //------------------[ Open A Text File For Read & Read Its Data ]--------------------
-    // Open The File
-    FR_Status = f_open(&Fil, "TextFileWrite.txt", FA_READ);
-    if(FR_Status != FR_OK)
-    {
-      printf("Error! While Opening (TextFileWrite.txt) File For Read.. \r\n");
-      // UART_Print(TxBuffer);
-      break;
-    }
-    // (1) Read The Text File's Data [ Using f_gets() Function ]
-    f_gets(RW_Buffer, sizeof(RW_Buffer), &Fil);
-    printf("Data Read From (TextFileWrite.txt) Using f_gets():%s", RW_Buffer);
-    // UART_Print(TxBuffer);
-    // (2) Read The Text File's Data [ Using f_read() Function ]
-    f_read(&Fil, RW_Buffer, f_size(&Fil), &RWC);
-    printf("Data Read From (TextFileWrite.txt) Using f_read():%s", RW_Buffer);
-    // UART_Print(TxBuffer);
-    // Close The File
-    f_close(&Fil);
-    printf("File Closed! \r\n\n");
-    // UART_Print(TxBuffer);
-    //------------------[ Open An Existing Text File, Update Its Content, Read It Back ]--------------------
-    // (1) Open The Existing File For Write (Update)
-    FR_Status = f_open(&Fil, "TextFileWrite.txt", FA_OPEN_EXISTING | FA_WRITE);
-    FR_Status = f_lseek(&Fil, f_size(&Fil)); // Move The File Pointer To The EOF (End-Of-File)
-    if(FR_Status != FR_OK)
-    {
-      printf("Error! While Opening (TextFileWrite.txt) File For Update.. \r\n");
-      // UART_Print(TxBuffer);
-      break;
-    }
-    // (2) Write New Line of Text Data To The File
-    FR_Status = f_puts("This New Line Was Added During Update!\r\n", &Fil);
-    f_close(&Fil);
-    memset(RW_Buffer,'\0',sizeof(RW_Buffer)); // Clear The Buffer
-    // (3) Read The Contents of The Text File After The Update
-    FR_Status = f_open(&Fil, "TextFileWrite.txt", FA_READ); // Open The File For Read
-    f_read(&Fil, RW_Buffer, f_size(&Fil), &RWC);
-    printf("Data Read From (TextFileWrite.txt) After Update:%s", RW_Buffer);
-    // UART_Print(TxBuffer);
-    f_close(&Fil);
-    //------------------[ Delete The Text File ]--------------------
-    // Delete The File
-    
-//    FR_Status = f_unlink(TextFileWrite.txt);
-//    if (FR_Status != FR_OK){
-//        printf("Error! While Deleting The (TextFileWrite.txt) File.. \r\n");
-        // UART_Print(TxBuffer);
-//    }
-    
-  } while(0);
-  //------------------[ Test Complete! Unmount The SD Card ]--------------------
-  FR_Status = f_mount(NULL, "", 0);
-  if (FR_Status != FR_OK)
-  {
-      printf("Error! While Un-mounting SD Card, Error Code: (%i)\r\n", FR_Status);
-      // UART_Print(TxBuffer);
-  } else{
-      printf("SD Card Un-mounted Successfully! \r\n");
-      // UART_Print(TxBuffer);
-  }
-}
-
-int sd_create_log_file(void){
-    uint16_t index = 0;
-    char filename[32];
-    FRESULT res;
-
-    uint16_t left_index = 0;
-    uint16_t right_index = 10000;
-    while(left_index < right_index) {
-    	int mid = left_index + ((right_index - left_index) >> 1);
-    	sprintf(filename, "log%04u.bin", mid);  // log0000.bin, log0001.bin ...
-    	res = f_stat(filename, NULL);             // check if file exists
-    	if (res == FR_OK){
-    		left_index = mid + 1;
-    		left_filename_index = left_index;
-    	}
-    	else {
-    		right_index = mid;
-    		right_filename_index = right_index;
-    	}
-    }
-    index = left_index ;
-
-
-    do {
-        sprintf(filename, "log%04u.bin", index);  // log0000.bin, log0001.bin ...
-        res = f_stat(filename, NULL);             // check if file exists
-        index++;
-    } while (res == FR_OK && index < 10000);     // stop if too many files
-    res = f_open(&logFile, filename, FA_CREATE_NEW | FA_WRITE);
-    if (res == FR_OK) {
-        printf("Created new log file: %s\n", filename);
-    f_expand(&logFile, 16*1024*1024, 1);
-//        file_creation_ok = 1;
-    } else {
-//    	file_creation_ok = 0;
-        printf("Failed to create log file, error: %d\n", res);
-    }
-    f_close(&logFile);
-    return res;
-}
 
 void LED_Counter_Tick(void)
 {
 	const static uint8_t timing[] = {1, 0, 1, 0, 0, 0, 0};
 	static uint8_t index = 0;
 	if (timing[index])
-		BSP_LED_On(LED_YELLOW);
+		BSP_LED_On(LED_GREEN);
 	else
-		BSP_LED_Off(LED_YELLOW);
+		BSP_LED_Off(LED_GREEN);
+
 
 	index ++;
 	index %= 7;
@@ -540,7 +280,7 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-	BSP_LED_On(LED_YELLOW);
+//	BSP_LED_On(LED_YELLOW);
 	__disable_irq();
 //  BSP_LED_On(LED_YELLOW);
   while (1)
