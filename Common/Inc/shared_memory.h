@@ -36,6 +36,7 @@ typedef struct __attribute__((aligned(4))) {
     float thrust_demand;
     float thrust_estimated;
     float thrust_measured;
+    uint16_t crc;
 } SensorData_t;
 
 

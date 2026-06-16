@@ -18,10 +18,12 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "crc.h"
 #include "dma.h"
 #include "fatfs.h"
 #include "i2c.h"
 #include "spi.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -173,9 +175,12 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI2_Init();
   MX_USART6_UART_Init();
+  MX_TIM7_Init();
+  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   BSP_LED_Init(LED_RED);
   BSP_LED_Init(LED_GREEN);
+//  MX_TIM5_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -209,10 +214,10 @@ int main(void)
 	if (task_ready(&heartbeat_task)){
 		LED_Counter_Tick();
 	}
-	app_loop();
 
 	if (task_ready(&printf_task)) {
-			printf(CLR_SCREEN);
+		app_loop();
+//			printf(CLR_SCREEN);
 //			HAL_Delay(100);
 			printf("%d %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);
 			printf("uwTick = %ld \n\r",uwTick);
@@ -220,7 +225,8 @@ int main(void)
 
 
 			rb_flush(&isolated_print_buffer);
-			rb_flush(&common_print_buffer);
+//			rb_flush(&common_print_buffer);
+
 
 	  }
 //			printf("time taken for sd = %d", uwTick- tick);

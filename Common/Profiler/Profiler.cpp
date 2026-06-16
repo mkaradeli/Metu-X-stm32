@@ -17,7 +17,13 @@ Profiler::Profiler() {
 	start_global = 0;
 }
 void Profiler::reset(){
+	total_cycles = 0;
+//	elapsed_cycles;
+//	start_call = micros();
+//	start_global;
+//	call_count;
 	start_global = micros();
+	call_count = 0;
 }
 
 void Profiler::start() {

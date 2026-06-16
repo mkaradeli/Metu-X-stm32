@@ -290,6 +290,7 @@ DSTATUS SD_disk_initialize(BYTE drv)
   else
   {
     /* Initialization failed */
+	  Stat |=STA_NOINIT;
     SD_PowerOff();
   }
   return Stat;
