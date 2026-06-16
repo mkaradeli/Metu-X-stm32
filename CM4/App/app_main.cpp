@@ -67,10 +67,15 @@ void app_loop() {
 						if (file_open != FR_OK)
 							filename[0] = 0;
 					}
+					else if (filename[0]==1){
+						file_open = sd_create_log_file(&filename[0]);
+						if (file_open != FR_OK)
+							filename[0] = 0;
+					}
 					else {
 	//					if (file_open == FR_OK) {
 //							printf("file open %s\n\r", filename);
-							strcpy(RW_Buffer, "Hello! From STM32 To SD Card Over SPI, Using f_write()\r\n");
+						snprintf(RW_Buffer, sizeof(RW_Buffer), "timestamp = %ld\n\r", uwTick);
 							FR_Status = f_write(&Fil, RW_Buffer, strlen(RW_Buffer), &WWC);
 							if (strlen(RW_Buffer) == WWC){
 //								printf("line written\n\r");
@@ -88,6 +93,7 @@ void app_loop() {
 								printf("line addition failed.\n\r");
 								printf("RW Buffer len%d, wwc %d", strlen(RW_Buffer), WWC);
 								disk_mounted = FR_INT_ERR;
+								filename[0] = 1;
 	//							file_open = 1;
 							}
 

@@ -14,5 +14,5 @@ __attribute__((section(".shared_memory"), used))
 uint8_t ready_to_write_a;
 __attribute__((section(".shared_memory"), used))
 uint8_t ready_to_write_b;
-__attribute__((section(".shared_memory"), used))
-uint8_t printf_buffer[4096];
+//__attribute__((section(".shared_memory"), used))
+//uint8_t printf_buffer[4096];

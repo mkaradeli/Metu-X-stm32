@@ -109,7 +109,7 @@ task_timer_t printf_task = {1000, 0};
 //task_timer_t common_heartbeat_task = {2000,0};
 
 //task_timer_t sd_ = {100, 0}; // period ms, start ms
-
+extern char filename[32];
 //static uint8_t  uart_tx_buf[256];
 static volatile bool uart_tx_busy = false;
 
@@ -215,7 +215,9 @@ int main(void)
 			printf(CLR_SCREEN);
 //			HAL_Delay(100);
 			printf("%d %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);
-			printf("uwTick = %ld\n\r",uwTick);
+			printf("uwTick = %ld \n\r",uwTick);
+			printf("filename = %s\n\r", filename);
+
 
 			rb_flush(&isolated_print_buffer);
 			rb_flush(&common_print_buffer);
