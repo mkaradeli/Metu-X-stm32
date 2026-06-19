@@ -210,13 +210,13 @@ int main(void)
 		printf_task.last_trigger = uwTick;
   while (1)
   {
-	  ready_to_write_b++;
+//	  ready_to_write_b++;
 	if (task_ready(&heartbeat_task)){
 		LED_Counter_Tick();
 	}
+	app_loop();
 
 	if (task_ready(&printf_task)) {
-		app_loop();
 //			printf(CLR_SCREEN);
 //			HAL_Delay(100);
 			printf("%d %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);

@@ -251,6 +251,7 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
   app_init();
   while (1)
   {
+
     if (BspButtonState == BUTTON_PRESSED)
     {
       BspButtonState = BUTTON_RELEASED;

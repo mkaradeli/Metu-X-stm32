@@ -1,3 +1,4 @@
+/*
 // shared_log.c
 #include "shared_log.h"
 //#include "cmsis_compiler.h"   // __DMB, __DSB
@@ -56,3 +57,4 @@ uint32_t log_ring_pop(uint8_t *dst, uint32_t max)
     shared_log.tail = tail + max;
     return max;
 }
+*/

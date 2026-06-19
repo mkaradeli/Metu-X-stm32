@@ -12,6 +12,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define PACKET_SIZE sizeof(SensorData_t)
+#define BUFFER_PACKET_COUNT (SHARED_MEM_SIZE / PACKET_SIZE )
+#define BUFFER_SIZE (PACKET_SIZE * BUFFER_PACKET_COUNT)
+
 typedef struct __attribute__((aligned(4))) {
     uint32_t timestamp;
     float current_measured;
@@ -36,20 +40,24 @@ typedef struct __attribute__((aligned(4))) {
     float thrust_demand;
     float thrust_estimated;
     float thrust_measured;
-    uint16_t crc;
+//    uint16_t crc;
 } SensorData_t;
 
+typedef struct {
+	uint32_t head;
+	uint32_t tail;
+	uint32_t dropped;
 
-#define PACKET_SIZE sizeof(SensorData_t)
-#define BUFFER_PACKET_COUNT (SHARED_MEM_SIZE / PACKET_SIZE )
-#define BUFFER_SIZE (PACKET_SIZE * BUFFER_PACKET_COUNT)
+	SensorData_t sensorData[5];
+} SensorData_Buffer_t;
 
 
 
-extern SensorData_t sensor_data_buffer_a[BUFFER_PACKET_COUNT/2-1];
-extern SensorData_t sensor_data_buffer_b[BUFFER_PACKET_COUNT/2-1];
-extern uint8_t ready_to_write_a;
-extern uint8_t ready_to_write_b;
-extern uint8_t printf_buffer[4096];
+
+//extern SensorData_t sensor_data_buffer_a[BUFFER_PACKET_COUNT/2-1];
+//extern SensorData_t sensor_data_buffer_b[BUFFER_PACKET_COUNT/2-1];
+//extern uint8_t ready_to_write_a;
+//extern uint8_t ready_to_write_b;
+//extern uint8_t printf_buffer[4096];
 
 #endif /* INC_SHARED_MEMORY_H_ */

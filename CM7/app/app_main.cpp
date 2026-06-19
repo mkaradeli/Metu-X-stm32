@@ -30,7 +30,7 @@
 
 
 
-
+Profiler free_profiler;
 Profiler load_cell_profiler;
 Profiler main_loop_profiler;
 volatile uint64_t micros_overflow=0;
@@ -125,10 +125,11 @@ void app_init() {
 
 	    local_sensor_data.current_demand = 2;
 	    local_sensor_data.timestamp = 0;
-	    ready_to_write_a=0;
+//	    ready_to_write_a=0;
 
 	    main_loop_profiler.reset();
 	    printf_profiler.reset();
+	    free_profiler.reset();
 	    adc1_profiler.reset();
 	    adc2_profiler.reset();
 	    adc3_profiler.reset();
@@ -163,6 +164,7 @@ void app_init() {
 }
 
 void app_loop() {
+
 	if (uwTick - timeOfLastPrint >= 1000){
 		main_loop_profiler.start();
 
@@ -216,10 +218,13 @@ void app_loop() {
 		tim2_profiler.metrics();
 		tim3_profiler.metrics();
 		tim4_profiler.metrics();
-
+		free_profiler.metrics();
 
 		main_loop_profiler.end();
 	}
+	free_profiler.start();
+	load_cell_counter = 1/ load_cell_counter;
+	free_profiler.end();
 }
 
 

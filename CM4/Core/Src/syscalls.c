@@ -84,7 +84,7 @@ __attribute__((weak)) int _write(int file, char *ptr, int len)
 {
   (void)file;
   int DataIdx;
-  ready_to_write_a++;
+//  ready_to_write_a++;
 //  uint8_t ch = 'A';
   for (DataIdx = 0; DataIdx < len; DataIdx++)
   {
