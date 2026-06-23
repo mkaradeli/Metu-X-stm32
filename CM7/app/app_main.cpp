@@ -33,7 +33,7 @@
 Profiler free_profiler;
 Profiler load_cell_profiler;
 Profiler main_loop_profiler;
-volatile uint64_t micros_overflow=0;
+volatile uint64_t cpuTicks_overflow=0;
 float load;
 
 
@@ -247,12 +247,12 @@ void tim2_trigger(){
 
 void tim5_trigger(){
 //	tim2_profiler.start();
-	micros_overflow++;
+	cpuTicks_overflow++;
 //	tim2_profiler.end();
 }
 
 uint64_t cpuTicks(){
-	return (micros_overflow<<32) + __HAL_TIM_GET_COUNTER(&htim5);
+	return (cpuTicks_overflow<<32) + __HAL_TIM_GET_COUNTER(&htim5);
 }
 
 void current_adc_complete(){

@@ -23,7 +23,7 @@ extern "C" {
 extern UART_HandleTypeDef huart6;
 //#include "usart.h"
 
-volatile uint64_t micros_overflow = 0;
+volatile uint64_t cpuTicks_overflow = 0;
 
 FATFS FatFs;
 FRESULT FR_Status;
@@ -274,7 +274,7 @@ FRESULT sd_recreate_log_file(char *filename, uint16_t log_index,
 
 void tim7_trigger() {
 	//	tim2_profiler.start();
-	micros_overflow++;
+	cpuTicks_overflow++;
 	//	printf("HERE\n\r");
 	//	tim2_profiler.end();
 }
@@ -322,5 +322,5 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //}
 
 uint64_t cpuTicks() {
-	return (micros_overflow << 16) + __HAL_TIM_GET_COUNTER(&htim7);
+	return (cpuTicks_overflow << 16) + __HAL_TIM_GET_COUNTER(&htim7);
 }
