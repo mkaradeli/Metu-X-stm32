@@ -25,7 +25,7 @@ extern "C" {
 	void app_init();
 	void app_loop();
 
-	uint64_t micros();
+	uint64_t cpuTicks();
 //	extern TIM_HandleTypeDef htim5;
     extern TIM_HandleTypeDef htim7;
 

@@ -30,7 +30,7 @@ extern "C" {
 	void tim4_trigger();
 	void tim2_trigger();
 	void tim5_trigger();
-	uint64_t micros();
+	uint64_t cpuTicks();
 
     extern ADC_HandleTypeDef hadc1;
     extern ADC_HandleTypeDef hadc2;

@@ -158,7 +158,7 @@ void app_init() {
 
 		}
 
-		start_flag = micros();
+		start_flag = cpuTicks();
 //		actuator[0].static_manifold = &psSensors[4];
 
 }
@@ -172,7 +172,7 @@ void app_loop() {
 
 //		printf(CLR_SCREEN);
 		local_sensor_data.timestamp+= 1;
-		printf("timestamp = %ld, %ld \n\r", uwTick, micros());
+		printf("timestamp = %ld, %ld \n\r", uwTick, cpuTicks());
 
 		printf("\n\rWelcome to STM32 world ! counter=%d\n\r", (int16_t)(uwTick/1e3));
 
@@ -192,7 +192,7 @@ void app_loop() {
 //		ready_to_write_a++;
 //		actuator[0].setDuty(actuator[0].getDutyCycle() * -1.0f);
 		printf("%%%d\n\r", (int)(actuator[0].getDutyCycle()*100));
-		printf("timestamp = %ld, %ld \n\r", uwTick, micros());
+		printf("timestamp = %ld, %ld \n\r", uwTick, cpuTicks());
 
 		if (adc1_profiler.get_start_click() < adc2_profiler.get_start_click())
 			printf("encoder is before current controller\n\r");
@@ -251,7 +251,7 @@ void tim5_trigger(){
 //	tim2_profiler.end();
 }
 
-uint64_t micros(){
+uint64_t cpuTicks(){
 	return (micros_overflow<<32) + __HAL_TIM_GET_COUNTER(&htim5);
 }
 
@@ -285,7 +285,7 @@ void pressure_adc_complete(){
 	Actuator::manifold->updatePS();
 
 
-	time_sec = (micros() - start_flag) / 200e6;
+	time_sec = (cpuTicks() - start_flag) / 200e6;
 
 	// Sinüs dalgası hareketi
 	if (time_sec<120)

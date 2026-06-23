@@ -321,6 +321,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 //	return res;
 //}
 
-uint64_t micros() {
+uint64_t cpuTicks() {
 	return (micros_overflow << 16) + __HAL_TIM_GET_COUNTER(&htim7);
 }

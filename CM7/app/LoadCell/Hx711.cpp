@@ -7,7 +7,7 @@
 
 #include "Hx711.hpp"
 
-extern uint64_t micros();
+extern uint64_t cpuTicks();
 extern TIM_HandleTypeDef htim6;
 
 
@@ -51,9 +51,9 @@ bool Hx711::isReady(){
 }
 
 int32_t Hx711::raw(){
-	uint32_t timeout = micros() + 100000;
+	uint32_t timeout = cpuTicks() + 100000;
 	    while (!this->isReady()) {
-	        if (micros()>= timeout) {
+	        if (cpuTicks()>= timeout) {
 	            return 0;
 	        }
 	    }
