@@ -45,8 +45,9 @@ MEMORY
 {
 FLASH (rx)     : ORIGIN = 0x08100000, LENGTH = 1024K
 RAM (xrw)      : ORIGIN = 0x10000000, LENGTH = 288K
-RAM_D2 (xrw)   : ORIGIN = 0x30002000, LENGTH = 288K
-SHARED_RAM (xrw) : ORIGIN = 0x38000000, LENGTH = 64K
+SRAM12 (xrw)   : ORIGIN = 0x30000000, LENGTH = 256K
+SRAM3 (xrw)    : ORIGIN = 0x30040000, LENGTH = 32K
+SRAM4 (xrw) : ORIGIN = 0x38000000, LENGTH = 64K
 }
 
   
@@ -178,11 +179,23 @@ SECTIONS
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
   
-  .shared_memory (NOLOAD) :
+  .sram4 (NOLOAD) :
   {
-  	KEEP(*(.shared_memory))
-    KEEP(*(.shared_memory*))
-  } > SHARED_RAM
+  	KEEP(*(.sram4))
+    KEEP(*(.sram4*))
+  } > SRAM4
+  
+  .sram3 (NOLOAD) :
+  {
+  	KEEP(*(.sram3))
+    KEEP(*(.sram3*))
+  } > SRAM3
+  
+  .sram12 (NOLOAD) :
+  {
+  	KEEP(*(.sram12))
+    KEEP(*(.sram12*))
+  } > SRAM12
 }
 
 

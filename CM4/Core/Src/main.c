@@ -217,7 +217,7 @@ int main(void)
 	app_loop();
 
 	if (task_ready(&printf_task)) {
-//			printf(CLR_SCREEN);
+			printf(CLR_SCREEN);
 //			HAL_Delay(100);
 			printf("%d %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);
 			printf("uwTick = %ld \n\r",uwTick);
@@ -225,7 +225,7 @@ int main(void)
 
 
 			rb_flush(&isolated_print_buffer);
-//			rb_flush(&common_print_buffer);
+			rb_flush(&common_print_buffer);
 
 
 	  }

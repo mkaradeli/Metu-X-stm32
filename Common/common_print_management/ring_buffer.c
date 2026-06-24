@@ -24,7 +24,7 @@ extern int __io_putchar(int ch);
 //__attribute__((section(".shared_memory"), used))
 //char              buffer[RB_SIZE];
 
-__attribute__((section(".shared_memory"), used))
+__attribute__((section(".sram4"), used))
 volatile common_print_buffer_t common_print_buffer;
 
 void rb_init(volatile common_print_buffer_t* cpb)
