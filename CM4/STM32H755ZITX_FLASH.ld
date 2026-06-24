@@ -44,8 +44,8 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 MEMORY
 {
 FLASH (rx)     : ORIGIN = 0x08100000, LENGTH = 1024K
-RAM (xrw)      : ORIGIN = 0x10000000, LENGTH = 288K
-SRAM12 (xrw)   : ORIGIN = 0x30000000, LENGTH = 256K
+RAM (xrw)      : ORIGIN = 0x10000000, LENGTH = 128K
+SRAM2 (xrw)   : ORIGIN = 0x30020000, LENGTH = 128K
 SRAM3 (xrw)    : ORIGIN = 0x30040000, LENGTH = 32K
 SRAM4 (xrw) : ORIGIN = 0x38000000, LENGTH = 64K
 }
@@ -191,11 +191,11 @@ SECTIONS
     KEEP(*(.sram3*))
   } > SRAM3
   
-  .sram12 (NOLOAD) :
+  .sram2 (NOLOAD) :
   {
-  	KEEP(*(.sram12))
-    KEEP(*(.sram12*))
-  } > SRAM12
+  	KEEP(*(.sram2))
+    KEEP(*(.sram2*))
+  } > SRAM2
 }
 
 

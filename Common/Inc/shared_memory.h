@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 //#pragma once
-#define SHARED_MEM_SIZE (256*1024)
+#define SHARED_MEM_SIZE (128*1024)
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>

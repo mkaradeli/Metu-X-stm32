@@ -10,7 +10,7 @@
 #include "string.h"
 
 
-__attribute__((section(".sram12"), aligned(4)))
+__attribute__((section(".sram2"), aligned(4)))
 SensorData_Buffer_t logData;
 
 

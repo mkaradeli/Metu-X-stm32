@@ -47,7 +47,7 @@ MEMORY
   RAM_D1 (xrw)   : ORIGIN = 0x24000000, LENGTH =  512K
   FLASH   (rx)   : ORIGIN = 0x08000000, LENGTH = 1024K    /* Memory is divided. Actual start is 0x08000000 and actual length is 2048K */
   DTCMRAM (xrw)  : ORIGIN = 0x20000000, LENGTH = 128K
-  SRAM12 (xrw)   : ORIGIN = 0x30000000, LENGTH = 256K
+  SRAM2 (xrw)   : ORIGIN = 0x30020000, LENGTH = 128K
   SRAM3 (xrw)    : ORIGIN = 0x30040000, LENGTH = 32K
   SRAM4 (xrw) : ORIGIN = 0x38000000, LENGTH = 64K
   /*RAM_D3 (xrw)   : ORIGIN = 0x38001000, LENGTH = 64K - 4K*/
@@ -203,9 +203,9 @@ SECTIONS
     KEEP(*(.sram3*))
   } > SRAM3
   
-  .sram12 (NOLOAD) :
+  .sram2 (NOLOAD) :
   {
-  	KEEP(*(.sram12))
-    KEEP(*(.sram12*))
-  } > SRAM12
+  	KEEP(*(.sram2))
+    KEEP(*(.sram2*))
+  } > SRAM2
 }
