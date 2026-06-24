@@ -17,8 +17,8 @@
 #include "Profiler.hpp"
 extern "C" {
 #include "task_timer.h"
-}
 #include "shared_memory.h"
+}
 
 extern UART_HandleTypeDef huart6;
 //#include "usart.h"

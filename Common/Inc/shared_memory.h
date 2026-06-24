@@ -7,13 +7,18 @@
 
 #ifndef INC_SHARED_MEMORY_H_
 #define INC_SHARED_MEMORY_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 //#pragma once
-#define SHARED_MEM_SIZE 10*1024
+#define SHARED_MEM_SIZE (256*1024)
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #define PACKET_SIZE sizeof(SensorData_t)
-#define BUFFER_PACKET_COUNT (SHARED_MEM_SIZE / PACKET_SIZE )
+#define BUFFER_PACKET_COUNT (SHARED_MEM_SIZE / PACKET_SIZE -1)
 #define BUFFER_SIZE (PACKET_SIZE * BUFFER_PACKET_COUNT)
 
 typedef struct __attribute__((aligned(4))) {
@@ -41,18 +46,43 @@ typedef struct __attribute__((aligned(4))) {
     float thrust_estimated;
     float thrust_measured;
 //    uint16_t crc;
-} SensorData_t;
+} SensorData_t; // 164 byte
 
+//#define BUFFER_SIZE (256*1024/sizeof(SensorData_t)-1)
 typedef struct {
-	uint32_t head;
-	uint32_t tail;
-	uint32_t dropped;
+	volatile uint32_t head;
+	volatile uint32_t tail;
+	volatile uint32_t dropped;
 
-	SensorData_t sensorData[5];
+	SensorData_t sensorData[BUFFER_PACKET_COUNT]; //BUFFER_PACKET_COUNT = 1560
 } SensorData_Buffer_t;
 
 
 
+
+extern SensorData_Buffer_t logData;
+
+void SensorData_Buffer_Init(SensorData_Buffer_t * logData);
+
+bool SensorData_Buffer_Push(SensorData_Buffer_t *logData, const SensorData_t *entry);
+
+bool SensorData_Buffer_Pop(SensorData_Buffer_t *logData, SensorData_t *entry);
+
+size_t SensorData_Buffer_PopAll(SensorData_Buffer_t *logData, SensorData_t *dest, size_t max_entries);
+
+size_t SensorData_Buffer_Count(const SensorData_Buffer_t *logData);
+
+bool SensorData_Buffer_IsEmpty(const SensorData_Buffer_t *logData);
+
+bool SensorData_Buffer_IsFull(const SensorData_Buffer_t *logData);
+
+
+
+
+
+#ifdef __cplusplus
+}
+#endif
 
 //extern SensorData_t sensor_data_buffer_a[BUFFER_PACKET_COUNT/2-1];
 //extern SensorData_t sensor_data_buffer_b[BUFFER_PACKET_COUNT/2-1];
