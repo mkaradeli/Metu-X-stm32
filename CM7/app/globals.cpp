@@ -18,14 +18,14 @@ static Motor motors[4] = {
 		Motor(LEFT_EN_4_GPIO_Port, LEFT_EN_4_Pin, RIGHT_EN_4_GPIO_Port, RIGHT_EN_4_Pin, &htim1, TIM_CHANNEL_4),
 };
 
-static uint16_t psSensorsCalibration2[13] = {13000, 14360, 16673, 18998, 25832, 30482, 37281, 42001, 49137, 53694, 60819, 62981, 64330};
+
 
 static PressureSensor psSensors[5] = {
-		PressureSensor(psSensorsCalibration2, &adc_dma_buf_pressure[0]),
-		PressureSensor(psSensorsCalibration2, &adc_dma_buf_pressure[1]),
-		PressureSensor(psSensorsCalibration2, &adc_dma_buf_pressure[2]),
-		PressureSensor(psSensorsCalibration2, &adc_dma_buf_pressure[3]),
-		PressureSensor(psSensorsCalibration2, &adc_dma_buf_pressure[4])
+		PressureSensor(&adc_dma_buf_pressure[0]),
+		PressureSensor(&adc_dma_buf_pressure[1]),
+		PressureSensor(&adc_dma_buf_pressure[2]),
+		PressureSensor(&adc_dma_buf_pressure[3]),
+		PressureSensor(&adc_dma_buf_pressure[4])
 };
 
 Actuator actuator[4] = {
