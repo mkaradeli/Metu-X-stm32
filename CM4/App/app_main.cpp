@@ -53,10 +53,11 @@ char RW_Buffer[200];
 FRESULT disk_mounted = FR_DISK_ERR;
 FRESULT file_open = FR_DISK_ERR;
 
-SensorData_t sensorData = { 0 };
+//SensorData_t sensorData = { 0 };
 
 FIL logFile;
 FIL Fil;
+SensorData_t sensorDataScratch[400];
 
 #include "ff_gen_drv.h"
 char sd_path[4];
@@ -75,130 +76,128 @@ void app_init() {
 	sd_card_write_profiler.reset();
 
 }
-
+void sd_card_task_function();
 void app_loop() {
 	//	printf(CLR_SCREEN);
 	if (task_ready(&sd_card_task)) {
-		sd_card_write_profiler.start();
-		if (disk_mounted != FR_OK) {
-			BSP_LED_On(LED_RED);
-			disk.is_initialized[0] = 0;
-			f_mount(NULL, "", 1);
-			//		FR_Status = (FRESULT)sd_mount();
-			FR_Status = f_mount(&FatFs, "", 1);
-
-			if (FR_Status != FR_OK) {
-				//		if (FR_Status != FR_OK){
-				printf("Error! While Mounting SD Card, Error Code: (%i)\r\n",
-						FR_Status);
-				//						f_mount(NULL, "", 1);
-				//						f_mount(NULL, "", 1);
-			} else
-				printf("SD Card Mounted Successfully! \r\n\n");
-			disk_mounted = FR_Status;
-		} else { // Disk mounted
-			BSP_LED_Off(LED_RED);
-			if (initial_file_name_selected == 0) { // first file creation
-				printf("creating file\n\r");
-				file_open = sd_create_log_file(&filename[0], &log_index);
-				if (file_open == FR_OK) {
-					//							initial_file_name_selected = 0;
-					//						else
-					initial_file_name_selected = 1;
-					file_created = 1;
-				}
-
-			} else if (initial_file_name_selected == 1 && file_created == 0) { // recreation
-
-				file_open = sd_reopen_log_append(log_index);
-				if (file_open == FR_OK) {
-					file_created = 1;
-					FSIZE_t sz = f_size(&Fil);
-					FSIZE_t aligned = (sz / sizeof(SensorData_t))
-									* sizeof(SensorData_t);
-					if (aligned != sz) {
-						f_lseek(&Fil, aligned);
-						f_truncate(&Fil);    // drop the partial trailing record
-						f_sync(&Fil);
-					}
-				} else {
-					initial_file_name_selected = 0; // give up, scan for a fresh name next loop
-
-				}
-			} else { // file open already.
-				//					if (file_open == FR_OK) {
-				//							printf("file open %s\n\r", filename);
-				//						snprintf(RW_Buffer, sizeof(RW_Buffer), "timestamp = %ld\n\r", uwTick);
-				FR_Status = f_write(&Fil, &sensorData, sizeof(sensorData),
-						&WWC);
-				// TODO: Circular buffer implement edilecek.
-				// TODO: fonksiyona cevrilecek.
-
-				if (sizeof(sensorData) == WWC) {
-					//								printf("line written\n\r");
-					FR_Status = f_sync(&Fil);
-					if (FR_Status == FR_OK) {
-						printf("sync successfull\n\r");
-					} else {
-						printf("sync FAILED!!!!!!!\n\r");
-						disk_mounted = FR_Status;
-						file_created = 0;
-						f_close(&Fil);
-						f_mount(NULL, "", 1);
-
-					}
-
-				} else {
-					printf("line addition failed.\n\r");
-					printf("RW Buffer len%d, wwc %d", strlen(RW_Buffer), WWC);
-					disk_mounted = FR_INT_ERR;
-					file_created = 0;
-					f_close(&Fil);
-					//								DESELECT();
-					f_mount(NULL, "", 1);
-					//							file_open = 1;
-				}
-
-				//
-				//					}
-				//					else {
-				//
-				//					}
-
-			}
-		}
-		//				printf("DISK STATUS = %d\n\r", disk_mounted);
-
-		//			printf("FILE STATUS = %d\n\r\n\r", file_open);
-		a = sizeof(sensorData);
-		//					int b = a;
-		//					HAL_StatusTypeDef HAL_UART_Transmit(UART_HandleTypeDef *huart, const uint8_t *pData, uint16_t Size, uint32_t Timeout)
-
-		sd_card_write_profiler.end();
-		sd_card_write_profiler.metrics();
-		printf("sd_card task mean time = %d.%d, cpu usage = %d.%d \n\r",
-				(int) sd_card_write_profiler.mean_time,
-				FRACTIONAL(sd_card_write_profiler.mean_time),
-				(int) sd_card_write_profiler.cpu_usage,
-				FRACTIONAL(sd_card_write_profiler.cpu_usage));
-		//	printf("%lu\n\r", __HAL_TIM_GET_COUNTER(&htim7));
-		printf("%d, %p, %d, %d\n\r", disk.is_initialized[0], disk.drv[0],
-				disk.lun[0], disk.nbr);
-		//	printf("%lu\n\r", (uint32_t)micros());
-		//	printf("%lu\n\r", (uint32_t)micros_overflow);
-		printf("%d\n\r", a);
+		sd_card_task_function();
 	}
 
 	if (task_ready(&uart_task)) {
-		sensorData.timestamp = uwTick;
+//		sensorData.timestamp = uwTick;
 		// TODO: convert telemetry to DMA usage
 
-		HAL_UART_Transmit(&huart6, (uint8_t*) &sensorData, sizeof(sensorData),
+		HAL_UART_Transmit(&huart6, (uint8_t*) &logData.sensorData[0], sizeof(SensorData_t),
 				HAL_MAX_DELAY);
 
 	}
-
 }
+
+
+void sd_card_task_function() {
+
+	if (disk_mounted != FR_OK) {
+		BSP_LED_On(LED_RED);
+		disk.is_initialized[0] = 0;
+		f_mount(NULL, "", 1);
+		//		FR_Status = (FRESULT)sd_mount();
+		FR_Status = f_mount(&FatFs, "", 1);
+
+		if (FR_Status != FR_OK) {
+			//		if (FR_Status != FR_OK){
+			printf("Error! While Mounting SD Card, Error Code: (%i)\r\n",
+					FR_Status);
+			//						f_mount(NULL, "", 1);
+			//						f_mount(NULL, "", 1);
+		} else
+			printf("SD Card Mounted Successfully! \r\n\n");
+		disk_mounted = FR_Status;
+	} else { // Disk mounted
+		BSP_LED_Off(LED_RED);
+		if (initial_file_name_selected == 0) { // first file creation
+			printf("creating file\n\r");
+			file_open = sd_create_log_file(&filename[0], &log_index);
+			if (file_open == FR_OK) {
+				//							initial_file_name_selected = 0;
+				//						else
+				initial_file_name_selected = 1;
+				file_created = 1;
+			}
+
+		} else if (initial_file_name_selected == 1 && file_created == 0) { // recreation
+
+			file_open = sd_reopen_log_append(log_index);
+			if (file_open == FR_OK) {
+				file_created = 1;
+				FSIZE_t sz = f_size(&Fil);
+				FSIZE_t aligned = (sz / sizeof(SensorData_t))
+								* sizeof(SensorData_t);
+				if (aligned != sz) {
+					f_lseek(&Fil, aligned);
+					f_truncate(&Fil);    // drop the partial trailing record
+					f_sync(&Fil);
+				}
+			} else {
+				initial_file_name_selected = 0; // give up, scan for a fresh name next loop
+
+			}
+		}
+		if (file_created) { // file open already.
+			sd_card_write_profiler.start();
+			//					if (file_open == FR_OK) {
+						//							printf("file open %s\n\r", filename);
+						//						snprintf(RW_Buffer, sizeof(RW_Buffer), "timestamp = %ld\n\r", uwTick);
+
+						size_t scratch_buffer_size = SensorData_Buffer_PopAll(&logData, sensorDataScratch, 20);
+						if (scratch_buffer_size) // remove
+							f_write(&Fil, &sensorDataScratch, sizeof(SensorData_t)*scratch_buffer_size, &WWC);
+//						FR_Status = f_write(&Fil, &sensorData, sizeof(sensorData),
+//								&WWC);
+						// TODO: Circular buffer implement edilecek.
+						// TODO: fonksiyona cevrilecek.
+
+						if (sizeof(SensorData_t)*scratch_buffer_size == WWC) {
+
+//			if (false){
+
+				//								printf("line written\n\r");
+				FR_Status = f_sync(&Fil);
+				if (FR_Status == FR_OK) {
+					printf("sync successfull\n\r");
+				} else {
+					printf("sync FAILED!!!!!!!\n\r");
+					disk_mounted = FR_Status;
+					file_created = 0;
+					f_close(&Fil);
+					f_mount(NULL, "", 1);
+				}
+			} else {
+				printf("line addition failed.\n\r");
+				printf("RW Buffer len%d, wwc %d", strlen(RW_Buffer), WWC);
+				disk_mounted = FR_INT_ERR;
+				file_created = 0;
+				f_close(&Fil);
+				f_mount(NULL, "", 1);
+			}
+			sd_card_write_profiler.end();
+		}
+	}
+	sd_card_write_profiler.metrics();
+	printf("sd_card task mean time = %d.%d, cpu usage = %d.%d \n\r",
+			(int) sd_card_write_profiler.mean_time,
+			FRACTIONAL(sd_card_write_profiler.mean_time),
+			(int) sd_card_write_profiler.cpu_usage,
+			FRACTIONAL(sd_card_write_profiler.cpu_usage));
+	//	printf("%lu\n\r", __HAL_TIM_GET_COUNTER(&htim7));
+	printf("%d, %p, %d, %d\n\r", disk.is_initialized[0], disk.drv[0],
+			disk.lun[0], disk.nbr);
+	printf("%d\n\r", a);
+
+};
+
+
+
+
 
 FRESULT sd_reopen_log_append(uint16_t log_index) {
 	char name[32];

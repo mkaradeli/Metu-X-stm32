@@ -8,6 +8,8 @@
 #include "Profiler.hpp"
 #include "app_main.hpp"
 
+static Profiler* g_active = nullptr;
+
 Profiler::Profiler() {
 	total_cycles = 0;
 	elapsed_cycles = 0;  // cycles in 200MHz
@@ -27,13 +29,45 @@ void Profiler::reset(){
 }
 
 void Profiler::start() {
+	uint32_t primask = __get_PRIMASK();
+	__disable_irq();
+	parent_profiler = g_active;
+	if (parent_profiler)
+		parent_profiler->pause();
+	g_active = this;
+	is_running = true;
+	is_paused = false;
 	start_call = cpuTicks();
+	__set_PRIMASK(primask);
+}
+
+void Profiler::pause() {
+	if (!is_running || is_paused) return;
+	elapsed_cycles = cpuTicks() - start_call;
+	total_cycles += elapsed_cycles;
+	is_paused = true;
+}
+void Profiler::cont() {
+	if (!is_running || !is_paused) return;
+	start_call = cpuTicks();
+	is_paused = false;
 }
 
 void Profiler::end() {
-	elapsed_cycles = cpuTicks() - start_call;
-	total_cycles += elapsed_cycles;
+	uint32_t primask = __get_PRIMASK();
+	__disable_irq();
+	if (!is_paused) {
+		elapsed_cycles  = cpuTicks() - start_call;
+		total_cycles += elapsed_cycles;
+	}
 	call_count += 1;
+	is_running = false;
+	g_active = parent_profiler;
+	if (parent_profiler)
+		parent_profiler->cont();
+	__set_PRIMASK(primask);
+//	parent_profiler = nullptr;
+
 }
 void Profiler::metrics(){
 	cpu_usage = (float)(total_cycles * 100) / (cpuTicks() - start_global);

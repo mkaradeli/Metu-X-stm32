@@ -86,6 +86,7 @@ Profiler tim4_profiler;
 
 
 void app_init() {
+	SensorData_Buffer_Init(&logData);
 	HAL_ADCEx_Calibration_Start(&hadc2, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 	  HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc_dma_buf_current, 4);
 
@@ -123,8 +124,8 @@ void app_init() {
 //	  dummy_init();
 //	  printf(CLR_SCREEN);
 
-	    local_sensor_data.current_demand = 2;
-	    local_sensor_data.timestamp = 0;
+//	    local_sensor_data.current_demand = 2;
+//	    local_sensor_data.timestamp = 0;
 //	    ready_to_write_a=0;
 
 	    main_loop_profiler.reset();
@@ -161,6 +162,7 @@ void app_init() {
 		start_flag = cpuTicks();
 //		actuator[0].static_manifold = &psSensors[4];
 
+	free_profiler.start();
 }
 
 void app_loop() {
@@ -171,7 +173,8 @@ void app_loop() {
 		timeOfLastPrint+= 1000;
 
 //		printf(CLR_SCREEN);
-		local_sensor_data.timestamp+= 1;
+//		local_sensor_data.timestamp = micros();
+
 		printf("timestamp = %ld, %ld \n\r", uwTick, cpuTicks());
 
 		printf("\n\rWelcome to STM32 world ! counter=%d\n\r", (int16_t)(uwTick/1e3));
@@ -207,6 +210,9 @@ void app_loop() {
 		printf("encoder start %ld\n\r", adc1_profiler.get_start_click());
 		printf("current start %ld\n\r", adc2_profiler.get_start_click());
 
+		float total_usage = main_loop_profiler.cpu_usage + printf_profiler.cpu_usage + free_profiler.cpu_usage + adc1_profiler.cpu_usage + adc2_profiler.cpu_usage + adc3_profiler.cpu_usage + tim2_profiler.cpu_usage + tim3_profiler.cpu_usage + tim4_profiler.cpu_usage;
+		printf("total cpu usage accounted %%%d.%d \n\r", (int)total_usage, FRACTIONAL(total_usage));
+		printf("logData head = %d, tail = %d, dropped = %d\n\r", logData.head, logData.tail, logData.dropped);
 
 
 
@@ -222,9 +228,8 @@ void app_loop() {
 
 		main_loop_profiler.end();
 	}
-	free_profiler.start();
 	load_cell_counter = 1/ load_cell_counter;
-	free_profiler.end();
+//	free_profiler.end();
 }
 
 
@@ -251,8 +256,11 @@ void tim5_trigger(){
 //	tim2_profiler.end();
 }
 
-uint64_t cpuTicks(){
+inline uint64_t cpuTicks(){
 	return (cpuTicks_overflow<<32) + __HAL_TIM_GET_COUNTER(&htim5);
+}
+inline uint64_t micros() {
+	return cpuTicks() / 200;
 }
 
 void current_adc_complete(){
@@ -265,6 +273,12 @@ void current_adc_complete(){
 
 		actuator[i].current_controller_step();
 	}
+	for (int i=0; i<7; i++) {
+		local_sensor_data.current_subsample[i] = local_sensor_data.current_subsample[i+1];
+		local_sensor_data.duty_subsample[i] = local_sensor_data.duty_subsample[i+1];
+	}
+	local_sensor_data.current_subsample[7] = actuator[0].get_current();
+	local_sensor_data.duty_subsample[7] = actuator[0].getDutyCycle();
 	adc2_profiler.end();
 }
 
@@ -274,45 +288,79 @@ void encoder_adc_complete(){
 	for (int i=0; i<4; i++){
 		actuator[i].updateHallEffect();
 	}
+	for (int i=0; i<3; i++){
+		local_sensor_data.valveAngle[i] = local_sensor_data.valveAngle[i+1];
+		local_sensor_data.valveAngleKalman[i] = local_sensor_data.valveAngleKalman[i+1];
+		local_sensor_data.valveVelocity[i] = local_sensor_data.valveVelocity[i+1];
+	}
+	local_sensor_data.valveAngle[3] = actuator[0].hallEffect.valveAngle;
+	local_sensor_data.valveAngleKalman[3] = actuator[0].hallEffect.valveAngleKalman;
+	local_sensor_data.valveVelocity[3] = actuator[0].hallEffect.valveVelocity;
 	adc1_profiler.end();
 }
-
+void user_task();
 void pressure_adc_complete(){
 	adc3_profiler.start();
 	for (int i=0; i<4; i++){
 		actuator[i].readPressure();
 	}
 	Actuator::manifold->updatePS();
-
-
-	time_sec = (cpuTicks() - start_flag) / 200e6;
-
-	// Sinüs dalgası hareketi
-	if (time_sec<120)
-		if (fmod(time_sec,3)<0.5)
-		  actuator[0].actuatorController.rtU.P_nozzle_demand = 1000;
-		else if (fmod(time_sec,3)<1)
-			actuator[0].actuatorController.rtU.P_nozzle_demand = 500;
-		else if (fmod(time_sec,3)<2.5)
-			actuator[0].actuatorController.rtU.P_nozzle_demand = sin(5*PI*2*time_sec)*150 + 600;
-		else
-			actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
-	else if (time_sec<121){
-		actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
-		if (controller_mode == controller_modes::PRESSURE)
-			controller_mode = controller_modes::POSITION;
-		actuator[0].actuatorController.rtU.pos_ref_ext = 0;
-	}
+	user_task();
 
 
 	for (int i=0; i<4; i++) {
 		actuator[i].actuator_controller_step();
 	}
 
-	if (time_sec <= 122 && time_sec > 121){
-
-		controller_mode = controller_modes::DISABLE;
-	};
-
+	local_sensor_data.timestamp = cpuTicks()/200; //microseconds
+	local_sensor_data.current_measured = actuator[0].get_current();
+	local_sensor_data.current_demand = actuator[0].actuatorController.rtY.currentDemand;
+//	local_sensor_data.valveAngle[4];
+//	local_sensor_data.valveAngleKalman[4];
+//	local_sensor_data.valveVelocity[4];
+//	local_sensor_data.current_subsample[8];
+//	local_sensor_data.duty_subsample[8];
+	local_sensor_data.speedDemand = actuator[0].actuatorController.rtY.speedDemand;
+	local_sensor_data.pos_ref = actuator[0].actuatorController.rtY.position_demand;
+	local_sensor_data.pos_ref_rate_limited = actuator[0].actuatorController.rtY.pos_ref_rate_limited;
+	local_sensor_data.speed_ref_rate_limited = actuator[0].actuatorController.rtY.speedDemand;
+	local_sensor_data.manifold_pressure = Actuator::manifold->getPsi();
+	local_sensor_data.nozzle_pressure = actuator[0].getPressurePsi();
+	local_sensor_data.pressure_demand = actuator[0].actuatorController.rtU.P_nozzle_demand;
+	local_sensor_data.thrust_demand = 0;
+	local_sensor_data.thrust_estimated = 0;
+	local_sensor_data.thrust_measured = 0;
+	SensorData_Buffer_Push(&logData, &local_sensor_data);
 	adc3_profiler.end();
+}
+void user_task() {
+	time_sec = (cpuTicks() - start_flag) / 200e6;
+
+		// Sinüs dalgası hareketi
+		if (time_sec<120)
+			if (fmod(time_sec,3)<0.5)
+			  actuator[0].actuatorController.rtU.P_nozzle_demand = 1000;
+			else if (fmod(time_sec,3)<1)
+				actuator[0].actuatorController.rtU.P_nozzle_demand = 500;
+			else if (fmod(time_sec,3)<2.5)
+				actuator[0].actuatorController.rtU.P_nozzle_demand = sin(5*PI*2*time_sec)*150 + 600;
+			else
+				actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
+		else if (time_sec<121){
+			actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
+			if (controller_mode == controller_modes::PRESSURE)
+				controller_mode = controller_modes::POSITION;
+			actuator[0].actuatorController.rtU.pos_ref_ext = 0;
+		}
+
+
+		for (int i=0; i<4; i++) {
+			actuator[i].actuator_controller_step();
+		}
+
+		if (time_sec <= 122 && time_sec > 121){
+
+			controller_mode = controller_modes::DISABLE;
+		};
+
 }

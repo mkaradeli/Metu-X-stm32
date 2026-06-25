@@ -25,6 +25,11 @@ public:
 		return start_call;
 	}
 private:
+	void cont();
+	void pause();
+	bool is_running;
+	bool is_paused;
+	Profiler *parent_profiler;
 	uint64_t total_cycles;
 	uint32_t elapsed_cycles;
 	uint32_t start_call;
