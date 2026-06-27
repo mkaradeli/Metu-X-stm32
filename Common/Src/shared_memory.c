@@ -10,8 +10,11 @@
 #include "string.h"
 
 
-__attribute__((section(".sram2"), aligned(4)))
+__attribute__((section(".log_data"), aligned(4)))
 SensorData_Buffer_t logData;
+
+//__attribute__((section(".log_data"), aligned(4)))
+//SensorData_Buffer_t logData_axiram;
 
 
 static inline uint32_t SensorData_next(uint32_t i) {
@@ -114,3 +117,8 @@ bool SensorData_Buffer_IsEmpty(const SensorData_Buffer_t *logData) {
 bool SensorData_Buffer_IsFull(const SensorData_Buffer_t *logData) {
 	return SensorData_next(logData->head) == logData->tail;
 };
+
+bool SensorData_Buffer_Reset_Dropped(SensorData_Buffer_t *logData){
+	logData->dropped = 0;
+	return logData->dropped;
+}

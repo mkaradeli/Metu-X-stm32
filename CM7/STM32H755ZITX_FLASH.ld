@@ -44,7 +44,8 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 /* Memories definition */
 MEMORY
 {
-  RAM_D1 (xrw)   : ORIGIN = 0x24000000, LENGTH =  512K
+  RAM_D1 (xrw)   : ORIGIN = 0x24000000, LENGTH =  128K
+  LOG_DATA (xrw) : ORIGIN = 0x24020000, LENGTH = 384K
   FLASH   (rx)   : ORIGIN = 0x08000000, LENGTH = 1024K    /* Memory is divided. Actual start is 0x08000000 and actual length is 2048K */
   DTCMRAM (xrw)  : ORIGIN = 0x20000000, LENGTH = 128K
   SRAM2 (xrw)   : ORIGIN = 0x30020000, LENGTH = 128K
@@ -208,4 +209,9 @@ SECTIONS
   	KEEP(*(.sram2))
     KEEP(*(.sram2*))
   } > SRAM2
+  .log_data (NOLOAD) :
+  {
+  	KEEP(*(.log_data))
+    KEEP(*(.log_data*))
+  } > LOG_DATA
 }

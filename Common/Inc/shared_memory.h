@@ -12,7 +12,7 @@
 extern "C" {
 #endif
 //#pragma once
-#define SHARED_MEM_SIZE (128*1024)
+#define SHARED_MEM_SIZE (384*1024)
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -61,7 +61,7 @@ typedef struct {
 
 
 extern SensorData_Buffer_t logData;
-
+//extern SensorData_Buffer_t logData_axiram;
 void SensorData_Buffer_Init(SensorData_Buffer_t * logData);
 
 bool SensorData_Buffer_Push(SensorData_Buffer_t *logData, const SensorData_t *entry);
@@ -75,7 +75,7 @@ size_t SensorData_Buffer_Count(const SensorData_Buffer_t *logData);
 bool SensorData_Buffer_IsEmpty(const SensorData_Buffer_t *logData);
 
 bool SensorData_Buffer_IsFull(const SensorData_Buffer_t *logData);
-
+bool SensorData_Buffer_Reset_Dropped(SensorData_Buffer_t *logData);
 
 
 

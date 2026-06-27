@@ -45,6 +45,7 @@ MEMORY
 {
 FLASH (rx)     : ORIGIN = 0x08100000, LENGTH = 1024K
 RAM (xrw)      : ORIGIN = 0x10000000, LENGTH = 128K
+LOG_DATA (xrw) : ORIGIN = 0x24020000, LENGTH = 384K
 SRAM2 (xrw)   : ORIGIN = 0x30020000, LENGTH = 128K
 SRAM3 (xrw)    : ORIGIN = 0x30040000, LENGTH = 32K
 SRAM4 (xrw) : ORIGIN = 0x38000000, LENGTH = 64K
@@ -196,6 +197,11 @@ SECTIONS
   	KEEP(*(.sram2))
     KEEP(*(.sram2*))
   } > SRAM2
+  .log_data (NOLOAD) :
+  {
+  	KEEP(*(.log_data))
+    KEEP(*(.log_data*))
+  } > LOG_DATA
 }
 
 

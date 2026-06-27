@@ -57,7 +57,10 @@ FRESULT file_open = FR_DISK_ERR;
 
 FIL logFile;
 FIL Fil;
-SensorData_t sensorDataScratch[400];
+
+const size_t scratch_buffer_max_size = ((128*1024) / PACKET_SIZE -1);
+__attribute__((section(".sram2"), aligned(4)))
+SensorData_t sensorDataScratch[scratch_buffer_max_size];
 
 #include "ff_gen_drv.h"
 char sd_path[4];
@@ -82,8 +85,12 @@ void app_loop() {
 	//	printf(CLR_SCREEN);
 	if (task_ready(&sd_card_task)) {
 		sd_card_prep();
-		sd_card_task_function();
+//		sd_card_task_function();
+		printf("sd card task cpu usage %%%d.%d\n\r",(int)sd_card_write_profiler.cpu_usage,FRACTIONAL(sd_card_write_profiler.cpu_usage));
+
 	}
+
+
 	sd_card_task_function();
 
 	if (task_ready(&uart_task)) {
@@ -99,44 +106,34 @@ void app_loop() {
 size_t scratch_buffer_size;
 void sd_card_task_function() {
 	if (file_created) { // file open already.
-				sd_card_write_profiler.start();
-				//					if (file_open == FR_OK) {
-							//							printf("file open %s\n\r", filename);
-							//						snprintf(RW_Buffer, sizeof(RW_Buffer), "timestamp = %ld\n\r", uwTick);
+		sd_card_write_profiler.start();
+		scratch_buffer_size = SensorData_Buffer_PopAll(&logData, sensorDataScratch, scratch_buffer_max_size);
+		if (scratch_buffer_size) // remove
+		f_write(&Fil, &sensorDataScratch, sizeof(SensorData_t)*scratch_buffer_size, &WWC);
+		// TODO: Circular buffer implement edilecek.
+		// TODO: fonksiyona cevrilecek.
 
-							scratch_buffer_size = SensorData_Buffer_PopAll(&logData, sensorDataScratch, 400);
-							if (scratch_buffer_size) // remove
-								f_write(&Fil, &sensorDataScratch, sizeof(SensorData_t)*scratch_buffer_size, &WWC);
-	//						FR_Status = f_write(&Fil, &sensorData, sizeof(sensorData),
-	//								&WWC);
-							// TODO: Circular buffer implement edilecek.
-							// TODO: fonksiyona cevrilecek.
-
-							if (sizeof(SensorData_t)*scratch_buffer_size == WWC) {
-
-	//			if (false){
-
-					//								printf("line written\n\r");
-					FR_Status = f_sync(&Fil);
-					if (FR_Status == FR_OK) {
-						printf("sync successfull\n\r");
-					} else {
-						printf("sync FAILED!!!!!!!\n\r");
-						disk_mounted = FR_Status;
-						file_created = 0;
-						f_close(&Fil);
-						f_mount(NULL, "", 1);
-					}
-				} else {
-					printf("line addition failed.\n\r");
-					printf("RW Buffer len%d, wwc %d", strlen(RW_Buffer), WWC);
-					disk_mounted = FR_INT_ERR;
-					file_created = 0;
-					f_close(&Fil);
-					f_mount(NULL, "", 1);
-				}
-				sd_card_write_profiler.end();
+		if (sizeof(SensorData_t)*scratch_buffer_size == WWC) {
+			FR_Status = f_sync(&Fil);
+			if (FR_Status == FR_OK) {
+//				printf("sync successfull\n\r");
+			} else {
+				printf("sync FAILED!!!!!!!\n\r");
+				disk_mounted = FR_Status;
+				file_created = 0;
+				f_close(&Fil);
+				f_mount(NULL, "", 1);
 			}
+		} else {
+			printf("line addition failed.\n\r");
+			printf("RW Buffer len%d, wwc %d", strlen(RW_Buffer), WWC);
+			disk_mounted = FR_INT_ERR;
+			file_created = 0;
+			f_close(&Fil);
+			f_mount(NULL, "", 1);
+		}
+		sd_card_write_profiler.end();
+	}
 }
 
 void sd_card_prep() {
@@ -167,6 +164,7 @@ void sd_card_prep() {
 				//						else
 				initial_file_name_selected = 1;
 				file_created = 1;
+				SensorData_Buffer_Reset_Dropped(&logData);
 			}
 
 		} else if (initial_file_name_selected == 1 && file_created == 0) { // recreation

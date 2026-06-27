@@ -87,6 +87,7 @@ Profiler tim4_profiler;
 
 void app_init() {
 	SensorData_Buffer_Init(&logData);
+//	SensorData_Buffer_Init(&logData_axiram);
 	HAL_ADCEx_Calibration_Start(&hadc2, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 	  HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc_dma_buf_current, 4);
 
@@ -331,6 +332,8 @@ void pressure_adc_complete(){
 	local_sensor_data.thrust_estimated = 0;
 	local_sensor_data.thrust_measured = 0;
 	SensorData_Buffer_Push(&logData, &local_sensor_data);
+//	SensorData_Buffer_Push(&logData_axiram, &local_sensor_data);
+
 	adc3_profiler.end();
 }
 void user_task() {
