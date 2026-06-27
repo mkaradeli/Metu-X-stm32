@@ -70,7 +70,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOD, USB_OTG_FS_PWR_EN_Pin|LEFT_EN_2_Pin|LEFT_EN_4_Pin|RIGHT_EN_3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOG, RIGHT_EN_4_Pin|HX711_SCK_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOG, test_point_Pin|RIGHT_EN_4_Pin|HX711_SCK_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PC1 PC4 PC5 */
   GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_4|GPIO_PIN_5;
@@ -117,6 +117,13 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : test_point_Pin RIGHT_EN_4_Pin HX711_SCK_Pin */
+  GPIO_InitStruct.Pin = test_point_Pin|RIGHT_EN_4_Pin|HX711_SCK_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
+
   /*Configure GPIO pins : PA8 PA11 PA12 */
   GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_11|GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -124,13 +131,6 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.Alternate = GPIO_AF10_OTG1_FS;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : RIGHT_EN_4_Pin HX711_SCK_Pin */
-  GPIO_InitStruct.Pin = RIGHT_EN_4_Pin|HX711_SCK_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PG11 PG13 */
   GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_13;

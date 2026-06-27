@@ -15,7 +15,7 @@
 #include "ring_buffer.h"
 #include <string.h>
 #include "Hx711.hpp"
-
+#include "task_timer.h"
 
 #include "PressureSensor.hpp"
 //extern "C" {
@@ -41,6 +41,7 @@ void current_adc_complete();
 void encoder_adc_complete();
 void pressure_adc_complete();
 
+task_timer_t test_point_gpio = {5000,0};
 
 __attribute__((section(".sram3"), used))
 volatile uint16_t adc_dma_buf_current[4];
@@ -166,7 +167,9 @@ void app_init() {
 	free_profiler.start();
 }
 
+
 void app_loop() {
+
 
 	if (uwTick - timeOfLastPrint >= 1000){
 		main_loop_profiler.start();
@@ -175,7 +178,7 @@ void app_loop() {
 
 //		printf(CLR_SCREEN);
 //		local_sensor_data.timestamp = micros();
-
+//		if (HAL_GPIO_ReadPin(test_point_GPIO_Port, test_point_Pin))
 		printf("timestamp = %ld, %ld \n\r", uwTick, cpuTicks());
 
 		printf("\n\rWelcome to STM32 world ! counter=%d\n\r", (int16_t)(uwTick/1e3));

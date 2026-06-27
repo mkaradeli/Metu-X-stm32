@@ -113,6 +113,7 @@ int _write(int file, char *ptr, int len)
 #endif
 
 }
+bool pc8_active = 0;
 /* USER CODE END 0 */
 
 /**
@@ -256,6 +257,8 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
     {
       BspButtonState = BUTTON_RELEASED;
       BSP_LED_Toggle(LED_YELLOW);
+      HAL_GPIO_TogglePin(test_point_GPIO_Port, test_point_Pin);
+      pc8_active = HAL_GPIO_ReadPin(test_point_GPIO_Port, test_point_Pin);
     }
 
     if (task_ready(&heartbeat_task))

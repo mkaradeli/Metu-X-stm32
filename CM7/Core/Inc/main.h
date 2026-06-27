@@ -85,6 +85,8 @@ void Error_Handler(void);
 #define USB_OTG_FS_PWR_EN_GPIO_Port GPIOD
 #define LEFT_EN_2_Pin GPIO_PIN_14
 #define LEFT_EN_2_GPIO_Port GPIOD
+#define test_point_Pin GPIO_PIN_8
+#define test_point_GPIO_Port GPIOG
 #define LEFT_EN_4_Pin GPIO_PIN_0
 #define LEFT_EN_4_GPIO_Port GPIOD
 #define RIGHT_EN_3_Pin GPIO_PIN_4
