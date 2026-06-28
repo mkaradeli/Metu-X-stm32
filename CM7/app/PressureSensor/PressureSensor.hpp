@@ -2,13 +2,14 @@
  * PressureSensor.hpp
  *
  *  Created on: Aug 8, 2025
- *      Author: alica
+ *      Author: karadeli
  */
 
 #ifndef PRESSURESENSOR_PRESSURESENSOR_HPP_
 #define PRESSURESENSOR_PRESSURESENSOR_HPP_
 
 #include <stdint.h>
+#include "LowPassFilter.hpp"
 
 class PressureSensor {
 public:
@@ -21,15 +22,16 @@ public:
 	float getPsi(){
 		return this->psi;
 	}
+
 	float current;
-	float voltage;
+	LowPass lowPass{1.0f, 1000.0f};
+//	LowPass load_lpf{0.1f, 66.6};  // 30 Hz cutoff @ 1 kHz sample rate
+
 private:
-//	uint8_t id;
-	uint16_t * raw_value;
-//	uint16_t calibration[2];
-	float psi_shift;
 	float bar;
+	float bar_filtered;
 	float psi;
+	uint16_t * raw_value;
 };
 
 

@@ -15,6 +15,7 @@
 #include "Profiler.hpp"
 #include "currentController.h"
 #include "Motor.hpp"
+#include "LoadCell.hpp"
 
 #include "app_main.hpp"
 #include "Actuator.hpp"
@@ -25,7 +26,7 @@
 //extern Motor motors[4];
 extern Actuator actuator[4];
 //PressureSensor psSensors[5];
-
+extern LoadCell loadCell;
 
 
 

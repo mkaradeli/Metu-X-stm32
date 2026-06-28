@@ -14,13 +14,8 @@
 #include "main.h"
 #include "ring_buffer.h"
 #include <string.h>
-#include "Hx711.hpp"
 #include "task_timer.h"
-
 #include "PressureSensor.hpp"
-//extern "C" {
-//#include "hx711.h"
-//}
 #include "globals.hpp"
 
 #define FRACTIONAL(x) int(floor(int((x)*100)))%100
@@ -74,8 +69,10 @@ uint64_t start_flag;
 
 SensorData_t local_sensor_data;
 
+
 //Motor motor1(1, true, LEFT_EN_1_GPIO_Port, LEFT_EN_1_Pin, RIGHT_EN_1_GPIO_Port, RIGHT_EN_1_Pin, &htim1, TIM_CHANNEL_1);
 LowPass load_lpf{0.1f, 66.6};  // 30 Hz cutoff @ 1 kHz sample rate
+
 
 Profiler printf_profiler;
 Profiler adc1_profiler;
@@ -216,7 +213,8 @@ void app_loop() {
 
 		float total_usage = main_loop_profiler.cpu_usage + printf_profiler.cpu_usage + free_profiler.cpu_usage + adc1_profiler.cpu_usage + adc2_profiler.cpu_usage + adc3_profiler.cpu_usage + tim2_profiler.cpu_usage + tim3_profiler.cpu_usage + tim4_profiler.cpu_usage;
 		printf("total cpu usage accounted %%%d.%d \n\r", (int)total_usage, FRACTIONAL(total_usage));
-		printf("logData head = %d, tail = %d, dropped = %d\n\r", logData.head, logData.tail, logData.dropped);
+		printf("logData head = %ld, tail = %ld, dropped = %ld\n\r", logData.head, logData.tail, logData.dropped);
+		printf("measured weight = %d.%d\n\r", (int)loadCell.weight_kg_filtered, FRACTIONAL(loadCell.weight_kg_filtered));
 
 
 
@@ -309,6 +307,8 @@ void pressure_adc_complete(){
 		actuator[i].readPressure();
 	}
 	Actuator::manifold->updatePS();
+	loadCell.update();
+
 	user_task();
 
 
@@ -333,7 +333,7 @@ void pressure_adc_complete(){
 	local_sensor_data.pressure_demand = actuator[0].actuatorController.rtU.P_nozzle_demand;
 	local_sensor_data.thrust_demand = 0;
 	local_sensor_data.thrust_estimated = 0;
-	local_sensor_data.thrust_measured = 0;
+	local_sensor_data.thrust_measured = loadCell.getForce();
 	SensorData_Buffer_Push(&logData, &local_sensor_data);
 //	SensorData_Buffer_Push(&logData_axiram, &local_sensor_data);
 

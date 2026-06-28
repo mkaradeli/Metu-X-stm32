@@ -8,6 +8,7 @@
 #include "main.h"
 #include "PressureSensor.hpp"
 
+
 extern uint16_t adc_dma_buf_encoder[8*4];
 extern uint16_t adc_dma_buf_pressure[5];
 
@@ -37,4 +38,4 @@ Actuator actuator[4] = {
 
 PressureSensor* Actuator::manifold = &psSensors[4];
 
-
+LoadCell loadCell(&adc_dma_buf_pressure[2]);

@@ -12,37 +12,17 @@ PressureSensor::PressureSensor(uint16_t *raw_value){
 //	for (int i = 0; i<13; i++)
 //		this->calibration[i] = calibration[i];
 	this->raw_value = raw_value;
-	this->psi_shift = 0;
+//	this->psi_shift = 0;
 }
 
 void PressureSensor::calibrate(){
-	this->psi_shift = this->psi;
+
 }
 void PressureSensor::updatePS(){
-//	const uint16_t y[13] = {0, 100, 300, 500, 1100, 1500, 2100, 2500, 3100, 3500, 4100, 4300, 4400};
-    // Clamp to bounds
-	voltage = static_cast<float>(*raw_value) * 5.0f/65536.0f;
-	current = voltage / 140.0f*1000.0f; // mA
-	bar = (current - 4.0f) *315.0f;
-//    if (*raw_value <= calibration[0]) {
-//        psi = y[0];
-//    }
-//    if (*raw_value >= calibration[NUM_POINTS - 1]) {
-//        psi = y[NUM_POINTS - 1];
-//    }
-
-    // Find interval
-//    for (uint8_t i = 0; i < NUM_POINTS - 1; i++) {
-//        if (*raw_value <= calibration[i + 1]) {
-//            float t = static_cast<float>(*raw_value - calibration[i]) / static_cast<float>(calibration[i + 1] - calibration[i]);
-//            psi = y[i] + t * (y[i + 1] - y[i]);
-//            break;
-//        }
-//    }
-
-//    psi = psi - psi_shift;
+	current = static_cast<float>(*raw_value) * 5.0f/65536.0f / 140.0f*1000.0f; // mA
+	bar = (current - 4.0f)/16.0f *315.0f;
+	bar_filtered = lowPass.update(bar);
 	psi = bar / 0.0689475729;
-//    bar = psi * 0.0689475729;
 }
 
 
