@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "Profiler.hpp"
+#include "globals.hpp"
 extern "C" {
 #include "task_timer.h"
 #include "shared_memory.h"
@@ -160,6 +161,13 @@ void sd_card_prep() {
 			printf("creating file\n\r");
 			file_open = sd_create_log_file(&filename[0], &log_index);
 			if (file_open == FR_OK) {
+				f_write(&Fil, (uint8_t*)&logFormatId, sizeof(uint16_t), &WWC);
+				f_write(&Fil, &logHeaderSize, sizeof(uint8_t), &WWC);
+				f_write(&Fil, (uint8_t*)&logHeader, logHeaderSize, &WWC);
+				f_write(&Fil, (uint8_t*)&sensorDataLength, sizeof(uint16_t), &WWC);
+
+
+
 				//							initial_file_name_selected = 0;
 				//						else
 				initial_file_name_selected = 1;

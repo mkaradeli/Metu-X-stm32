@@ -21,13 +21,7 @@
 #include "Actuator.hpp"
 #define ADC_16B_MAX 65536U
 
-
-
-//extern Motor motors[4];
 extern Actuator actuator[4];
-//PressureSensor psSensors[5];
 extern LoadCell loadCell;
-
-
 
 #endif /* GLOBALS_HPP_ */
