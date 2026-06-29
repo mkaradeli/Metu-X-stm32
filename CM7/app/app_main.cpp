@@ -117,7 +117,7 @@ void app_init() {
 	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 
-	  actuator[0].setDuty(1.0f);
+//	  actuator[0].setDuty(1.0f);
 //	  motors[0].setDuty(1.0f);
 
 //	  dummy_init();
@@ -148,7 +148,7 @@ void app_init() {
 	    Actuator::manifold->calibrate();
 
 	    if (mount_ok and file_creation_ok)
-			controller_mode = controller_modes::PRESSURE;
+//			controller_mode = controller_modes::PRESSURE;
 
 		for (int i= 0; i< 4; i++) {
 			actuator[i].actuatorController.rtU.pos_feedback = actuator[i].hallEffect.valveAngle;
@@ -160,10 +160,15 @@ void app_init() {
 
 		start_flag = cpuTicks();
 //		actuator[0].static_manifold = &psSensors[4];
-
+		for (int i; i<4; i++)
+			actuator[i].setDuty(1);
 	free_profiler.start();
+	controller_mode = controller_modes::CURRENT;
 }
+extern "C" {
+extern bool pc8_active;
 
+}
 
 void app_loop() {
 
@@ -229,6 +234,15 @@ void app_loop() {
 		free_profiler.metrics();
 
 		main_loop_profiler.end();
+		if(pc8_active)
+//			actuator[0].setDuty(0.7);
+			actuator[0].actuatorController.rtY.currentDemand = 0.5f;
+////			for (int i=0; i<4; i++)
+		else
+//			actuator[0].setDuty(-0.7);
+			actuator[0].actuatorController.rtY.currentDemand = -0.5f;
+//			for (int i=0; i<4; i++)
+
 	}
 	load_cell_counter = 1/ load_cell_counter;
 //	free_profiler.end();
@@ -272,9 +286,10 @@ void current_adc_complete(){
 //	uint16_t current_meas;
 	for (int i=0; i<4; i++){
 		actuator[i].updateCurrent(adc_dma_buf_current[i]);
-
-		actuator[i].current_controller_step();
 	}
+	if (controller_mode>=controller_modes::CURRENT)
+	for (int i=0; i<4; i++)
+		actuator[i].current_controller_step();
 	for (int i=0; i<7; i++) {
 		local_sensor_data.current_subsample[i] = local_sensor_data.current_subsample[i+1];
 		local_sensor_data.duty_subsample[i] = local_sensor_data.duty_subsample[i+1];
@@ -341,6 +356,8 @@ void pressure_adc_complete(){
 }
 void user_task() {
 	time_sec = (cpuTicks() - start_flag) / 200e6;
+	return;
+//	controller_mode = controller_modes::DUTY;
 
 		// Sinüs dalgası hareketi
 		if (time_sec<120)

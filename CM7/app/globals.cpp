@@ -30,8 +30,8 @@ static PressureSensor psSensors[5] = {
 };
 
 Actuator actuator[4] = {
-		{&psSensors[0], &adc_dma_buf_encoder[0],&motors[0]},
-		{&psSensors[1], &adc_dma_buf_encoder[1],&motors[1]},
+		{&psSensors[0], &adc_dma_buf_encoder[1],&motors[0]},
+		{&psSensors[1], &adc_dma_buf_encoder[0],&motors[1]},
 		{&psSensors[2], &adc_dma_buf_encoder[2],&motors[2]},
 		{&psSensors[3], &adc_dma_buf_encoder[3],&motors[3]}
 };

@@ -65,6 +65,8 @@ void Motor::setDuty(float normalValue){
 	this->CCR = abs(normalValue*DUTY_MAX);
 	__HAL_TIM_SET_COMPARE(this->pwmTimer, this->pwmChannel, this->CCR);
 
+	leftPinState = HAL_GPIO_ReadPin(this->leftPort, this->leftPin);
+	rightPinState = HAL_GPIO_ReadPin(this->rightPort, this->rightPin);
 
 }
 

@@ -117,9 +117,11 @@ void sd_card_task_function() {
 		if (sizeof(SensorData_t)*scratch_buffer_size == WWC) {
 			FR_Status = f_sync(&Fil);
 			if (FR_Status == FR_OK) {
+				BSP_LED_Off(LED_RED);
 //				printf("sync successfull\n\r");
 			} else {
 				printf("sync FAILED!!!!!!!\n\r");
+				BSP_LED_On(LED_RED);
 				disk_mounted = FR_Status;
 				file_created = 0;
 				f_close(&Fil);
@@ -127,6 +129,7 @@ void sd_card_task_function() {
 			}
 		} else {
 			printf("line addition failed.\n\r");
+			BSP_LED_On(LED_RED);
 			printf("RW Buffer len%d, wwc %d", strlen(RW_Buffer), WWC);
 			disk_mounted = FR_INT_ERR;
 			file_created = 0;
@@ -150,13 +153,14 @@ void sd_card_prep() {
 			//		if (FR_Status != FR_OK){
 			printf("Error! While Mounting SD Card, Error Code: (%i)\r\n",
 					FR_Status);
+			BSP_LED_On(LED_RED);
 			//						f_mount(NULL, "", 1);
 			//						f_mount(NULL, "", 1);
 		} else
 			printf("SD Card Mounted Successfully! \r\n\n");
 		disk_mounted = FR_Status;
 	} else { // Disk mounted
-		BSP_LED_Off(LED_RED);
+//		BSP_LED_Off(LED_RED);
 		if (initial_file_name_selected == 0) { // first file creation
 			printf("creating file\n\r");
 			file_open = sd_create_log_file(&filename[0], &log_index);
@@ -234,7 +238,11 @@ FRESULT sd_create_log_file(char *filename, uint16_t *log_index) {
 		if (res == FR_OK) {
 			left_index = mid + 1;
 			left_filename_index = left_index;
-		} else {
+		}
+		else if (res == FR_DISK_ERR) {
+			return  res;
+		}
+		else {
 			right_index = mid;
 			right_filename_index = right_index;
 		}

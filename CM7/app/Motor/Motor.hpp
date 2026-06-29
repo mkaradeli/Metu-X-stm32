@@ -52,6 +52,9 @@ private:
     TIM_HandleTypeDef* pwmTimer;
     uint8_t pwmChannel;
 
+    bool leftPinState;
+    bool rightPinState;
+
 //	bool magnetPolarity = 0;
 	uint32_t CCR = 0;
 
