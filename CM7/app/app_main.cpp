@@ -22,7 +22,11 @@
 
 #define PI 3.1415926536f
 
+// TODO: PS sensor 3 encodere yakin olan
+// TODO: PS sensor 0 alttaki
 
+
+// TODO: islemci acilma sirasinda akim sensorlerini sifirlayacak.
 
 
 Profiler free_profiler;
@@ -163,7 +167,7 @@ void app_init() {
 		for (int i; i<4; i++)
 			actuator[i].setDuty(1);
 	free_profiler.start();
-	controller_mode = controller_modes::CURRENT;
+	controller_mode = controller_modes::POSITION;
 }
 extern "C" {
 extern bool pc8_active;
@@ -234,15 +238,17 @@ void app_loop() {
 		free_profiler.metrics();
 
 		main_loop_profiler.end();
-		if(pc8_active)
-//			actuator[0].setDuty(0.7);
-			actuator[0].actuatorController.rtY.currentDemand = 0.5f;
-////			for (int i=0; i<4; i++)
-		else
-//			actuator[0].setDuty(-0.7);
-			actuator[0].actuatorController.rtY.currentDemand = -0.5f;
-//			for (int i=0; i<4; i++)
-
+//		if(pc8_active){
+//			for (int i=0; i<1; i++){
+				actuator[0].actuatorController.rtU.pos_ref_ext = 0.0f;
+//			}
+//		}
+//		else{
+//			for (int i=0; i<1; i++){
+//				actuator[i].actuatorController.rtY.currentDemand = -0.5f;
+//			}
+//		}
+//
 	}
 	load_cell_counter = 1/ load_cell_counter;
 //	free_profiler.end();
@@ -287,7 +293,7 @@ void current_adc_complete(){
 	for (int i=0; i<4; i++){
 		actuator[i].updateCurrent(adc_dma_buf_current[i]);
 	}
-	if (controller_mode>=controller_modes::CURRENT)
+//	if (controller_mode>=controller_modes::CURRENT)
 	for (int i=0; i<4; i++)
 		actuator[i].current_controller_step();
 	for (int i=0; i<7; i++) {
@@ -360,30 +366,30 @@ void user_task() {
 //	controller_mode = controller_modes::DUTY;
 
 		// Sinüs dalgası hareketi
-		if (time_sec<120)
-			if (fmod(time_sec,3)<0.5)
-			  actuator[0].actuatorController.rtU.P_nozzle_demand = 1000;
-			else if (fmod(time_sec,3)<1)
-				actuator[0].actuatorController.rtU.P_nozzle_demand = 500;
-			else if (fmod(time_sec,3)<2.5)
-				actuator[0].actuatorController.rtU.P_nozzle_demand = sin(5*PI*2*time_sec)*150 + 600;
-			else
-				actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
-		else if (time_sec<121){
-			actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
-			if (controller_mode == controller_modes::PRESSURE)
-				controller_mode = controller_modes::POSITION;
-			actuator[0].actuatorController.rtU.pos_ref_ext = 0;
-		}
+//		if (time_sec<120)
+//			if (fmod(time_sec,3)<0.5)
+//			  actuator[0].actuatorController.rtU.P_nozzle_demand = 1000;
+//			else if (fmod(time_sec,3)<1)
+//				actuator[0].actuatorController.rtU.P_nozzle_demand = 500;
+//			else if (fmod(time_sec,3)<2.5)
+//				actuator[0].actuatorController.rtU.P_nozzle_demand = sin(5*PI*2*time_sec)*150 + 600;
+//			else
+//				actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
+//		else if (time_sec<121){
+//			actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
+//			if (controller_mode == controller_modes::PRESSURE)
+//				controller_mode = controller_modes::POSITION;
+//			actuator[0].actuatorController.rtU.pos_ref_ext = 0;
+//		}
 
 
 		for (int i=0; i<4; i++) {
 			actuator[i].actuator_controller_step();
 		}
 
-		if (time_sec <= 122 && time_sec > 121){
-
-			controller_mode = controller_modes::DISABLE;
-		};
+//		if (time_sec <= 122 && time_sec > 121){
+//
+//			controller_mode = controller_modes::DISABLE;
+//		};
 
 }

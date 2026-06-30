@@ -6,11 +6,13 @@
  */
 
 #include "Actuator.hpp"
+#include "actuatorController.h"
+extern controller_modes controller_mode;
 
 
 Actuator::Actuator(
 		PressureSensor *psSensor_ptr,
-//		PressureSensor *manifold_ptr,
+//		PressureSensor *manifold_ptr,`
 		uint16_t* encoder_adc_buffer,
 		Motor* motor_ptr) {
 	this->hallEffect.init(encoder_adc_buffer, &motorKalman);
@@ -31,7 +33,10 @@ float Actuator::get_current() {
 void Actuator::current_controller_step() {
 	this->current.rtU.current_feedback = this->current_meas;
 	this->current.step();
-	this->setDuty(this->current.rtY.Duty);
+	if (controller_mode>controller_modes::DISABLE)
+		this->setDuty(this->current.rtY.Duty);
+	else
+		this->setDuty(0);
 };
 
 void Actuator::actuator_controller_step() {
@@ -57,6 +62,7 @@ void Actuator::calibrate(){
 	this->updateHallEffect();
 	this->hallEffect.calibrate();
 	this->psSensor->calibrate();
+	this->current_bias = this->current_meas;
 }
 
 void Actuator::readPressure(){

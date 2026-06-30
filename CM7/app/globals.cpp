@@ -14,7 +14,7 @@ extern uint16_t adc_dma_buf_pressure[5];
 
 static Motor motors[4] = {
 		Motor(LEFT_EN_1_GPIO_Port, LEFT_EN_1_Pin, RIGHT_EN_1_GPIO_Port, RIGHT_EN_1_Pin, &htim1, TIM_CHANNEL_1),
-		Motor(LEFT_EN_2_GPIO_Port, LEFT_EN_2_Pin, RIGHT_EN_1_GPIO_Port, RIGHT_EN_1_Pin, &htim1, TIM_CHANNEL_2),
+		Motor(LEFT_EN_2_GPIO_Port, LEFT_EN_2_Pin, RIGHT_EN_2_GPIO_Port, RIGHT_EN_2_Pin, &htim1, TIM_CHANNEL_2),
 		Motor(LEFT_EN_3_GPIO_Port, LEFT_EN_3_Pin, RIGHT_EN_3_GPIO_Port, RIGHT_EN_3_Pin, &htim1, TIM_CHANNEL_3),
 		Motor(LEFT_EN_4_GPIO_Port, LEFT_EN_4_Pin, RIGHT_EN_4_GPIO_Port, RIGHT_EN_4_Pin, &htim1, TIM_CHANNEL_4),
 };
@@ -22,11 +22,11 @@ static Motor motors[4] = {
 
 
 static PressureSensor psSensors[5] = {
-		PressureSensor(&adc_dma_buf_pressure[0]),
+		PressureSensor(&adc_dma_buf_pressure[3]),
 		PressureSensor(&adc_dma_buf_pressure[1]),
 		PressureSensor(&adc_dma_buf_pressure[2]),
-		PressureSensor(&adc_dma_buf_pressure[3]),
-		PressureSensor(&adc_dma_buf_pressure[4])
+		PressureSensor(&adc_dma_buf_pressure[4]),
+		PressureSensor(&adc_dma_buf_pressure[0])
 };
 
 Actuator actuator[4] = {
