@@ -109,7 +109,7 @@ void sd_card_task_function() {
 	if (file_created) { // file open already.
 		sd_card_write_profiler.start();
 		scratch_buffer_size = SensorData_Buffer_PopAll(&logData, sensorDataScratch, scratch_buffer_max_size);
-		if (scratch_buffer_size) // remove
+		if (scratch_buffer_size) {// remove
 		f_write(&Fil, &sensorDataScratch, sizeof(SensorData_t)*scratch_buffer_size, &WWC);
 		// TODO: Circular buffer implement edilecek.
 		// TODO: fonksiyona cevrilecek.
@@ -135,6 +135,7 @@ void sd_card_task_function() {
 			file_created = 0;
 			f_close(&Fil);
 			f_mount(NULL, "", 1);
+		}
 		}
 		sd_card_write_profiler.end();
 	}
@@ -179,6 +180,7 @@ void sd_card_prep() {
 				initial_file_name_selected = 1;
 				file_created = 1;
 				logData.ready=true;
+				BSP_LED_Off(LED_RED);
 				SensorData_Buffer_Reset_Dropped(&logData);
 			}
 

@@ -53,8 +53,8 @@ private:
     GPIO_TypeDef* port_ = BUTTON_USER_GPIO_PORT;
     uint16_t pin_ = BUTTON_USER_PIN;
     bool activeLow_;
-    uint8_t history_ = 0;
-    volatile bool stable_ = false;
+    uint8_t history_ = 255;
+    volatile bool stable_ = true;
     volatile bool pressedEvent_ = false;
     volatile bool releasedEvent_ = false;
 };

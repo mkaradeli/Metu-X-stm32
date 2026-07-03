@@ -31,12 +31,13 @@ namespace mc {
 // Mode enums
 // ---------------------------------------------------------------------------
 enum class ActuatorMode : uint8_t {
-    Duty = 0,     // open-loop PWM duty
+    Disable = 0,  // outputs off / loops not running
+    Duty,         // open-loop PWM duty
     Current,      // current loop
     Speed,        // velocity loop
     Position,     // position loop
     Pressure,     // chamber/tank pressure loop
-    Force,       // thrust loop (outermost)
+    Thrust,       // thrust loop (outermost)
     _Count
 };
 
@@ -53,6 +54,7 @@ enum class Result : uint8_t {
     Ok = 0,
     InvalidTransition,   // blocked by the transition matrix
     Locked,              // MissionControl is locked (flight-critical phase)
+    Rejected,            // vetoed by the application's system-mode guard
     NoChange             // requested mode == current mode
 };
 
@@ -62,6 +64,10 @@ enum class Result : uint8_t {
 using ActuatorModeCb = void (*)(ActuatorMode oldMode, ActuatorMode newMode);
 using SystemModeCb   = void (*)(SystemMode   oldMode, SystemMode   newMode);
 using LoggingCb      = void (*)(bool enabled);
+
+// Application veto over system-mode transitions. Return false to reject.
+// Not consulted when the target is Idle (Idle must always be reachable).
+using SystemModeGuard = bool (*)(SystemMode from, SystemMode to);
 
 class MissionControl {
 public:
@@ -93,6 +99,10 @@ public:
     void onSystemModeChange(SystemModeCb cb)     { systemCb_ = cb; }
     void onLoggingChange(LoggingCb cb)           { loggingCb_ = cb; }
 
+    // Application veto over system-mode transitions (e.g. require SD ready
+    // before entering test/flight modes). Skipped when target is Idle.
+    void setSystemModeGuard(SystemModeGuard g)   { systemGuard_ = g; }
+
 private:
     // Transition guard matrices. Row = from, Col = to. true = allowed.
     static bool systemTransitionAllowed(SystemMode from, SystemMode to);
@@ -103,15 +113,15 @@ private:
     bool         logging_;
     bool         locked_;
 
-    ActuatorModeCb actuatorCb_ = nullptr;
-    SystemModeCb   systemCb_   = nullptr;
-    LoggingCb      loggingCb_  = nullptr;
+    ActuatorModeCb  actuatorCb_  = nullptr;
+    SystemModeCb    systemCb_    = nullptr;
+    LoggingCb       loggingCb_   = nullptr;
+    SystemModeGuard systemGuard_ = nullptr;
 };
 
 // Optional convenience: single global instance (define in one .cpp).
 extern MissionControl g_mission;
 
 } // namespace mc
-
 
 #endif /* MISSIONCONTROL_MISSIONCONTROL_HPP_ */

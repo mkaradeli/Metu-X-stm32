@@ -5,9 +5,6 @@
  *      Author: karadeli
  */
 
-
-
-
 #include "MissionControl.hpp"
 
 namespace mc {
@@ -48,6 +45,11 @@ bool MissionControl::systemTransitionAllowed(SystemMode from, SystemMode to) {
 bool MissionControl::actuatorTransitionAllowed(SystemMode sys, ActuatorMode from, ActuatorMode to) {
     if (sys == SystemMode::Idle) return true;
 
+    // Disable is always reachable: killing the outputs must never be
+    // blocked by cascade rules. Re-engaging from Disable starts at Duty
+    // (adjacent step) and climbs from there.
+    if (to == ActuatorMode::Disable) return true;
+
     // Linear chain: adjacent enum values only (bidirectional single steps).
     const int8_t d = static_cast<int8_t>(to) - static_cast<int8_t>(from);
     return d == 1 || d == -1;
@@ -55,7 +57,7 @@ bool MissionControl::actuatorTransitionAllowed(SystemMode sys, ActuatorMode from
 
 // ---------------------------------------------------------------------------
 MissionControl::MissionControl()
-    : actuator_(ActuatorMode::Duty),
+    : actuator_(ActuatorMode::Disable),
       system_(SystemMode::Idle),
       logging_(false),
       locked_(false) {}
@@ -95,6 +97,11 @@ Result MissionControl::setSystemMode(SystemMode m) {
     const SystemMode cur = system_;
     if (m == cur) return Result::NoChange;
     if (!systemTransitionAllowed(cur, m)) return Result::InvalidTransition;
+
+    // Application guard can veto — except Idle, which must stay reachable
+    // (same reasoning as the lock escape hatch).
+    if (m != SystemMode::Idle && systemGuard_ && !systemGuard_(cur, m))
+        return Result::Rejected;
 
     system_ = m;
     if (systemCb_) systemCb_(cur, m);

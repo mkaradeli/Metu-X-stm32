@@ -88,6 +88,7 @@ Profiler adc3_profiler;
 Profiler tim2_profiler;
 Profiler tim3_profiler;
 Profiler tim4_profiler;
+Profiler button_profiler;
 
 
 
@@ -106,7 +107,8 @@ static controller_modes to_controller_mode(mc::ActuatorMode m) {
 		case mc::ActuatorMode::Speed:    return controller_modes::SPEED;
 		case mc::ActuatorMode::Position: return controller_modes::POSITION;
 		case mc::ActuatorMode::Pressure: return controller_modes::PRESSURE;
-		case mc::ActuatorMode::Force:   return controller_modes::FORCE;
+		case mc::ActuatorMode::Thrust:   return controller_modes::FORCE;
+		case mc::ActuatorMode::Disable:
 		default:                         return controller_modes::DISABLE;
 	}
 }
@@ -127,12 +129,17 @@ static void mission_on_system(mc::SystemMode /*oldM*/, mc::SystemMode newM) {
 			break;
 		case mc::SystemMode::FuncTest:
 		case mc::SystemMode::XIL:
+			// Re-arm: Idle set controller_mode to DISABLE; restore it from
+			// the mission's actuator mode (setActuatorMode would NoChange here).
+			controller_mode = to_controller_mode(g_mission.actuatorMode());
 			g_mission.enableLogging();
 			break;
 		case mc::SystemMode::Drop:
 		case mc::SystemMode::Hover:
+			controller_mode = to_controller_mode(g_mission.actuatorMode());
 			g_mission.enableLogging();
 			g_mission.lock();
+					break;
 			break;
 		default:
 			break;
@@ -144,10 +151,29 @@ static void mission_on_system(mc::SystemMode /*oldM*/, mc::SystemMode newM) {
 static void mission_on_logging(bool enabled) {
 	if (enabled) {
 		// Fresh log segment: drop whatever is stale in the ring.
-		SensorData_Buffer_Init(&logData);
+		if (logData.ready) {
+			logData.record = true;
+		}
 	}
+	else {
+		if (logData.record)
+			logData.record = false;
+		}
+
 	// CM4 side sees isLoggingEnabled() indirectly via data flow;
 	// sd_log start/stop is handled on the CM4 from buffer activity.
+}
+
+static bool mission_system_guard(mc::SystemMode /*from*/, mc::SystemMode to) {
+	switch (to) {
+		case mc::SystemMode::FuncTest:
+		case mc::SystemMode::XIL:
+		case mc::SystemMode::Hover:
+			return logData.ready;    // no SD log, no test / no hover
+		case mc::SystemMode::Drop:   // time-critical: fly even without log
+		default:
+			return true;
+	}
 }
 
 void app_init() {
@@ -206,6 +232,7 @@ void app_init() {
 	    tim2_profiler.reset();
 	    tim3_profiler.reset();
 	    tim4_profiler.reset();
+	    button_profiler.reset();
 
 	    rb_init(&common_print_buffer);
 	    setvbuf(stdout, NULL, _IONBF, 0);   /* important: disable stdio line buffering */
@@ -238,12 +265,14 @@ void app_init() {
 		g_mission.onActuatorModeChange(mission_on_actuator);
 		g_mission.onSystemModeChange(mission_on_system);
 		g_mission.onLoggingChange(mission_on_logging);
+		g_mission.setSystemModeGuard(mission_system_guard);
+
 
 		// Still in Idle here, so the actuator mode can be set directly (no
 		// cascade stepping required on the bench). Then enter the test mode,
 		// which enables logging via the system-mode callback.
-		g_mission.setActuatorMode(mc::ActuatorMode::Position);
-		g_mission.setSystemMode(mc::SystemMode::FuncTest);
+//		g_mission.setActuatorMode(mc::ActuatorMode::Position);
+//		g_mission.setSystemMode(mc::SystemMode::FuncTest);
 //	controller_mode = controller_modes::POSITION;
 }
 extern "C" {
@@ -252,6 +281,7 @@ extern bool pc8_active;
 }
 
 void app_loop() {
+	button_profiler.start();
 	if (task_ready(&button_task)) {
 		Button.update();
 
@@ -260,9 +290,21 @@ void app_loop() {
 	// One-shot events, cleared on read.
 	// bool pressed()  { return takeFlag(pressedEvent_); }
 	if (Button.pressed()) {
-		//TODO:: implement mission start/stop.
-	}
+		if (g_mission.systemMode() == mc::SystemMode::Idle) {
+					// Mission start: restart the user_task time base, then enter
+					// FuncTest — logging starts via the system-mode callback.
+					g_mission.setActuatorMode(mc::ActuatorMode::Position);
 
+					start_flag = cpuTicks();
+					g_mission.setSystemMode(mc::SystemMode::FuncTest);
+				} else {
+					// Mission stop: user_task gates off, logging stops,
+					// controller_mode -> DISABLE, lock released.
+					g_mission.setActuatorMode(mc::ActuatorMode::Disable);
+
+					g_mission.setSystemMode(mc::SystemMode::Idle);
+				}	}
+	button_profiler.end();
 
 	if (uwTick - timeOfLastPrint >= 1000){
 		main_loop_profiler.start();
@@ -323,7 +365,7 @@ void app_loop() {
 		tim3_profiler.metrics();
 		tim4_profiler.metrics();
 		free_profiler.metrics();
-
+		button_profiler.metrics();
 		main_loop_profiler.end();
 //		if(pc8_active){
 //			for (int i=0; i<1; i++){
@@ -442,7 +484,11 @@ void pressure_adc_complete(){
 	local_sensor_data.thrust_demand = 0;
 	local_sensor_data.thrust_estimated = 0;
 	local_sensor_data.thrust_measured = loadCell.getForce();
-	SensorData_Buffer_Push(&logData, &local_sensor_data);
+	if (g_mission.isLoggingEnabled()) {
+		SensorData_Buffer_Push(&logData, &local_sensor_data);
+//		SensorData_Buffer_Push(&logData_axiram, &local_sensor_data);
+	}
+//	SensorData_Buffer_Push(&logData, &local_sensor_data);
 //	SensorData_Buffer_Push(&logData_axiram, &local_sensor_data);
 
 	adc3_profiler.end();
