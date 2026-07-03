@@ -151,7 +151,7 @@ void app_init() {
 //	    currentController.initialize();
 	    Actuator::manifold->calibrate();
 
-	    if (mount_ok and file_creation_ok)
+//	    if (mount_ok and file_creation_ok)
 //			controller_mode = controller_modes::PRESSURE;
 
 		for (int i= 0; i< 4; i++) {
@@ -164,7 +164,7 @@ void app_init() {
 
 		start_flag = cpuTicks();
 //		actuator[0].static_manifold = &psSensors[4];
-		for (int i; i<4; i++)
+		for (int i=0; i<4; i++)
 			actuator[i].setDuty(1);
 	free_profiler.start();
 	controller_mode = controller_modes::POSITION;
@@ -240,7 +240,7 @@ void app_loop() {
 		main_loop_profiler.end();
 //		if(pc8_active){
 //			for (int i=0; i<1; i++){
-				actuator[0].actuatorController.rtU.pos_ref_ext = 0.0f;
+//				actuator[0].actuatorController.rtU.pos_ref_ext = 0.0f;
 //			}
 //		}
 //		else{
@@ -361,26 +361,26 @@ void pressure_adc_complete(){
 	adc3_profiler.end();
 }
 void user_task() {
-	time_sec = (cpuTicks() - start_flag) / 200e6;
+//	time_sec = (cpuTicks() - start_flag) / 200e6;
 	return;
 //	controller_mode = controller_modes::DUTY;
 
-		// Sinüs dalgası hareketi
-//		if (time_sec<120)
-//			if (fmod(time_sec,3)<0.5)
-//			  actuator[0].actuatorController.rtU.P_nozzle_demand = 1000;
-//			else if (fmod(time_sec,3)<1)
-//				actuator[0].actuatorController.rtU.P_nozzle_demand = 500;
-//			else if (fmod(time_sec,3)<2.5)
-//				actuator[0].actuatorController.rtU.P_nozzle_demand = sin(5*PI*2*time_sec)*150 + 600;
-//			else
-//				actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
-//		else if (time_sec<121){
-//			actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
-//			if (controller_mode == controller_modes::PRESSURE)
-//				controller_mode = controller_modes::POSITION;
-//			actuator[0].actuatorController.rtU.pos_ref_ext = 0;
-//		}
+		 Sinüs dalgası hareketi
+		if (time_sec<120)
+			if (fmod(time_sec,3)<0.5)
+			  actuator[0].actuatorController.rtU.P_nozzle_demand = 1000;
+			else if (fmod(time_sec,3)<1)
+				actuator[0].actuatorController.rtU.P_nozzle_demand = 500;
+			else if (fmod(time_sec,3)<2.5)
+				actuator[0].actuatorController.rtU.P_nozzle_demand = sin(5*PI*2*time_sec)*150 + 600;
+			else
+				actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
+		else if (time_sec<121){
+			actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
+			if (controller_mode == controller_modes::PRESSURE)
+				controller_mode = controller_modes::POSITION;
+			actuator[0].actuatorController.rtU.pos_ref_ext = 0;
+		}
 
 
 		for (int i=0; i<4; i++) {

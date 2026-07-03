@@ -24,7 +24,7 @@ public:
 	}
 
 	float current;
-	LowPass lowPass{1.0f, 1000.0f};
+	LowPass lowPass{1.0f, 1000.0f, 1.0};
 //	LowPass load_lpf{0.1f, 66.6};  // 30 Hz cutoff @ 1 kHz sample rate
 
 private:

@@ -305,41 +305,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 }
 
-//
-//int sd_mount(void) {
-//	FRESULT res;
-////	extern uint8_t sd_is_sdhc(void);
-//
-//	printf("Linking SD driver...\r\n");
-//	if (FATFS_LinkDriver(disk.drv[0], &sd_path[0]) != 0) {
-//		printf("FATFS_LinkDriver failed\n");
-//		return FR_DISK_ERR;
-//	}
-//	printf("%s\n\r",sd_path);
-////
-//	printf("Initializing disk...\r\n");
-//	DSTATUS stat = disk_initialize(0);
-//	if (stat != 0) {
-//		printf("disk_initialize failed: 0x%02X\n", stat);
-//		printf("FR_NOT_READY\tTry Hard Reset or Check Connection/Power\r\n");
-//		return FR_NOT_READY;
-//	}
-////
-//	printf("Attempting mount at %s...\r\n", sd_path);
-//	res = f_mount(&FatFs, sd_path, 1);
-//	if (res == FR_OK)
-//	{
-//		printf("SD card mounted successfully at %s\r\n", sd_path);
-////		printf("Card Type: %s\r\n", sd_is_sdhc() ? "SDHC/SDXC" : "SDSC");
-////
-//		return FR_OK;
-//	}
-////
-////
-////	// Any other mount error
-//	printf("Mount failed with code: %d\r\n", res);
-//	return res;
-//}
 
 uint64_t cpuTicks() {
 	return (cpuTicks_overflow << 16) + __HAL_TIM_GET_COUNTER(&htim7);

@@ -21,7 +21,7 @@ public:
 	float weight_kg_filtered = 0;
 	float weight_N_filtered = 0;
 private:
-	LowPass lowPass{1,1000};
+	LowPass lowPass{1,1000, 1};
 	float current;
 	volatile float curMin = 4;
 	volatile float curMax = 20;
