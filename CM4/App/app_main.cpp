@@ -144,6 +144,7 @@ void sd_card_prep() {
 
 	if (disk_mounted != FR_OK) {
 		BSP_LED_On(LED_RED);
+		logData.ready=false;
 		disk.is_initialized[0] = 0;
 		f_mount(NULL, "", 1);
 		//		FR_Status = (FRESULT)sd_mount();
@@ -154,6 +155,7 @@ void sd_card_prep() {
 			printf("Error! While Mounting SD Card, Error Code: (%i)\r\n",
 					FR_Status);
 			BSP_LED_On(LED_RED);
+			logData.ready=false;
 			//						f_mount(NULL, "", 1);
 			//						f_mount(NULL, "", 1);
 		} else
@@ -176,6 +178,7 @@ void sd_card_prep() {
 				//						else
 				initial_file_name_selected = 1;
 				file_created = 1;
+				logData.ready=true;
 				SensorData_Buffer_Reset_Dropped(&logData);
 			}
 
@@ -191,6 +194,7 @@ void sd_card_prep() {
 					f_lseek(&Fil, aligned);
 					f_truncate(&Fil);    // drop the partial trailing record
 					f_sync(&Fil);
+					logData.ready=true;
 				}
 			} else {
 				initial_file_name_selected = 0; // give up, scan for a fresh name next loop

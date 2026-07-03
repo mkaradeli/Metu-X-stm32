@@ -36,7 +36,7 @@ enum class ActuatorMode : uint8_t {
     Speed,        // velocity loop
     Position,     // position loop
     Pressure,     // chamber/tank pressure loop
-    Thrust,       // thrust loop (outermost)
+    Force,       // thrust loop (outermost)
     _Count
 };
 

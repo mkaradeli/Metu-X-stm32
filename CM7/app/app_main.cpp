@@ -17,6 +17,8 @@
 #include "task_timer.h"
 #include "PressureSensor.hpp"
 #include "globals.hpp"
+#include "MissionControl.hpp"
+#include "Button.hpp"
 
 #define FRACTIONAL(x) int(floor(int((x)*100)))%100
 
@@ -41,6 +43,7 @@ void encoder_adc_complete();
 void pressure_adc_complete();
 
 task_timer_t test_point_gpio = {5000,0};
+task_timer_t button_task = {1,0};
 
 __attribute__((section(".sram3"), used))
 volatile uint16_t adc_dma_buf_current[4];
@@ -51,7 +54,7 @@ volatile uint16_t adc_dma_buf_pressure[5];
 
 uint32_t timeOfLastPrint=uwTick;
 
-
+DebouncedButton Button{1};
 volatile float load_filtered;
 
 //HX711_Handle loadcell = {
@@ -87,8 +90,71 @@ Profiler tim3_profiler;
 Profiler tim4_profiler;
 
 
+
+// ============================================================================
+// MissionControl glue
+// ----------------------------------------------------------------------------
+// g_mission is the single authority on modes. The legacy `controller_mode`
+// global stays as the low-level variable the ISR paths read, but it is now
+// written ONLY from these callbacks — nowhere else.
+// ============================================================================
+
+static controller_modes to_controller_mode(mc::ActuatorMode m) {
+	switch (m) {
+		case mc::ActuatorMode::Duty:     return controller_modes::DUTY;
+		case mc::ActuatorMode::Current:  return controller_modes::CURRENT;
+		case mc::ActuatorMode::Speed:    return controller_modes::SPEED;
+		case mc::ActuatorMode::Position: return controller_modes::POSITION;
+		case mc::ActuatorMode::Pressure: return controller_modes::PRESSURE;
+		case mc::ActuatorMode::Force:   return controller_modes::FORCE;
+		default:                         return controller_modes::DISABLE;
+	}
+}
+
+static void mission_on_actuator(mc::ActuatorMode /*oldM*/, mc::ActuatorMode newM) {
+	controller_mode = to_controller_mode(newM);
+	// Bumpless transfer / integrator reset hooks go here if needed, e.g.:
+	// for (int i=0; i<4; i++) actuator[i].on_mode_change(newM);
+}
+
+using mc::g_mission;
+static void mission_on_system(mc::SystemMode /*oldM*/, mc::SystemMode newM) {
+	switch (newM) {
+		case mc::SystemMode::Idle:
+			controller_mode = controller_modes::DISABLE;   // outputs safe
+			g_mission.unlock();
+			g_mission.disableLogging();
+			break;
+		case mc::SystemMode::FuncTest:
+		case mc::SystemMode::XIL:
+			g_mission.enableLogging();
+			break;
+		case mc::SystemMode::Drop:
+		case mc::SystemMode::Hover:
+			g_mission.enableLogging();
+			g_mission.lock();
+			break;
+		default:
+			break;
+	}
+}
+
+
+
+static void mission_on_logging(bool enabled) {
+	if (enabled) {
+		// Fresh log segment: drop whatever is stale in the ring.
+		SensorData_Buffer_Init(&logData);
+	}
+	// CM4 side sees isLoggingEnabled() indirectly via data flow;
+	// sd_log start/stop is handled on the CM4 from buffer activity.
+}
+
 void app_init() {
 	SensorData_Buffer_Init(&logData);
+//	Button.DebouncedButton(1);
+	logData.ready=false;
+//	logData.record = false;
 //	SensorData_Buffer_Init(&logData_axiram);
 	HAL_ADCEx_Calibration_Start(&hadc2, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 	  HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc_dma_buf_current, 4);
@@ -167,7 +233,18 @@ void app_init() {
 		for (int i=0; i<4; i++)
 			actuator[i].setDuty(1);
 	free_profiler.start();
-	controller_mode = controller_modes::POSITION;
+
+	// ---- MissionControl bring-up --------------------------------------------
+		g_mission.onActuatorModeChange(mission_on_actuator);
+		g_mission.onSystemModeChange(mission_on_system);
+		g_mission.onLoggingChange(mission_on_logging);
+
+		// Still in Idle here, so the actuator mode can be set directly (no
+		// cascade stepping required on the bench). Then enter the test mode,
+		// which enables logging via the system-mode callback.
+		g_mission.setActuatorMode(mc::ActuatorMode::Position);
+		g_mission.setSystemMode(mc::SystemMode::FuncTest);
+//	controller_mode = controller_modes::POSITION;
 }
 extern "C" {
 extern bool pc8_active;
@@ -175,6 +252,16 @@ extern bool pc8_active;
 }
 
 void app_loop() {
+	if (task_ready(&button_task)) {
+		Button.update();
+
+	}
+
+	// One-shot events, cleared on read.
+	// bool pressed()  { return takeFlag(pressedEvent_); }
+	if (Button.pressed()) {
+		//TODO:: implement mission start/stop.
+	}
 
 
 	if (uwTick - timeOfLastPrint >= 1000){
@@ -250,7 +337,7 @@ void app_loop() {
 //		}
 //
 	}
-	load_cell_counter = 1/ load_cell_counter;
+//	load_cell_counter = 1/ load_cell_counter;
 //	free_profiler.end();
 }
 
@@ -361,28 +448,30 @@ void pressure_adc_complete(){
 	adc3_profiler.end();
 }
 void user_task() {
-//	time_sec = (cpuTicks() - start_flag) / 200e6;
+	time_sec = (cpuTicks() - start_flag) / 200e6;
 	return;
+	if (g_mission.systemMode() != mc::SystemMode::FuncTest)
+		return;
 //	controller_mode = controller_modes::DUTY;
 
-		 Sinüs dalgası hareketi
-		if (time_sec<120)
-			if (fmod(time_sec,3)<0.5)
-			  actuator[0].actuatorController.rtU.P_nozzle_demand = 1000;
-			else if (fmod(time_sec,3)<1)
-				actuator[0].actuatorController.rtU.P_nozzle_demand = 500;
-			else if (fmod(time_sec,3)<2.5)
-				actuator[0].actuatorController.rtU.P_nozzle_demand = sin(5*PI*2*time_sec)*150 + 600;
-			else
-				actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
-		else if (time_sec<121){
-			actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
-			if (controller_mode == controller_modes::PRESSURE)
-				controller_mode = controller_modes::POSITION;
-			actuator[0].actuatorController.rtU.pos_ref_ext = 0;
-		}
-
-
+////		 Sinüs dalgası hareketi
+//		if (time_sec<120)
+//			if (fmod(time_sec,3)<0.5)
+//			  actuator[0].actuatorController.rtU.P_nozzle_demand = 1000;
+//			else if (fmod(time_sec,3)<1)
+//				actuator[0].actuatorController.rtU.P_nozzle_demand = 500;
+//			else if (fmod(time_sec,3)<2.5)
+//				actuator[0].actuatorController.rtU.P_nozzle_demand = sin(5*PI*2*time_sec)*150 + 600;
+//			else
+//				actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
+//		else if (time_sec<121){
+//			actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
+//			if (controller_mode == controller_modes::PRESSURE)
+//				controller_mode = controller_modes::POSITION;
+//			actuator[0].actuatorController.rtU.pos_ref_ext = 0;
+//		}
+//
+//
 		for (int i=0; i<4; i++) {
 			actuator[i].actuator_controller_step();
 		}

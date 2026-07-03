@@ -53,6 +53,9 @@ typedef struct {
 	volatile uint32_t head;
 	volatile uint32_t tail;
 	volatile uint32_t dropped;
+	volatile bool record;
+	volatile bool ready;
+
 
 	SensorData_t sensorData[BUFFER_PACKET_COUNT]; //BUFFER_PACKET_COUNT = 1560
 } SensorData_Buffer_t;
@@ -76,6 +79,12 @@ bool SensorData_Buffer_IsEmpty(const SensorData_Buffer_t *logData);
 
 bool SensorData_Buffer_IsFull(const SensorData_Buffer_t *logData);
 bool SensorData_Buffer_Reset_Dropped(SensorData_Buffer_t *logData);
+
+bool SensorData_Buffer_StartRecord(SensorData_Buffer_t *logData);
+
+bool SensorData_Buffer_StopRecord(SensorData_Buffer_t *logData);
+
+bool SensorData_Buffer_isReady(SensorData_Buffer_t *logData);
 
 
 

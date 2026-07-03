@@ -26,6 +26,8 @@ void SensorData_Buffer_Init(SensorData_Buffer_t * logData) {
 	logData->head = 0;
 	logData->tail = 0;
 	logData->dropped = 0;
+	logData->record=0;
+
 	__DMB();
 };
 
@@ -122,3 +124,23 @@ bool SensorData_Buffer_Reset_Dropped(SensorData_Buffer_t *logData){
 	logData->dropped = 0;
 	return logData->dropped;
 }
+bool SensorData_Buffer_StartRecord(SensorData_Buffer_t *logData) {
+	if (logData->ready)
+		return logData->record = true;
+	else
+		return false;
+}
+
+bool SensorData_Buffer_StopRecord(SensorData_Buffer_t *logData) {
+	if (logData->record) {
+		logData->record = false;
+		return true;
+	}
+	else
+		return false;
+}
+
+bool SensorData_Buffer_isReady(SensorData_Buffer_t *logData) {
+	return logData->ready;
+}
+
