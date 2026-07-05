@@ -221,7 +221,7 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
   BSP_LED_Init(LED_YELLOW);
   BSP_LED_Init(LED_RED);
 
-  /* Initialize USER push-button, will be used to trigger an interrupt each time it's pressed.*/
+  /* Initialize User push-button without interrupt mode. */
   BSP_PB_Init(BUTTON_USER, BUTTON_MODE_GPIO);
 
   /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity */
@@ -466,31 +466,21 @@ void MPU_Config(void)
 
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
+
   MPU_InitStruct.Number = MPU_REGION_NUMBER2;
     MPU_InitStruct.BaseAddress = 0x24020000;
     MPU_InitStruct.Size = MPU_REGION_SIZE_128KB;
+  	  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
     HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
     MPU_InitStruct.Number = MPU_REGION_NUMBER3;
       MPU_InitStruct.BaseAddress = 0x24040000;
       MPU_InitStruct.Size = MPU_REGION_SIZE_256KB;
+
       HAL_MPU_ConfigRegion(&MPU_InitStruct);
   /* Enables the MPU */
   HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
 
-}
-
-/**
-  * @brief  BSP Push Button callback
-  * @param  Button Specifies the pressed button
-  * @retval None
-  */
-void BSP_PB_Callback(Button_TypeDef Button)
-{
-  if (Button == BUTTON_USER)
-  {
-    BspButtonState = BUTTON_PRESSED;
-  }
 }
 
 /**
