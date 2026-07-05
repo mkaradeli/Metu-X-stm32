@@ -19,6 +19,7 @@
 #include "globals.hpp"
 #include "MissionControl.hpp"
 #include "Button.hpp"
+#include "string.h"
 
 #define FRACTIONAL(x) int(floor(int((x)*100)))%100
 
@@ -65,7 +66,9 @@ uint64_t start_flag;
 
 //controller::current currentController;
 
-SensorData_t local_sensor_data;
+SensorData_t local_sensor_data{'K','D'};
+SensorData_t local_sensor_data_crc;
+volatile bool local_sensor_data_ready = false; // data state for crc checksum calculation.
 
 
 //Motor motor1(1, true, LEFT_EN_1_GPIO_Port, LEFT_EN_1_Pin, RIGHT_EN_1_GPIO_Port, RIGHT_EN_1_Pin, &htim1, TIM_CHANNEL_1);
@@ -297,6 +300,13 @@ void app_loop() {
 		}	}
 	button_profiler.end();
 
+	if (local_sensor_data_ready){
+		// sensor data paketlendi ve crc hesaplamasi yapilip cm4 e gondeilecek
+
+	}
+
+	//		SensorData_Buffer_Push(&logData, &local_sensor_data);
+
 	if (uwTick - timeOfLastPrint >= 1000){
 		main_loop_profiler.start();
 
@@ -481,8 +491,9 @@ void pressure_adc_complete(){
 	local_sensor_data.thrust_demand = 0;
 	local_sensor_data.thrust_estimated = 0;
 	if (g_mission.isLoggingEnabled()) {
-		SensorData_Buffer_Push(&logData, &local_sensor_data);
-//		SensorData_Buffer_Push(&logData_axiram, &local_sensor_data);
+		memcpy(&local_sensor_data_crc, &local_sensor_data, sizeof(local_sensor_data));
+		local_sensor_data_ready = true;
+//		SensorData_Buffer_Push(&logData, &local_sensor_data);
 	}
 //	SensorData_Buffer_Push(&logData, &local_sensor_data);
 //	SensorData_Buffer_Push(&logData_axiram, &local_sensor_data);
