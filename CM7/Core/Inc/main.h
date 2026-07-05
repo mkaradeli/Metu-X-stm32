@@ -73,7 +73,6 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-
 #define RIGHT_EN_1_Pin GPIO_PIN_7
 #define RIGHT_EN_1_GPIO_Port GPIOE
 #define LEFT_EN_1_Pin GPIO_PIN_10

@@ -20,6 +20,7 @@ public:
 	float weight_kg = 0;
 	float weight_kg_filtered = 0;
 	float weight_N_filtered = 0;
+	uint16_t* raw_value;
 private:
 	LowPass lowPass{1,1000, 1};
 	float current;
@@ -27,7 +28,6 @@ private:
 	volatile float curMax = 20;
 	volatile float weightMin = 0;
 	volatile float weightMax = 100;
-	uint16_t* raw_value;
 
 };
 

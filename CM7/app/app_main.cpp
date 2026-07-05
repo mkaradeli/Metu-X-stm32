@@ -57,15 +57,6 @@ uint32_t timeOfLastPrint=uwTick;
 DebouncedButton Button{1};
 volatile float load_filtered;
 
-//HX711_Handle loadcell = {
-//	        .dout_port = HX711_DOUT_GPIO_Port,
-//	        .dout_pin  = HX711_DOUT_Pin,
-//	        .sck_port  = HX711_SCK_GPIO_Port,
-//	        .sck_pin   = HX711_SCK_Pin,
-//
-//	    };
-
-
 bool mount_ok;
 bool file_creation_ok;
 float time_sec = 0;
@@ -78,7 +69,7 @@ SensorData_t local_sensor_data;
 
 
 //Motor motor1(1, true, LEFT_EN_1_GPIO_Port, LEFT_EN_1_Pin, RIGHT_EN_1_GPIO_Port, RIGHT_EN_1_Pin, &htim1, TIM_CHANNEL_1);
-LowPass load_lpf{0.1f, 66.6};  // 30 Hz cutoff @ 1 kHz sample rate
+LowPass load_lpf{1.0f, 1000,1};  // 30 Hz cutoff @ 1 kHz sample rate
 
 
 Profiler printf_profiler;
@@ -291,19 +282,19 @@ void app_loop() {
 	// bool pressed()  { return takeFlag(pressedEvent_); }
 	if (Button.pressed()) {
 		if (g_mission.systemMode() == mc::SystemMode::Idle) {
-					// Mission start: restart the user_task time base, then enter
-					// FuncTest — logging starts via the system-mode callback.
-					g_mission.setActuatorMode(mc::ActuatorMode::Position);
+			// Mission start: restart the user_task time base, then enter
+			// FuncTest — logging starts via the system-mode callback.
+			g_mission.setActuatorMode(mc::ActuatorMode::Pressure);
 
-					start_flag = cpuTicks();
-					g_mission.setSystemMode(mc::SystemMode::FuncTest);
-				} else {
-					// Mission stop: user_task gates off, logging stops,
-					// controller_mode -> DISABLE, lock released.
-					g_mission.setActuatorMode(mc::ActuatorMode::Disable);
+			start_flag = cpuTicks();
+			g_mission.setSystemMode(mc::SystemMode::FuncTest);
+		} else {
+			// Mission stop: user_task gates off, logging stops,
+			// controller_mode -> DISABLE, lock released.
+			g_mission.setActuatorMode(mc::ActuatorMode::Disable);
 
-					g_mission.setSystemMode(mc::SystemMode::Idle);
-				}	}
+			g_mission.setSystemMode(mc::SystemMode::Idle);
+		}	}
 	button_profiler.end();
 
 	if (uwTick - timeOfLastPrint >= 1000){
@@ -478,12 +469,17 @@ void pressure_adc_complete(){
 	local_sensor_data.pos_ref = actuator[0].actuatorController.rtY.position_demand;
 	local_sensor_data.pos_ref_rate_limited = actuator[0].actuatorController.rtY.pos_ref_rate_limited;
 	local_sensor_data.speed_ref_rate_limited = actuator[0].actuatorController.rtY.speedDemand;
-	local_sensor_data.manifold_pressure = Actuator::manifold->getPsi();
-	local_sensor_data.nozzle_pressure = actuator[0].getPressurePsi();
 	local_sensor_data.pressure_demand = actuator[0].actuatorController.rtU.P_nozzle_demand;
+
+	local_sensor_data.manifold_pressure = Actuator::manifold->getPsi();
+	local_sensor_data.manifold_raw = *Actuator::manifold->raw_value;
+	local_sensor_data.nozzle_pressure = actuator[0].getPressurePsi();
+	local_sensor_data.nozzle_raw = *actuator[0].psSensor->raw_value;
+	local_sensor_data.thrust_measured = loadCell.getForce();
+	local_sensor_data.thrust_raw = *loadCell.raw_value;
+
 	local_sensor_data.thrust_demand = 0;
 	local_sensor_data.thrust_estimated = 0;
-	local_sensor_data.thrust_measured = loadCell.getForce();
 	if (g_mission.isLoggingEnabled()) {
 		SensorData_Buffer_Push(&logData, &local_sensor_data);
 //		SensorData_Buffer_Push(&logData_axiram, &local_sensor_data);
@@ -495,36 +491,28 @@ void pressure_adc_complete(){
 }
 void user_task() {
 	time_sec = (cpuTicks() - start_flag) / 200e6;
-	return;
+//	return;
 	if (g_mission.systemMode() != mc::SystemMode::FuncTest)
 		return;
-//	controller_mode = controller_modes::DUTY;
 
-////		 Sinüs dalgası hareketi
-//		if (time_sec<120)
-//			if (fmod(time_sec,3)<0.5)
-//			  actuator[0].actuatorController.rtU.P_nozzle_demand = 1000;
-//			else if (fmod(time_sec,3)<1)
-//				actuator[0].actuatorController.rtU.P_nozzle_demand = 500;
-//			else if (fmod(time_sec,3)<2.5)
-//				actuator[0].actuatorController.rtU.P_nozzle_demand = sin(5*PI*2*time_sec)*150 + 600;
-//			else
-//				actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
-//		else if (time_sec<121){
-//			actuator[0].actuatorController.rtU.P_nozzle_demand = 0;
-//			if (controller_mode == controller_modes::PRESSURE)
-//				controller_mode = controller_modes::POSITION;
-//			actuator[0].actuatorController.rtU.pos_ref_ext = 0;
-//		}
-//
-//
-		for (int i=0; i<4; i++) {
-			actuator[i].actuator_controller_step();
+	if (g_mission.systemMode()==mc::SystemMode::FuncTest){
+		for (int i=0; i<4;i++){
+			actuator[i].actuatorController.rtU.P_nozzle_demand=3000.0f;
 		}
+	}
+	else {
+		for (int i=0; i<4;i++){
+					actuator[i].actuatorController.rtU.P_nozzle_demand=0.0f;
+				}
+	}
 
-//		if (time_sec <= 122 && time_sec > 121){
-//
-//			controller_mode = controller_modes::DISABLE;
-//		};
 
+
+
+
+
+
+	for (int i=0; i<4; i++) {
+		actuator[i].actuator_controller_step();
+	}
 }

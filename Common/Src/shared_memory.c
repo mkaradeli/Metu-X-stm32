@@ -10,7 +10,7 @@
 #include "string.h"
 
 
-__attribute__((section(".log_data"), aligned(4)))
+__attribute__((section(".log_data")))
 SensorData_Buffer_t logData;
 
 //__attribute__((section(".log_data"), aligned(4)))
