@@ -24,7 +24,7 @@ Actuator::Actuator(
 
 
 void Actuator::updateCurrent(uint16_t raw_value) {
-	this->current_meas = -((float) raw_value * 5.0f / ADC_16B_MAX - 2.5) / 0.066 - this->current_bias ;
+	this->current_meas = -((float) raw_value * 3.3f / ADC_16B_MAX - 2.5) / 0.066 - this->current_bias ;
 }
 float Actuator::get_current() {
 	return this->current_meas;
@@ -33,6 +33,9 @@ float Actuator::get_current() {
 void Actuator::current_controller_step() {
 	this->current.rtU.current_feedback = this->current_meas;
 	this->current.step();
+//	this->setDuty(1);
+//	return;
+//	TODO: DEBUG
 	if (controller_mode>controller_modes::DISABLE)
 		this->setDuty(this->current.rtY.Duty);
 	else

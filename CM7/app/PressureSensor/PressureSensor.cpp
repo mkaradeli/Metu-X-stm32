@@ -19,7 +19,7 @@ void PressureSensor::calibrate(){
 
 }
 void PressureSensor::updatePS(){
-	current = static_cast<float>(*raw_value) * 5.0f/65536.0f / 140.0f*1000.0f; // mA
+	current = static_cast<float>(*raw_value) * 3.3f/65536.0f / 140.0f*1000.0f; // mA
 	bar = (current - 4.0f)/16.0f *315.0f;
 	bar_filtered = lowPass.update(bar);
 	psi = bar / 0.0689475729;

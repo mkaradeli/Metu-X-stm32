@@ -17,9 +17,10 @@
 #include "task_timer.h"
 #include "PressureSensor.hpp"
 #include "globals.hpp"
-#include "MissionControl.hpp"
 #include "Button.hpp"
 #include "string.h"
+#include "UserTask.hpp"
+#include "MissionControl.hpp"
 
 #define FRACTIONAL(x) int(floor(int((x)*100)))%100
 
@@ -32,11 +33,9 @@
 // TODO: islemci acilma sirasinda akim sensorlerini sifirlayacak.
 
 
-Profiler free_profiler;
-Profiler load_cell_profiler;
-Profiler main_loop_profiler;
 volatile uint64_t cpuTicks_overflow=0;
 float load;
+uint32_t local_sensor_data_dropped=0;
 
 
 void current_adc_complete();
@@ -57,7 +56,7 @@ uint32_t timeOfLastPrint=uwTick;
 
 DebouncedButton Button{1};
 volatile float load_filtered;
-
+uint16_t crc16_calc(const uint8_t *p, size_t n);
 bool mount_ok;
 bool file_creation_ok;
 float time_sec = 0;
@@ -67,7 +66,7 @@ uint64_t start_flag;
 //controller::current currentController;
 
 SensorData_t local_sensor_data{'K','D'};
-SensorData_t local_sensor_data_crc;
+SensorData_t local_sensor_data_crc{};
 volatile bool local_sensor_data_ready = false; // data state for crc checksum calculation.
 
 
@@ -75,6 +74,9 @@ volatile bool local_sensor_data_ready = false; // data state for crc checksum ca
 LowPass load_lpf{1.0f, 1000,1};  // 30 Hz cutoff @ 1 kHz sample rate
 
 
+Profiler free_profiler;
+Profiler load_cell_profiler;
+Profiler main_loop_profiler;
 Profiler printf_profiler;
 Profiler adc1_profiler;
 Profiler adc2_profiler;
@@ -83,92 +85,13 @@ Profiler tim2_profiler;
 Profiler tim3_profiler;
 Profiler tim4_profiler;
 Profiler button_profiler;
+Profiler crc_profiler;
+
+//bool True = true;
+MissionControl missionControl(&logData.ready,
+			&logData.record);
 
 
-
-// ============================================================================
-// MissionControl glue
-// ----------------------------------------------------------------------------
-// g_mission is the single authority on modes. The legacy `controller_mode`
-// global stays as the low-level variable the ISR paths read, but it is now
-// written ONLY from these callbacks — nowhere else.
-// ============================================================================
-
-static controller_modes to_controller_mode(mc::ActuatorMode m) {
-	switch (m) {
-		case mc::ActuatorMode::Duty:     return controller_modes::DUTY;
-		case mc::ActuatorMode::Current:  return controller_modes::CURRENT;
-		case mc::ActuatorMode::Speed:    return controller_modes::SPEED;
-		case mc::ActuatorMode::Position: return controller_modes::POSITION;
-		case mc::ActuatorMode::Pressure: return controller_modes::PRESSURE;
-		case mc::ActuatorMode::Thrust:   return controller_modes::FORCE;
-		case mc::ActuatorMode::Disable:
-		default:                         return controller_modes::DISABLE;
-	}
-}
-
-static void mission_on_actuator(mc::ActuatorMode /*oldM*/, mc::ActuatorMode newM) {
-	controller_mode = to_controller_mode(newM);
-	// Bumpless transfer / integrator reset hooks go here if needed, e.g.:
-	// for (int i=0; i<4; i++) actuator[i].on_mode_change(newM);
-}
-
-using mc::g_mission;
-static void mission_on_system(mc::SystemMode /*oldM*/, mc::SystemMode newM) {
-	switch (newM) {
-		case mc::SystemMode::Idle:
-			controller_mode = controller_modes::DISABLE;   // outputs safe
-			g_mission.unlock();
-			g_mission.disableLogging();
-			break;
-		case mc::SystemMode::FuncTest:
-		case mc::SystemMode::XIL:
-			// Re-arm: Idle set controller_mode to DISABLE; restore it from
-			// the mission's actuator mode (setActuatorMode would NoChange here).
-			controller_mode = to_controller_mode(g_mission.actuatorMode());
-			g_mission.enableLogging();
-			break;
-		case mc::SystemMode::Drop:
-		case mc::SystemMode::Hover:
-			controller_mode = to_controller_mode(g_mission.actuatorMode());
-			g_mission.enableLogging();
-			g_mission.lock();
-					break;
-			break;
-		default:
-			break;
-	}
-}
-
-
-
-static void mission_on_logging(bool enabled) {
-	if (enabled) {
-		// Fresh log segment: drop whatever is stale in the ring.
-		if (logData.ready) {
-			logData.record = true;
-		}
-	}
-	else {
-		if (logData.record)
-			logData.record = false;
-		}
-
-	// CM4 side sees isLoggingEnabled() indirectly via data flow;
-	// sd_log start/stop is handled on the CM4 from buffer activity.
-}
-
-static bool mission_system_guard(mc::SystemMode /*from*/, mc::SystemMode to) {
-	switch (to) {
-		case mc::SystemMode::FuncTest:
-		case mc::SystemMode::XIL:
-		case mc::SystemMode::Hover:
-			return logData.ready;    // no SD log, no test / no hover
-		case mc::SystemMode::Drop:   // time-critical: fly even without log
-		default:
-			return true;
-	}
-}
 
 void app_init() {
 	SensorData_Buffer_Init(&logData);
@@ -227,6 +150,7 @@ void app_init() {
 	    tim3_profiler.reset();
 	    tim4_profiler.reset();
 	    button_profiler.reset();
+	    crc_profiler.reset();
 
 	    rb_init(&common_print_buffer);
 	    setvbuf(stdout, NULL, _IONBF, 0);   /* important: disable stdio line buffering */
@@ -254,69 +178,59 @@ void app_init() {
 		for (int i=0; i<4; i++)
 			actuator[i].setDuty(1);
 	free_profiler.start();
-
-	// ---- MissionControl bring-up --------------------------------------------
-		g_mission.onActuatorModeChange(mission_on_actuator);
-		g_mission.onSystemModeChange(mission_on_system);
-		g_mission.onLoggingChange(mission_on_logging);
-		g_mission.setSystemModeGuard(mission_system_guard);
-
-
-		// Still in Idle here, so the actuator mode can be set directly (no
-		// cascade stepping required on the bench). Then enter the test mode,
-		// which enables logging via the system-mode callback.
-//		g_mission.setActuatorMode(mc::ActuatorMode::Position);
-//		g_mission.setSystemMode(mc::SystemMode::FuncTest);
+	missionControl.Init(taskFunction, shutdownFunction);
+	missionControl.actuator_mode_desired = actuator_mode_desired;
+	missionControl.system_mode_desired = system_modes::TESTFIRE;
+	missionControl.ops_duration_ms = ops_duration_ms;
+	missionControl.shutdown_duration_ms = shutdown_duration_ms;
+	const uint8_t tv[] = "123456789";
+		uint16_t crc = crc16_calc(tv, 9);
 //	controller_mode = controller_modes::POSITION;
 }
 extern "C" {
 extern bool pc8_active;
 
 }
-
+bool autoTrigger = false;
 void app_loop() {
-	button_profiler.start();
 	if (task_ready(&button_task)) {
 		Button.update();
 
+		if (Button.pressed()) {
+			button_profiler.start();
+			missionControl.Toggle();
+		} else {
+			if (!autoTrigger and uwTick==10000) {
+				autoTrigger = true;
+				missionControl.Toggle();
+			}
+		button_profiler.end();
+		}
 	}
 
-	// One-shot events, cleared on read.
-	// bool pressed()  { return takeFlag(pressedEvent_); }
-	if (Button.pressed()) {
-		if (g_mission.systemMode() == mc::SystemMode::Idle) {
-			// Mission start: restart the user_task time base, then enter
-			// FuncTest — logging starts via the system-mode callback.
-			g_mission.setActuatorMode(mc::ActuatorMode::Pressure);
-
-			start_flag = cpuTicks();
-			g_mission.setSystemMode(mc::SystemMode::FuncTest);
-		} else {
-			// Mission stop: user_task gates off, logging stops,
-			// controller_mode -> DISABLE, lock released.
-			g_mission.setActuatorMode(mc::ActuatorMode::Disable);
-
-			g_mission.setSystemMode(mc::SystemMode::Idle);
-		}	}
-	button_profiler.end();
 
 	if (local_sensor_data_ready){
+		crc_profiler.start();
+		local_sensor_data_crc.crc = crc16_calc((uint8_t *)&local_sensor_data_crc, sizeof(SensorData_t)-2);
+		crc_profiler.end();
 		// sensor data paketlendi ve crc hesaplamasi yapilip cm4 e gondeilecek
 
+		SensorData_Buffer_Push(&logData, &local_sensor_data_crc);
+		local_sensor_data_ready = false;
 	}
 
-	//		SensorData_Buffer_Push(&logData, &local_sensor_data);
 
 	if (uwTick - timeOfLastPrint >= 1000){
 		main_loop_profiler.start();
 
 		timeOfLastPrint+= 1000;
-
-//		printf(CLR_SCREEN);
+//		print(CLR_SCREEN);
+		printf(CLR_SCREEN);
 //		local_sensor_data.timestamp = micros();
 //		if (HAL_GPIO_ReadPin(test_point_GPIO_Port, test_point_Pin))
 		printf("timestamp = %ld, %ld \n\r", uwTick, cpuTicks());
 
+#ifdef SHOW_INTERRUPT_TIMER_COUNTERS
 		printf("\n\rWelcome to STM32 world ! counter=%d\n\r", (int16_t)(uwTick/1e3));
 
 		printf("adc 2 - CS counter = %d, should be 8k\n\r", (int)adc2_profiler.call_frequency);
@@ -350,11 +264,37 @@ void app_loop() {
 		printf("encoder start %ld\n\r", adc1_profiler.get_start_click());
 		printf("current start %ld\n\r", adc2_profiler.get_start_click());
 
-		float total_usage = main_loop_profiler.cpu_usage + printf_profiler.cpu_usage + free_profiler.cpu_usage + adc1_profiler.cpu_usage + adc2_profiler.cpu_usage + adc3_profiler.cpu_usage + tim2_profiler.cpu_usage + tim3_profiler.cpu_usage + tim4_profiler.cpu_usage;
+#endif
+		printf("free_profiler cpu usage = %%%d.%d\n\r",(int)free_profiler.cpu_usage,FRACTIONAL(free_profiler.cpu_usage));
+		printf("load_cell_profiler cpu usage = %%%d.%d\n\r",(int)load_cell_profiler.cpu_usage,FRACTIONAL(load_cell_profiler.cpu_usage));
+		printf("main_loop_profiler cpu usage = %%%d.%d\n\r",(int)main_loop_profiler.cpu_usage,FRACTIONAL(main_loop_profiler.cpu_usage));
+		printf("printf_profiler cpu usage = %%%d.%d\n\r",(int)printf_profiler.cpu_usage,FRACTIONAL(printf_profiler.cpu_usage));
+		printf("adc1_profiler cpu usage = %%%d.%d\n\r",(int)adc1_profiler.cpu_usage,FRACTIONAL(adc1_profiler.cpu_usage));
+		printf("adc2_profiler cpu usage = %%%d.%d\n\r",(int)adc2_profiler.cpu_usage,FRACTIONAL(adc2_profiler.cpu_usage));
+		printf("adc3_profiler cpu usage = %%%d.%d\n\r",(int)adc3_profiler.cpu_usage,FRACTIONAL(adc3_profiler.cpu_usage));
+		printf("tim2_profiler cpu usage = %%%d.%d\n\r",(int)tim2_profiler.cpu_usage,FRACTIONAL(tim2_profiler.cpu_usage));
+		printf("tim3_profiler cpu usage = %%%d.%d\n\r",(int)tim3_profiler.cpu_usage,FRACTIONAL(tim3_profiler.cpu_usage));
+		printf("tim4_profiler cpu usage = %%%d.%d\n\r",(int)tim4_profiler.cpu_usage,FRACTIONAL(tim4_profiler.cpu_usage));
+		printf("button_profiler cpu usage = %%%d.%d\n\r",(int)button_profiler.cpu_usage,FRACTIONAL(button_profiler.cpu_usage));
+		printf("crc_profiler cpu usage = %%%d.%d\n\r",(int)crc_profiler.cpu_usage,FRACTIONAL(crc_profiler.cpu_usage));
+		float total_usage = main_loop_profiler.cpu_usage
+		+ free_profiler.cpu_usage
+		+ printf_profiler.cpu_usage
+		+ adc1_profiler.cpu_usage
+		+ adc2_profiler.cpu_usage
+		+ adc3_profiler.cpu_usage
+		+ tim2_profiler.cpu_usage
+		+ tim3_profiler.cpu_usage
+		+ tim4_profiler.cpu_usage
+		+ button_profiler.cpu_usage
+		+ load_cell_profiler.cpu_usage
+		+ crc_profiler.cpu_usage;
+
+
 		printf("total cpu usage accounted %%%d.%d \n\r", (int)total_usage, FRACTIONAL(total_usage));
 		printf("logData head = %ld, tail = %ld, dropped = %ld\n\r", logData.head, logData.tail, logData.dropped);
 		printf("measured weight = %d.%d\n\r", (int)loadCell.weight_kg_filtered, FRACTIONAL(loadCell.weight_kg_filtered));
-
+		printf("\n\r\n\r");
 
 
 		main_loop_profiler.metrics();
@@ -367,7 +307,9 @@ void app_loop() {
 		tim4_profiler.metrics();
 		free_profiler.metrics();
 		button_profiler.metrics();
+		crc_profiler.metrics();
 		main_loop_profiler.end();
+
 //		if(pc8_active){
 //			for (int i=0; i<1; i++){
 //				actuator[0].actuatorController.rtU.pos_ref_ext = 0.0f;
@@ -409,7 +351,7 @@ void tim5_trigger(){
 }
 
 inline uint64_t cpuTicks(){
-	return (cpuTicks_overflow<<32) + __HAL_TIM_GET_COUNTER(&htim5);
+	return (cpuTicks_overflow<<32) + __HAL_TIM_GET_COUNTER(&htim5); // tim5 is in 200Mhz
 }
 inline uint64_t micros() {
 	return cpuTicks() / 200;
@@ -426,12 +368,17 @@ void current_adc_complete(){
 //	if (controller_mode>=controller_modes::CURRENT)
 	for (int i=0; i<4; i++)
 		actuator[i].current_controller_step();
-	for (int i=0; i<7; i++) {
-		local_sensor_data.current_subsample[i] = local_sensor_data.current_subsample[i+1];
-		local_sensor_data.duty_subsample[i] = local_sensor_data.duty_subsample[i+1];
+
+	for (int j=0; j<4; j++) {
+		for (int i=0; i<7; i++) {
+			local_sensor_data.actuatorData[j].current_subsample[i] = local_sensor_data.actuatorData[j].current_subsample[i+1];
+			local_sensor_data.actuatorData[j].duty_subsample[i] = local_sensor_data.actuatorData[j].duty_subsample[i+1];
+		}
 	}
-	local_sensor_data.current_subsample[7] = actuator[0].get_current();
-	local_sensor_data.duty_subsample[7] = actuator[0].getDutyCycle();
+	for (int j=0; j<4; j++) {
+		local_sensor_data.actuatorData[j].current_subsample[7] = actuator[j].get_current();
+		local_sensor_data.actuatorData[j].duty_subsample[7] = actuator[j].getDutyCycle();
+	}
 	adc2_profiler.end();
 }
 
@@ -441,14 +388,17 @@ void encoder_adc_complete(){
 	for (int i=0; i<4; i++){
 		actuator[i].updateHallEffect();
 	}
-	for (int i=0; i<3; i++){
-		local_sensor_data.valveAngle[i] = local_sensor_data.valveAngle[i+1];
-		local_sensor_data.valveAngleKalman[i] = local_sensor_data.valveAngleKalman[i+1];
-		local_sensor_data.valveVelocity[i] = local_sensor_data.valveVelocity[i+1];
+	for (int j=0; j<4; j++){
+		for (int i=0; i<3; i++){
+			local_sensor_data.actuatorData[j].valveAngle[i] = local_sensor_data.actuatorData[j].valveAngle[i+1];
+			local_sensor_data.actuatorData[j].valveAngleKalman[i] = local_sensor_data.actuatorData[j].valveAngleKalman[i+1];
+			local_sensor_data.actuatorData[j].valveVelocity[i] = local_sensor_data.actuatorData[j].valveVelocity[i+1];
+		}
+		local_sensor_data.actuatorData[j].valveAngle[3] = actuator[j].hallEffect.valveAngle;
+		local_sensor_data.actuatorData[j].valveAngleKalman[3] = actuator[j].hallEffect.valveAngleKalman;
+		local_sensor_data.actuatorData[j].valveVelocity[3] = actuator[j].hallEffect.valveVelocity;
 	}
-	local_sensor_data.valveAngle[3] = actuator[0].hallEffect.valveAngle;
-	local_sensor_data.valveAngleKalman[3] = actuator[0].hallEffect.valveAngleKalman;
-	local_sensor_data.valveVelocity[3] = actuator[0].hallEffect.valveVelocity;
+
 	adc1_profiler.end();
 }
 void user_task();
@@ -460,7 +410,7 @@ void pressure_adc_complete(){
 	Actuator::manifold->updatePS();
 	loadCell.update();
 
-	user_task();
+	missionControl.Iter();
 
 
 	for (int i=0; i<4; i++) {
@@ -468,31 +418,35 @@ void pressure_adc_complete(){
 	}
 
 	local_sensor_data.timestamp = cpuTicks()/200; //microseconds
-	local_sensor_data.current_measured = actuator[0].get_current();
-	local_sensor_data.current_demand = actuator[0].actuatorController.rtY.currentDemand;
-//	local_sensor_data.valveAngle[4];
-//	local_sensor_data.valveAngleKalman[4];
-//	local_sensor_data.valveVelocity[4];
-//	local_sensor_data.current_subsample[8];
-//	local_sensor_data.duty_subsample[8];
-	local_sensor_data.speedDemand = actuator[0].actuatorController.rtY.speedDemand;
-	local_sensor_data.pos_ref = actuator[0].actuatorController.rtY.position_demand;
-	local_sensor_data.pos_ref_rate_limited = actuator[0].actuatorController.rtY.pos_ref_rate_limited;
-	local_sensor_data.speed_ref_rate_limited = actuator[0].actuatorController.rtY.speedDemand;
-	local_sensor_data.pressure_demand = actuator[0].actuatorController.rtU.P_nozzle_demand;
 
-	local_sensor_data.manifold_pressure = Actuator::manifold->getPsi();
-	local_sensor_data.manifold_raw = *Actuator::manifold->raw_value;
-	local_sensor_data.nozzle_pressure = actuator[0].getPressurePsi();
-	local_sensor_data.nozzle_raw = *actuator[0].psSensor->raw_value;
-	local_sensor_data.thrust_measured = loadCell.getForce();
-	local_sensor_data.thrust_raw = *loadCell.raw_value;
+	for (int j=0;j<4;j++){
+		local_sensor_data.actuatorData[j].current_measured = actuator[j].get_current();
+		local_sensor_data.actuatorData[j].current_demand = actuator[j].actuatorController.rtY.currentDemand;
+		local_sensor_data.actuatorData[j].speedDemand = actuator[j].actuatorController.rtY.speedDemand;
+		local_sensor_data.actuatorData[j].pos_ref = actuator[j].actuatorController.rtY.position_demand;
+		local_sensor_data.actuatorData[j].pos_ref_rate_limited = actuator[j].actuatorController.rtY.pos_ref_rate_limited;
+		local_sensor_data.actuatorData[j].speed_ref_rate_limited = actuator[j].actuatorController.rtY.speedDemand;
+		local_sensor_data.actuatorData[j].pressure_demand = actuator[j].actuatorController.rtU.P_nozzle_demand;
 
-	local_sensor_data.thrust_demand = 0;
-	local_sensor_data.thrust_estimated = 0;
-	if (g_mission.isLoggingEnabled()) {
-		memcpy(&local_sensor_data_crc, &local_sensor_data, sizeof(local_sensor_data));
-		local_sensor_data_ready = true;
+		local_sensor_data.actuatorData[j].nozzle_pressure = actuator[j].getPressurePsi();
+		local_sensor_data.actuatorData[j].nozzle_raw = *actuator[j].psSensor->raw_value;
+		local_sensor_data.actuatorData[j].thrust_demand = 0;
+		local_sensor_data.actuatorData[j].thrust_estimated = 0;
+
+	}
+		local_sensor_data.thrust_measured = loadCell.getForce();
+		local_sensor_data.thrust_raw = *loadCell.raw_value;
+		local_sensor_data.manifold_pressure = Actuator::manifold->getPsi();
+		local_sensor_data.manifold_raw = *Actuator::manifold->raw_value;
+
+		if (missionControl.running and logData.ready) {
+		if (!local_sensor_data_ready){
+			memcpy(&local_sensor_data_crc, &local_sensor_data, sizeof(local_sensor_data));
+			local_sensor_data_ready = true;
+		}
+		else {
+			local_sensor_data_dropped++;
+		}
 //		SensorData_Buffer_Push(&logData, &local_sensor_data);
 	}
 //	SensorData_Buffer_Push(&logData, &local_sensor_data);
@@ -503,27 +457,23 @@ void pressure_adc_complete(){
 void user_task() {
 	time_sec = (cpuTicks() - start_flag) / 200e6;
 //	return;
-	if (g_mission.systemMode() != mc::SystemMode::FuncTest)
-		return;
-
-	if (g_mission.systemMode()==mc::SystemMode::FuncTest){
+//	if (g_mission.systemMode() != mc::SystemMode::FuncTest)
+//		return;
+	if (true) {
 		for (int i=0; i<4;i++){
 			actuator[i].actuatorController.rtU.P_nozzle_demand=3000.0f;
 		}
 	}
 	else {
 		for (int i=0; i<4;i++){
-					actuator[i].actuatorController.rtU.P_nozzle_demand=0.0f;
-				}
+			actuator[i].actuatorController.rtU.P_nozzle_demand=0.0f;
+		}
 	}
-
-
-
-
-
-
-
-	for (int i=0; i<4; i++) {
-		actuator[i].actuator_controller_step();
-	}
+}
+uint16_t crc16_calc(const uint8_t *p, size_t n)
+{
+    CRC->CR |= CRC_CR_RESET;               // reload INIT (0xFFFF), self-clears
+    while (n--)
+        *(volatile uint8_t *)&CRC->DR = *p++;   // STRB: byte-wide feed
+    return (uint16_t)CRC->DR;
 }

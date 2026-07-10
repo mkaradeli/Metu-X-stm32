@@ -31,10 +31,12 @@ private:
 	bool is_paused;
 	Profiler *parent_profiler;
 	uint64_t total_cycles;
-	uint32_t elapsed_cycles;
-	uint32_t start_call;
-	uint32_t start_global;
-	uint32_t call_count;
+	uint64_t elapsed_cycles;
+	uint64_t start_call;
+	uint64_t start_global;
+	uint64_t call_count;
+	uint32_t double_start_count;
+	uint32_t double_end_count;
 };
 
 

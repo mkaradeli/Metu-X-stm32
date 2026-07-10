@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "crc.h"
 #include "dma.h"
 #include "fatfs.h"
 #include "i2c.h"
@@ -107,7 +106,7 @@ static volatile uint16_t tx_tail = 0;   // advanced when DMA completes
 static volatile uint8_t  tx_busy = 0;
 
 task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
-task_timer_t printf_task = {1000, 0};
+
 //task_timer_t common_heartbeat_task = {2000,0};
 
 //task_timer_t sd_ = {100, 0}; // period ms, start ms
@@ -176,7 +175,6 @@ int main(void)
   MX_SPI2_Init();
   MX_USART6_UART_Init();
   MX_TIM7_Init();
-  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   BSP_LED_Init(LED_RED);
   BSP_LED_Init(LED_GREEN);
@@ -187,7 +185,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 //  uint32_t local_timestep = 0;
 
-  BspCOMInit.BaudRate   = 115200;
+  BspCOMInit.BaudRate   = 921600;
     BspCOMInit.WordLength = COM_WORDLENGTH_8B;
     BspCOMInit.StopBits   = COM_STOPBITS_1;
     BspCOMInit.Parity     = COM_PARITY_NONE;
@@ -207,7 +205,6 @@ int main(void)
 		printf(CLR_SCREEN);
 
 		app_init();
-		printf_task.last_trigger = uwTick;
   while (1)
   {
 //	  ready_to_write_b++;
@@ -216,19 +213,7 @@ int main(void)
 	}
 	app_loop();
 
-	if (task_ready(&printf_task)) {
-			printf(CLR_SCREEN);
-//			HAL_Delay(100);
-			printf("%d %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);
-			printf("uwTick = %ld \n\r",uwTick);
-			printf("filename = %s\n\r", filename);
 
-
-			rb_flush(&isolated_print_buffer);
-			rb_flush(&common_print_buffer);
-
-
-	  }
 //			printf("time taken for sd = %d", uwTick- tick);
 
     /* USER CODE END WHILE */

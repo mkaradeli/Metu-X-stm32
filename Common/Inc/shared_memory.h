@@ -22,8 +22,7 @@ extern "C" {
 #define BUFFER_SIZE (PACKET_SIZE * BUFFER_PACKET_COUNT)
 
 typedef struct __attribute__((packed)) {
-	char start[2];
-    uint32_t timestamp;
+
     float current_measured;
     float current_demand;
     float valveAngle[4];
@@ -38,19 +37,28 @@ typedef struct __attribute__((packed)) {
     float pos_ref_rate_limited;
     float speed_ref_rate_limited;
 
-    float manifold_pressure;
+
     float nozzle_pressure;
     float pressure_demand;
-
-
     float thrust_demand;
     float thrust_estimated;
-    float thrust_measured;
-    uint16_t manifold_raw;
     uint16_t nozzle_raw;
-    uint16_t thrust_raw;
-    uint16_t crc;
-} SensorData_t; // 164 byte
+
+} ActuatorData_t;
+typedef struct __attribute__((packed)) {
+	char start[2];
+	uint32_t timestamp;
+	ActuatorData_t actuatorData[4];
+	float manifold_pressure;
+	uint16_t manifold_raw;
+    float thrust_measured;
+	uint16_t thrust_raw;
+	uint16_t crc;
+} SensorData_t;
+
+
+
+//typedef struct __attribute
 
 //#define BUFFER_SIZE (256*1024/sizeof(SensorData_t)-1)
 typedef struct {

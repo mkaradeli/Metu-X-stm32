@@ -20,10 +20,6 @@ Profiler::Profiler() {
 }
 void Profiler::reset(){
 	total_cycles = 0;
-//	elapsed_cycles;
-//	start_call = micros();
-//	start_global;
-//	call_count;
 	start_global = cpuTicks();
 	call_count = 0;
 }
@@ -31,6 +27,7 @@ void Profiler::reset(){
 void Profiler::start() {
 	uint32_t primask = __get_PRIMASK();
 	__disable_irq();
+    if (is_running) { double_start_count++; __set_PRIMASK(primask); return; }
 	parent_profiler = g_active;
 	if (parent_profiler)
 		parent_profiler->pause();
@@ -56,6 +53,7 @@ void Profiler::cont() {
 void Profiler::end() {
 	uint32_t primask = __get_PRIMASK();
 	__disable_irq();
+    if (!is_running) { double_end_count++; __set_PRIMASK(primask); return; }
 	if (!is_paused) {
 		elapsed_cycles  = cpuTicks() - start_call;
 		total_cycles += elapsed_cycles;
@@ -70,7 +68,10 @@ void Profiler::end() {
 
 }
 void Profiler::metrics(){
-	cpu_usage = (float)(total_cycles * 100) / (cpuTicks() - start_global);
-	mean_time =  (float)(total_cycles / call_count)/200;
-	call_frequency = (200000000.0f*call_count) / (cpuTicks() - start_global);
+    uint64_t elapsed = cpuTicks() - start_global;
+    if (elapsed == 0) { cpu_usage = 0; call_frequency = 0; mean_time = 0; return; }
+
+	cpu_usage = (float)(total_cycles * 100) / (float)elapsed;
+	call_frequency = (200000000.0f*(float)call_count) / (float)elapsed;
+	mean_time =  call_count? (float)total_cycles / ((float)call_count * 200.0f): 0.0f;
 }

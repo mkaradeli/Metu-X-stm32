@@ -41,7 +41,7 @@ FRESULT sd_create_log_file(char *filename, uint16_t *log_index);
 FRESULT sd_recreate_log_file(char *filename, uint16_t log_index,
 		uint16_t *secondary_log_index);
 char filename[32] = { 0 };
-uint16_t log_index = 0;
+uint16_t log_index = 1000;
 uint16_t secondary_log_index = 0;
 char initial_filename[32] = { 0 };
 uint8_t file_created = 0;
@@ -68,16 +68,38 @@ char sd_path[4];
 int sd_mount(void);
 FRESULT sd_reopen_log_append(uint16_t log_index);
 extern Disk_drvTypeDef disk;
+extern "C" {
+#include "ring_buffer.h"
+
+extern common_print_buffer_t isolated_print_buffer;
+extern volatile common_print_buffer_t common_print_buffer;
+}
 task_timer_t uart_task = { 50, 0 };
 task_timer_t sd_card_task = { 1000, 0 };
+task_timer_t printf_task = {1000, 0};
+
+Profiler free_profiler;
 
 Profiler sd_card_write_profiler;
+Profiler lidar_profiler ;
+Profiler printf_profiler ;
+
+static uint8_t lidar_rx[64];
 
 void app_init() {
 	//	HAL_TIM_Base_Start_IT(&htim5);
 	HAL_TIM_Base_Start_IT(&htim7); /* _IT = interrupt ile */
 
+	lidar.Reset();
+
+    HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);
 	sd_card_write_profiler.reset();
+	lidar_profiler.reset();
+	free_profiler.reset();
+	printf_profiler.reset();
+	free_profiler.start();
+	printf_task.last_trigger = uwTick;
+
 
 }
 void sd_card_task_function();
@@ -87,8 +109,34 @@ void app_loop() {
 	if (task_ready(&sd_card_task)) {
 		sd_card_prep();
 //		sd_card_task_function();
-		printf("sd card task cpu usage %%%d.%d\n\r",(int)sd_card_write_profiler.cpu_usage,FRACTIONAL(sd_card_write_profiler.cpu_usage));
+		sd_card_write_profiler.metrics();
+		lidar_profiler.metrics();
+		free_profiler.metrics();
+		printf_profiler.metrics();
+		printf("gdb debugging rocks!\n\r");
+		printf("free_profiler cpu usage = %%%d.%d\n\r", (int)free_profiler.cpu_usage, FRACTIONAL(free_profiler.cpu_usage));
+		printf("sd_card_write_profiler cpu usage = %%%d.%d\n\r", (int)sd_card_write_profiler.cpu_usage, FRACTIONAL(sd_card_write_profiler.cpu_usage));
+		printf("lidar_profiler cpu usage = %%%d.%d\n\r", (int)lidar_profiler.cpu_usage, FRACTIONAL(lidar_profiler.cpu_usage));
+		printf("printf_profiler cpu usage = %%%d.%d\n\r", (int)printf_profiler.cpu_usage, FRACTIONAL(printf_profiler.cpu_usage));
 
+		printf("free_profiler task mean time = %d.%d\n\r",
+					(int) free_profiler.mean_time,
+					FRACTIONAL(free_profiler.mean_time));
+		printf("sd_card task mean time = %d.%d\n\r",
+					(int) sd_card_write_profiler.mean_time,
+					FRACTIONAL(sd_card_write_profiler.mean_time));
+		printf("lidar_profiler task mean time = %d.%d\n\r",
+			(int) lidar_profiler.mean_time,
+			FRACTIONAL(lidar_profiler.mean_time));
+		printf("printf_profiler task mean time = %d.%d\n\r",
+				(int) printf_profiler.mean_time,
+				FRACTIONAL(printf_profiler.mean_time));
+
+		float total_usage = free_profiler.cpu_usage
+		+ sd_card_write_profiler.cpu_usage
+		+ lidar_profiler.cpu_usage
+		+ printf_profiler.cpu_usage;
+		printf("total cpu usage accounted %%%d.%d \n\r", (int)total_usage, FRACTIONAL(total_usage));
 	}
 
 
@@ -102,7 +150,35 @@ void app_loop() {
 				HAL_MAX_DELAY);
 
 	}
+
+	if (task_ready(&printf_task)) {
+		printf_profiler.start();
+//			printf(CLR_SCREEN);
+//			HAL_Delay(100);
+			printf("%d %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);
+			printf("uwTick = %ld \n\r",uwTick);
+			printf("filename = %s\n\r", filename);
+
+
+			rb_flush(&common_print_buffer);
+
+			rb_flush(&isolated_print_buffer);
+			printf_profiler.end();
+
+
+	  }
+
 }
+
+
+
+
+
+
+
+
+
+
 
 size_t scratch_buffer_size;
 void sd_card_task_function() {
@@ -205,16 +281,7 @@ void sd_card_prep() {
 		}
 
 	}
-	sd_card_write_profiler.metrics();
-	printf("sd_card task mean time = %d.%d, cpu usage = %d.%d \n\r",
-			(int) sd_card_write_profiler.mean_time,
-			FRACTIONAL(sd_card_write_profiler.mean_time),
-			(int) sd_card_write_profiler.cpu_usage,
-			FRACTIONAL(sd_card_write_profiler.cpu_usage));
-	//	printf("%lu\n\r", __HAL_TIM_GET_COUNTER(&htim7));
-	printf("%d, %p, %d, %d\n\r", disk.is_initialized[0], disk.drv[0],
-			disk.lun[0], disk.nbr);
-	printf("%d\n\r", a);
+
 
 };
 
@@ -231,11 +298,11 @@ FRESULT sd_reopen_log_append(uint16_t log_index) {
 }
 
 FRESULT sd_create_log_file(char *filename, uint16_t *log_index) {
-	uint16_t index = 0;
+	volatile uint16_t index = 1000;
 	//    char filename[32];
 	FRESULT res;
 
-	uint16_t left_index = 0;
+	volatile uint16_t left_index = 1000;
 	uint16_t right_index = 10000;
 	while (left_index < right_index) {
 		int mid = left_index + ((right_index - left_index) >> 1);
@@ -263,6 +330,7 @@ FRESULT sd_create_log_file(char *filename, uint16_t *log_index) {
 	} while (res == FR_OK && index < 10000);     // stop if too many files
 	res = f_open(&Fil, filename, FA_CREATE_NEW | FA_WRITE);
 	if (res == FR_OK) {
+//		*log_index = index;
 		printf("Created new log file: %s\n", filename);
 		//    f_expand(&Fil, 16*1024*1024, 1);
 		//        file_creation_ok = 1;
@@ -312,6 +380,24 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 }
 
 
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
+	if (huart == &huart6){
+		lidar_profiler.start();
+//		printf("aaaa lidar frame captured!\n\r");
+		lidar.FrameHandler(Size);
+		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);  // re-arm!
+		lidar_profiler.end();
+	}
+}
+void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
+    if (huart == &huart6)
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);  // recover
+}
+
+
 uint64_t cpuTicks() {
 	return (cpuTicks_overflow << 16) + __HAL_TIM_GET_COUNTER(&htim7);
+}
+uint64_t micros() {
+	return cpuTicks() / 200;
 }

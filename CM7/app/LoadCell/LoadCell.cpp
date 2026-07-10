@@ -14,7 +14,7 @@ LoadCell::LoadCell(uint16_t* raw_value) {
 }
 
 float LoadCell::update() {
-	current = static_cast<float>(*raw_value) * 5.0f/65536.0f / 140.0f*1000.0f; // mA
+	current = static_cast<float>(*raw_value) * 3.3f/65536.0f / 140.0f*1000.0f; // mA
 	weight_kg = ((current -curMin)*weightMax + (curMax-current)*weightMin)/ (curMax-curMin);
 	weight_N = weight_kg * 9.8065;
 	weight_kg_filtered = lowPass.update(weight_kg);
