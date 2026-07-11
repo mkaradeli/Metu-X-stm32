@@ -25,11 +25,12 @@ typedef struct __attribute__((packed)) {
 
     float current_measured;
     float current_demand;
-    float valveAngle[4];
-    float valveAngleKalman[4];
-    float valveVelocity[4];
-    float current_subsample[8];
-    float duty_subsample[8];
+    float valveAngle;
+    float valveAngleKalman;
+    float valveVelocity;
+    float duty;
+//    float current_subsample[8];
+//    float duty_subsample[8];
 
     float speedDemand;
     float pos_ref;
@@ -65,6 +66,7 @@ typedef struct {
 	volatile uint32_t head;
 	volatile uint32_t tail;
 	volatile uint32_t dropped;
+	volatile uint32_t written;
 	volatile bool record;
 	volatile bool ready;
 

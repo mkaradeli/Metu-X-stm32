@@ -186,6 +186,7 @@ void sd_card_task_function() {
 		sd_card_write_profiler.start();
 		scratch_buffer_size = SensorData_Buffer_PopAll(&logData, sensorDataScratch, scratch_buffer_max_size);
 		if (scratch_buffer_size) {// remove
+
 		f_write(&Fil, &sensorDataScratch, sizeof(SensorData_t)*scratch_buffer_size, &WWC);
 		// TODO: Circular buffer implement edilecek.
 		// TODO: fonksiyona cevrilecek.
@@ -194,6 +195,7 @@ void sd_card_task_function() {
 			FR_Status = f_sync(&Fil);
 			if (FR_Status == FR_OK) {
 				BSP_LED_Off(LED_RED);
+				printf("\t\tw.e.c.=%d\n\r", scratch_buffer_size);
 //				printf("sync successfull\n\r");
 			} else {
 				printf("sync FAILED!!!!!!!\n\r");

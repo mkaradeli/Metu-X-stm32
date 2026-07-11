@@ -27,6 +27,7 @@ void SensorData_Buffer_Init(SensorData_Buffer_t * logData) {
 	logData->tail = 0;
 	logData->dropped = 0;
 	logData->record=0;
+	logData->written=0;
 
 	__DMB();
 };
@@ -101,6 +102,7 @@ size_t SensorData_Buffer_PopAll(SensorData_Buffer_t *logData, SensorData_t *dest
 	if (new_tail >= BUFFER_PACKET_COUNT) {
 		new_tail -= BUFFER_PACKET_COUNT;
 	}
+	logData->written += n;
 	logData->tail = new_tail;
 	return n;
 }

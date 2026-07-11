@@ -48,5 +48,5 @@ void Lidar::Reset(){
 	};
 	uint8_t buffer[15] = {0};
 	HAL_UART_Transmit(this->uart_handle, command, sizeof(command), 1000);
-	HAL_UART_Receive(this->uart_handle, buffer, 5, 10000);
+	HAL_UART_Receive(this->uart_handle, buffer, 5, 100);
 }

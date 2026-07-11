@@ -183,15 +183,15 @@ void app_init() {
 	missionControl.system_mode_desired = system_modes::TESTFIRE;
 	missionControl.ops_duration_ms = ops_duration_ms;
 	missionControl.shutdown_duration_ms = shutdown_duration_ms;
-	const uint8_t tv[] = "123456789";
-		uint16_t crc = crc16_calc(tv, 9);
+//	const uint8_t tv[] = "123456789";
+//		uint16_t crc = crc16_calc(tv, 9);
 //	controller_mode = controller_modes::POSITION;
 }
 extern "C" {
 extern bool pc8_active;
 
 }
-bool autoTrigger = false;
+bool selfTrigger = false;
 void app_loop() {
 	if (task_ready(&button_task)) {
 		Button.update();
@@ -200,8 +200,8 @@ void app_loop() {
 			button_profiler.start();
 			missionControl.Toggle();
 		} else {
-			if (!autoTrigger and uwTick==10000) {
-				autoTrigger = true;
+			if (selfTrigger and uwTick==10000) {
+				selfTrigger = false;
 				missionControl.Toggle();
 			}
 		button_profiler.end();
@@ -224,10 +224,7 @@ void app_loop() {
 		main_loop_profiler.start();
 
 		timeOfLastPrint+= 1000;
-//		print(CLR_SCREEN);
 		printf(CLR_SCREEN);
-//		local_sensor_data.timestamp = micros();
-//		if (HAL_GPIO_ReadPin(test_point_GPIO_Port, test_point_Pin))
 		printf("timestamp = %ld, %ld \n\r", uwTick, cpuTicks());
 
 #ifdef SHOW_INTERRUPT_TIMER_COUNTERS
@@ -265,6 +262,7 @@ void app_loop() {
 		printf("current start %ld\n\r", adc2_profiler.get_start_click());
 
 #endif
+#ifdef PROFILER_RESULTS
 		printf("free_profiler cpu usage = %%%d.%d\n\r",(int)free_profiler.cpu_usage,FRACTIONAL(free_profiler.cpu_usage));
 		printf("load_cell_profiler cpu usage = %%%d.%d\n\r",(int)load_cell_profiler.cpu_usage,FRACTIONAL(load_cell_profiler.cpu_usage));
 		printf("main_loop_profiler cpu usage = %%%d.%d\n\r",(int)main_loop_profiler.cpu_usage,FRACTIONAL(main_loop_profiler.cpu_usage));
@@ -289,11 +287,16 @@ void app_loop() {
 		+ button_profiler.cpu_usage
 		+ load_cell_profiler.cpu_usage
 		+ crc_profiler.cpu_usage;
-
-
 		printf("total cpu usage accounted %%%d.%d \n\r", (int)total_usage, FRACTIONAL(total_usage));
-		printf("logData head = %ld, tail = %ld, dropped = %ld\n\r", logData.head, logData.tail, logData.dropped);
+#endif
+		printf("ACTUATOR 1\n\r");
+		printf("current = %d.%d A\n\r",(int)actuator[0].get_current(), FRACTIONAL(actuator[0].get_current()));
+		printf("encoder = %d.%d deg\n\r",(int)actuator[0].hallEffect.valveAngleKalman, FRACTIONAL(actuator[0].hallEffect.valveAngleKalman));
+		printf("Nozzle Pressure = %d.%d\n\r", (int)actuator[0].psSensor->getBar(), FRACTIONAL(actuator[0].psSensor->getBar()));
+		printf("Manifold Pressure = %d.%d\n\r", (int)Actuator::manifold->getBar(), FRACTIONAL(Actuator::manifold->getBar()) );
 		printf("measured weight = %d.%d\n\r", (int)loadCell.weight_kg_filtered, FRACTIONAL(loadCell.weight_kg_filtered));
+
+		printf("logData head = %ld, tail = %ld, written =%ld, dropped = %ld\n\r", logData.head, logData.tail, logData.written, logData.dropped);
 		printf("\n\r\n\r");
 
 
@@ -310,20 +313,8 @@ void app_loop() {
 		crc_profiler.metrics();
 		main_loop_profiler.end();
 
-//		if(pc8_active){
-//			for (int i=0; i<1; i++){
-//				actuator[0].actuatorController.rtU.pos_ref_ext = 0.0f;
-//			}
-//		}
-//		else{
-//			for (int i=0; i<1; i++){
-//				actuator[i].actuatorController.rtY.currentDemand = -0.5f;
-//			}
-//		}
-//
 	}
-//	load_cell_counter = 1/ load_cell_counter;
-//	free_profiler.end();
+
 }
 
 
@@ -359,49 +350,22 @@ inline uint64_t micros() {
 
 void current_adc_complete(){
 	adc2_profiler.start();
-//    SCB_InvalidateDCache_by_Addr((uint32_t *)adc_dma_buf_current, sizeof(adc_dma_buf_current));
-
-//	uint16_t current_meas;
 	for (int i=0; i<4; i++){
 		actuator[i].updateCurrent(adc_dma_buf_current[i]);
 	}
-//	if (controller_mode>=controller_modes::CURRENT)
 	for (int i=0; i<4; i++)
 		actuator[i].current_controller_step();
-
-	for (int j=0; j<4; j++) {
-		for (int i=0; i<7; i++) {
-			local_sensor_data.actuatorData[j].current_subsample[i] = local_sensor_data.actuatorData[j].current_subsample[i+1];
-			local_sensor_data.actuatorData[j].duty_subsample[i] = local_sensor_data.actuatorData[j].duty_subsample[i+1];
-		}
-	}
-	for (int j=0; j<4; j++) {
-		local_sensor_data.actuatorData[j].current_subsample[7] = actuator[j].get_current();
-		local_sensor_data.actuatorData[j].duty_subsample[7] = actuator[j].getDutyCycle();
-	}
 	adc2_profiler.end();
 }
 
 void encoder_adc_complete(){
 	adc1_profiler.start();
-//	SCB_InvalidateDCache_by_Addr((uint32_t *)adc_dma_buf_encoder, sizeof(adc_dma_buf_encoder));
 	for (int i=0; i<4; i++){
 		actuator[i].updateHallEffect();
 	}
-	for (int j=0; j<4; j++){
-		for (int i=0; i<3; i++){
-			local_sensor_data.actuatorData[j].valveAngle[i] = local_sensor_data.actuatorData[j].valveAngle[i+1];
-			local_sensor_data.actuatorData[j].valveAngleKalman[i] = local_sensor_data.actuatorData[j].valveAngleKalman[i+1];
-			local_sensor_data.actuatorData[j].valveVelocity[i] = local_sensor_data.actuatorData[j].valveVelocity[i+1];
-		}
-		local_sensor_data.actuatorData[j].valveAngle[3] = actuator[j].hallEffect.valveAngle;
-		local_sensor_data.actuatorData[j].valveAngleKalman[3] = actuator[j].hallEffect.valveAngleKalman;
-		local_sensor_data.actuatorData[j].valveVelocity[3] = actuator[j].hallEffect.valveVelocity;
-	}
-
 	adc1_profiler.end();
 }
-void user_task();
+
 void pressure_adc_complete(){
 	adc3_profiler.start();
 	for (int i=0; i<4; i++){
@@ -411,7 +375,6 @@ void pressure_adc_complete(){
 	loadCell.update();
 
 	missionControl.Iter();
-
 
 	for (int i=0; i<4; i++) {
 		actuator[i].actuator_controller_step();
@@ -427,6 +390,10 @@ void pressure_adc_complete(){
 		local_sensor_data.actuatorData[j].pos_ref_rate_limited = actuator[j].actuatorController.rtY.pos_ref_rate_limited;
 		local_sensor_data.actuatorData[j].speed_ref_rate_limited = actuator[j].actuatorController.rtY.speedDemand;
 		local_sensor_data.actuatorData[j].pressure_demand = actuator[j].actuatorController.rtU.P_nozzle_demand;
+		local_sensor_data.actuatorData[j].valveAngle = actuator[j].hallEffect.valveAngle;
+		local_sensor_data.actuatorData[j].valveAngleKalman = actuator[j].hallEffect.valveAngleKalman;
+		local_sensor_data.actuatorData[j].valveVelocity = actuator[j].hallEffect.valveVelocity;
+		local_sensor_data.actuatorData[j].duty = actuator[j].getDutyCycle();
 
 		local_sensor_data.actuatorData[j].nozzle_pressure = actuator[j].getPressurePsi();
 		local_sensor_data.actuatorData[j].nozzle_raw = *actuator[j].psSensor->raw_value;
@@ -447,29 +414,11 @@ void pressure_adc_complete(){
 		else {
 			local_sensor_data_dropped++;
 		}
-//		SensorData_Buffer_Push(&logData, &local_sensor_data);
 	}
-//	SensorData_Buffer_Push(&logData, &local_sensor_data);
-//	SensorData_Buffer_Push(&logData_axiram, &local_sensor_data);
 
 	adc3_profiler.end();
 }
-void user_task() {
-	time_sec = (cpuTicks() - start_flag) / 200e6;
-//	return;
-//	if (g_mission.systemMode() != mc::SystemMode::FuncTest)
-//		return;
-	if (true) {
-		for (int i=0; i<4;i++){
-			actuator[i].actuatorController.rtU.P_nozzle_demand=3000.0f;
-		}
-	}
-	else {
-		for (int i=0; i<4;i++){
-			actuator[i].actuatorController.rtU.P_nozzle_demand=0.0f;
-		}
-	}
-}
+
 uint16_t crc16_calc(const uint8_t *p, size_t n)
 {
     CRC->CR |= CRC_CR_RESET;               // reload INIT (0xFFFF), self-clears
