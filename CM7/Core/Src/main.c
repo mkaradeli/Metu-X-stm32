@@ -21,6 +21,7 @@
 #include "adc.h"
 #include "crc.h"
 #include "dma.h"
+#include "i2c.h"
 #include "tim.h"
 #include "gpio.h"
 
@@ -214,6 +215,7 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
   MX_TIM1_Init();
   MX_TIM5_Init();
   MX_CRC_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -229,7 +231,7 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
   BSP_PB_Init(BUTTON_USER, BUTTON_MODE_GPIO);
 
   /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity */
-  BspCOMInit.BaudRate   = 921600;
+  BspCOMInit.BaudRate   = 115200;
   BspCOMInit.WordLength = COM_WORDLENGTH_8B;
   BspCOMInit.StopBits   = COM_STOPBITS_1;
   BspCOMInit.Parity     = COM_PARITY_NONE;

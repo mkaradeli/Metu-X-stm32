@@ -12,6 +12,7 @@
 #include "shared_memory.h"
 #include "app_main.hpp"
 #include "main.h"
+#include "i2c.h"
 #include "ring_buffer.h"
 #include <string.h>
 #include "task_timer.h"
@@ -21,6 +22,11 @@
 #include "string.h"
 #include "UserTask.hpp"
 #include "MissionControl.hpp"
+
+#include "BNO085.hpp"
+
+BNO085 imu;
+
 
 #define FRACTIONAL(x) int(floor(int((x)*100)))%100
 
@@ -44,6 +50,7 @@ void pressure_adc_complete();
 
 task_timer_t test_point_gpio = {5000,0};
 task_timer_t button_task = {1,0};
+task_timer_t IMU_task = {1,0};
 
 __attribute__((section(".sram3"), used))
 volatile uint16_t adc_dma_buf_current[4];
@@ -86,6 +93,7 @@ Profiler tim3_profiler;
 Profiler tim4_profiler;
 Profiler button_profiler;
 Profiler crc_profiler;
+Profiler IMU_profiler;
 
 //bool True = true;
 MissionControl missionControl(&logData.ready,
@@ -133,6 +141,11 @@ void app_init() {
 //	  actuator[0].setDuty(1.0f);
 //	  motors[0].setDuty(1.0f);
 
+	  if (!imu.begin(&hi2c1)) {          // 0x4A default, pass 0x4B if SA0 high
+	          Error_Handler();
+	      }
+	  imu.enableReport(SH2_GAME_ROTATION_VECTOR, 2500);   // 400 Hz
+	  imu.enableReport(SH2_LINEAR_ACCELERATION,  2500);
 //	  dummy_init();
 //	  printf(CLR_SCREEN);
 
@@ -151,6 +164,7 @@ void app_init() {
 	    tim4_profiler.reset();
 	    button_profiler.reset();
 	    crc_profiler.reset();
+	    IMU_profiler.reset();
 
 	    rb_init(&common_print_buffer);
 	    setvbuf(stdout, NULL, _IONBF, 0);   /* important: disable stdio line buffering */
@@ -262,7 +276,7 @@ void app_loop() {
 		printf("current start %ld\n\r", adc2_profiler.get_start_click());
 
 #endif
-#ifdef PROFILER_RESULTS
+#ifndef PROFILER_RESULTS
 		printf("free_profiler cpu usage = %%%d.%d\n\r",(int)free_profiler.cpu_usage,FRACTIONAL(free_profiler.cpu_usage));
 		printf("load_cell_profiler cpu usage = %%%d.%d\n\r",(int)load_cell_profiler.cpu_usage,FRACTIONAL(load_cell_profiler.cpu_usage));
 		printf("main_loop_profiler cpu usage = %%%d.%d\n\r",(int)main_loop_profiler.cpu_usage,FRACTIONAL(main_loop_profiler.cpu_usage));
@@ -275,6 +289,7 @@ void app_loop() {
 		printf("tim4_profiler cpu usage = %%%d.%d\n\r",(int)tim4_profiler.cpu_usage,FRACTIONAL(tim4_profiler.cpu_usage));
 		printf("button_profiler cpu usage = %%%d.%d\n\r",(int)button_profiler.cpu_usage,FRACTIONAL(button_profiler.cpu_usage));
 		printf("crc_profiler cpu usage = %%%d.%d\n\r",(int)crc_profiler.cpu_usage,FRACTIONAL(crc_profiler.cpu_usage));
+		printf("IMU_profiler cpu usage = %%%d.%d\n\r",(int)IMU_profiler.cpu_usage,FRACTIONAL(IMU_profiler.cpu_usage));
 		float total_usage = main_loop_profiler.cpu_usage
 		+ free_profiler.cpu_usage
 		+ printf_profiler.cpu_usage
@@ -286,7 +301,8 @@ void app_loop() {
 		+ tim4_profiler.cpu_usage
 		+ button_profiler.cpu_usage
 		+ load_cell_profiler.cpu_usage
-		+ crc_profiler.cpu_usage;
+		+ crc_profiler.cpu_usage
+		+ IMU_profiler.cpu_usage;
 		printf("total cpu usage accounted %%%d.%d \n\r", (int)total_usage, FRACTIONAL(total_usage));
 #endif
 		printf("ACTUATOR 1\n\r");
@@ -311,8 +327,23 @@ void app_loop() {
 		free_profiler.metrics();
 		button_profiler.metrics();
 		crc_profiler.metrics();
+		IMU_profiler.metrics();
 		main_loop_profiler.end();
 
+
+	}
+
+	if (task_ready(&IMU_task)) {
+		IMU_profiler.start();
+		imu.service();                 // poll at least every ~1 ms
+
+		if (imu.hasNewQuaternion()) {
+			float w = imu.quaternion.real;   // i, j, k likewise
+		}
+		if (imu.hasNewAccel()) {
+			float ax = imu.linearAccel.x;
+		}
+		IMU_profiler.end();
 	}
 
 }
@@ -341,12 +372,6 @@ void tim5_trigger(){
 //	tim2_profiler.end();
 }
 
-inline uint64_t cpuTicks(){
-	return (cpuTicks_overflow<<32) + __HAL_TIM_GET_COUNTER(&htim5); // tim5 is in 200Mhz
-}
-inline uint64_t micros() {
-	return cpuTicks() / 200;
-}
 
 void current_adc_complete(){
 	adc2_profiler.start();
