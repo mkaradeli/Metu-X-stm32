@@ -18,37 +18,72 @@ extern "C" {
 #include "sh2_hal.h"     // sh2_Hal_t, SH2_HAL_MAX_TRANSFER_*
 
 }
-//extern uint64_t micros();
 
 // ---------------------------------------------------------------------------
-// Polled I2C sh2 HAL (file-local)
+// Configuration
 // ---------------------------------------------------------------------------
 
-// Blocking-transfer timeout. Worst-case packet (~384 B) at 400 kHz is ~9 ms
-// on the wire; leave headroom for clock stretching.
+// Blocking-transfer timeout (writes + soft reset only).
 static constexpr uint32_t kI2cTimeoutMs = 100;
 
-// The sh2 library is a singleton (global state in sh2.c/shtp.c), so a single
-// active instance is both sufficient and required.
-static BNO085* s_active = nullptr;
+// How long hal_write may wait for an in-flight DMA read to finish.
+// Worst-case packet (~384 B) at 400 kHz is ~9 ms on the wire.
+static constexpr uint32_t kWriteBusyTimeoutMs = 50;
 
-// Set by BNO085::begin() before sh2_open() so the HAL knows where to talk.
+// DMA buffer placement/alignment. See header comment #1 above.
+#ifndef BNO085_DMA_BUF_ATTR
+#define BNO085_DMA_BUF_ATTR __attribute__((aligned(32)))
+#endif
+
+// ---------------------------------------------------------------------------
+// File-local transport state
+// ---------------------------------------------------------------------------
+
+enum class DmaState : uint8_t { Idle, RdHdr, RdBody };
+
+static BNO085* s_active = nullptr;
 static I2C_HandleTypeDef* s_hi2c = nullptr;
 static uint16_t s_addr8 = 0;
+
+static volatile DmaState s_state       = DmaState::Idle;
+static volatile bool     s_packetReady = false;   // completed packet in s_rxBuf
+static volatile uint16_t s_packetLen   = 0;
+static volatile uint32_t s_rxStamp_us  = 0;
 
 static volatile uint32_t s_rxPacketCount = 0;
 static volatile uint32_t s_i2cErrCount   = 0;
 
+// 32-byte aligned AND padded to a multiple of 32 so cache invalidation
+// never touches neighboring data.
+static constexpr size_t kRxBufSize =
+    ((SH2_HAL_MAX_TRANSFER_IN + 31u) / 32u) * 32u;
+BNO085_DMA_BUF_ATTR static uint8_t s_rxBuf[kRxBufSize];
+
 static uint32_t timeNowUs()
 {
-    return (uint32_t)micros();
+    return micros();
 }
+
+static inline void invalidateRxBuf(size_t bytes)
+{
+    SCB_InvalidateDCache_by_Addr(
+        reinterpret_cast<uint32_t*>(s_rxBuf),
+        static_cast<int32_t>(((bytes + 31u) / 32u) * 32u));
+}
+
+// ---------------------------------------------------------------------------
+// sh2 HAL methods
+// ---------------------------------------------------------------------------
 
 static int hal_open(sh2_Hal_t* /*self*/)
 {
     // SHTP soft-reset packet: len=5 (LSB,MSB), channel 1 (executable),
     // seq 0, command 1 = reset.
     static const uint8_t softreset_pkt[] = {5, 0, 1, 0, 1};
+
+    s_state       = DmaState::Idle;
+    s_packetReady = false;
+    s_packetLen   = 0;
 
     // The hub NACKs while booting; retry a few times.
     bool ok = false;
@@ -66,8 +101,8 @@ static int hal_open(sh2_Hal_t* /*self*/)
         return SH2_ERR_IO;   // no ACK: wiring / address (0x4A vs 0x4B)?
     }
 
-    // Let the hub reboot. The advertisement + reset-complete packets will
-    // then be pending; sh2_open() collects them through hal_read().
+    // Let the hub reboot. Advertisement + reset-complete packets will then
+    // be pending; sh2_open() collects them through hal_read().
     HAL_Delay(300);
 
     return SH2_OK;
@@ -75,54 +110,46 @@ static int hal_open(sh2_Hal_t* /*self*/)
 
 static void hal_close(sh2_Hal_t* /*self*/)
 {
-    // Nothing to tear down: peripheral is owned by CubeMX code.
+    // Abort any in-flight DMA so callbacks stop firing.
+    (void)HAL_I2C_Master_Abort_IT(s_hi2c, s_addr8);
+    s_state       = DmaState::Idle;
+    s_packetReady = false;
 }
 
-// Poll for one SHTP packet. Returns 0 when nothing is pending (the normal
-// case between reports).
+// Non-blocking read:
+//  - a completed packet is returned immediately
+//  - otherwise, if idle, a DMA header read is started and 0 is returned
 static int hal_read(sh2_Hal_t* /*self*/, uint8_t* pBuffer, unsigned len,
                     uint32_t* t)
 {
-    uint8_t header[4];
-
-    // 1) Read the 4-byte SHTP header to learn the cargo length.
-    if (HAL_I2C_Master_Receive(s_hi2c, s_addr8, header, sizeof(header),
-                               kI2cTimeoutMs) != HAL_OK) {
-        ++s_i2cErrCount;
-        return 0;
+    if (s_packetReady) {
+        uint16_t n = s_packetLen;
+        if (n > len) {
+            n = (uint16_t)len;   // shouldn't happen: sh2 passes MAX_TRANSFER_IN
+        }
+        std::memcpy(pBuffer, s_rxBuf, n);
+        *t = s_rxStamp_us;
+        s_packetReady = false;   // frees the buffer; next read re-arms DMA
+        return n;
     }
 
-    uint16_t packetSize =
-        (uint16_t)(header[0] | (header[1] << 8)) & (uint16_t)~0x8000;
-
-    // 0x0000: nothing pending. 0x7FFF (0xFFFF masked): bus garbage /
-    // device not ready.
-    if (packetSize == 0 || packetSize == 0x7FFF) {
-        return 0;
+    if (s_state == DmaState::Idle) {
+        // No dirty lines exist (CPU never writes s_rxBuf), but invalidate
+        // before starting so no stale lines survive into the transfer.
+        invalidateRxBuf(4);
+        s_state = DmaState::RdHdr;
+        if (HAL_I2C_Master_Receive_DMA(s_hi2c, s_addr8, s_rxBuf, 4)
+            != HAL_OK) {
+            ++s_i2cErrCount;
+            s_state = DmaState::Idle;
+        }
     }
 
-    // Clamp to the caller's buffer; the device re-sends the remainder as a
-    // continuation transfer, which the shtp layer reassembles.
-    if (packetSize > len) {
-        packetSize = (uint16_t)len;
-    }
-
-    // Timestamp as close to the data as we can get without INTN.
-    *t = timeNowUs();
-
-    // 2) Read the whole packet. The device re-sends the header
-    //    (continuation bit set) followed by the payload; shtp masks the
-    //    bit itself, so hand over the buffer as-is.
-    if (HAL_I2C_Master_Receive(s_hi2c, s_addr8, pBuffer, packetSize,
-                               kI2cTimeoutMs) != HAL_OK) {
-        ++s_i2cErrCount;
-        return 0;
-    }
-
-    ++s_rxPacketCount;
-    return (int)packetSize;
+    return 0;
 }
 
+// Blocking write. Writes are rare (config traffic), so we simply wait for
+// any in-flight DMA read to drain, then transmit synchronously.
 static int hal_write(sh2_Hal_t* /*self*/, uint8_t* pBuffer, unsigned len)
 {
     if ((len > 0) && (pBuffer == nullptr)) {
@@ -132,10 +159,19 @@ static int hal_write(sh2_Hal_t* /*self*/, uint8_t* pBuffer, unsigned len)
         return 0;
     }
 
+    const uint32_t start = HAL_GetTick();
+    while (s_state != DmaState::Idle) {
+        if ((HAL_GetTick() - start) > kWriteBusyTimeoutMs) {
+            ++s_i2cErrCount;
+            return 0;   // sh2 lib retries
+        }
+        // DMA/I2C ISRs advance the state machine while we spin.
+    }
+
     if (HAL_I2C_Master_Transmit(s_hi2c, s_addr8, pBuffer, (uint16_t)len,
                                 kI2cTimeoutMs) != HAL_OK) {
         ++s_i2cErrCount;
-        return 0;   // sh2 lib retries
+        return 0;
     }
     return (int)len;
 }
@@ -153,6 +189,65 @@ static sh2_Hal_t s_hal = {
     hal_write,
     hal_getTimeUs,
 };
+
+// ---------------------------------------------------------------------------
+// HAL callbacks (ISR context)
+// ---------------------------------------------------------------------------
+
+extern "C" void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef* hi2c)
+{
+    if ((s_hi2c == nullptr) || (hi2c->Instance != s_hi2c->Instance)) {
+        return;
+    }
+
+    if (s_state == DmaState::RdHdr) {
+        // DMA wrote behind the cache: invalidate before parsing.
+        invalidateRxBuf(4);
+
+        uint16_t len =
+            (uint16_t)(s_rxBuf[0] | (s_rxBuf[1] << 8)) & (uint16_t)~0x8000;
+
+        // 0x0000: nothing pending. 0x7FFF (0xFFFF masked): bus garbage.
+        if ((len == 0) || (len == 0x7FFF)) {
+            s_state = DmaState::Idle;
+            return;
+        }
+        if (len > SH2_HAL_MAX_TRANSFER_IN) {
+            // Remainder arrives as a continuation transfer; shtp reassembles.
+            len = SH2_HAL_MAX_TRANSFER_IN;
+        }
+
+        s_rxStamp_us = timeNowUs();
+        s_packetLen  = len;
+
+        // Chain the body read. The device re-sends the header (continuation
+        // bit set) followed by the payload; shtp masks the bit itself.
+        invalidateRxBuf(len);
+        s_state = DmaState::RdBody;
+        if (HAL_I2C_Master_Receive_DMA(s_hi2c, s_addr8, s_rxBuf, len)
+            != HAL_OK) {
+            ++s_i2cErrCount;
+            s_state = DmaState::Idle;
+        }
+    }
+    else if (s_state == DmaState::RdBody) {
+        invalidateRxBuf(s_packetLen);
+        ++s_rxPacketCount;
+        s_packetReady = true;    // consumed by hal_read in main context
+        s_state = DmaState::Idle;
+    }
+}
+
+extern "C" void HAL_I2C_ErrorCallback(I2C_HandleTypeDef* hi2c)
+{
+    if ((s_hi2c == nullptr) || (hi2c->Instance != s_hi2c->Instance)) {
+        return;
+    }
+    // Typically a NACK (device momentarily busy). Drop the transfer and
+    // return to idle; the next hal_read re-polls.
+    ++s_i2cErrCount;
+    s_state = DmaState::Idle;
+}
 
 // ---------------------------------------------------------------------------
 // BNO085 class
@@ -174,12 +269,6 @@ bool BNO085::begin(I2C_HandleTypeDef* hi2c, uint8_t addr7)
     s_active = this;
     s_hi2c   = hi2c_;
     s_addr8  = addr8_;
-
-    // Quick presence check for a clearer failure mode.
-    if (HAL_I2C_IsDeviceReady(hi2c_, addr8_, 3, kI2cTimeoutMs) != HAL_OK) {
-        // Not fatal by itself -- the hub may be mid-boot and NACKing --
-        // hal_open() retries. But if that also fails, sh2_open reports it.
-    }
 
     // Opens the transport (soft reset inside hal_open) and processes the
     // hub's startup traffic. Blocks internally until done.
@@ -226,8 +315,6 @@ void BNO085::service()
     if (resetOccurred_) {
         resetOccurred_ = false;
         reapplyAllReports();
-        // Re-arm the flag for the user-visible wasReset() as a one-shot:
-        // note: reapply already happened, this is informational.
         userResetFlag_ = true;
     }
 }
