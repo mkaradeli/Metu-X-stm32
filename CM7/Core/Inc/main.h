@@ -83,6 +83,10 @@ void Error_Handler(void);
 #define LEFT_EN_3_GPIO_Port GPIOB
 #define USB_OTG_FS_PWR_EN_Pin GPIO_PIN_10
 #define USB_OTG_FS_PWR_EN_GPIO_Port GPIOD
+#define BARO_I2C4_SCL_Pin GPIO_PIN_12
+#define BARO_I2C4_SCL_GPIO_Port GPIOD
+#define BARO_I2C4_SDA_Pin GPIO_PIN_13
+#define BARO_I2C4_SDA_GPIO_Port GPIOD
 #define LEFT_EN_2_Pin GPIO_PIN_14
 #define LEFT_EN_2_GPIO_Port GPIOD
 #define test_point_Pin GPIO_PIN_8
