@@ -142,7 +142,7 @@ void app_init() {
 //	  motors[0].setDuty(1.0f);
 
 	  if (!imu.begin(&hi2c1)) {          // 0x4A default, pass 0x4B if SA0 high
-	          Error_Handler();
+//	          Error_Handler();
 	      }
 	  imu.enableReport(SH2_GAME_ROTATION_VECTOR, 2500);   // 400 Hz
 	  imu.enableReport(SH2_LINEAR_ACCELERATION,  2500);
@@ -197,6 +197,7 @@ void app_init() {
 	missionControl.system_mode_desired = system_modes::TESTFIRE;
 	missionControl.ops_duration_ms = ops_duration_ms;
 	missionControl.shutdown_duration_ms = shutdown_duration_ms;
+	missionControl.postShutdownWait_ms = postShutdownWait_ms;
 //	const uint8_t tv[] = "123456789";
 //		uint16_t crc = crc16_calc(tv, 9);
 //	controller_mode = controller_modes::POSITION;

@@ -47,6 +47,7 @@ public:
 	uint32_t ops_start_ms=0;
 	uint32_t shutdown_start_ms=0;
 	uint32_t shutdown_time_counter_ms = 0;
+	uint32_t postShutdownWait_ms = 0;
 
 
 

@@ -39,6 +39,7 @@ public:
 	HallEffect hallEffect;
 	static PressureSensor *manifold;
 	PressureSensor *psSensor;
+
 private:
 	float current_meas;
 	float current_bias;

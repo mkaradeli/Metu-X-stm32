@@ -39,7 +39,7 @@
 				taskFunction(ops_time_counter_ms);
 			else {
 				system_mode = system_modes::SHUTDOWN;
-				actuator_mode = controller_modes::POSITION;
+				actuator_mode = controller_modes::CURRENT;
 				controller_mode = this->actuator_mode;
 
 				shutdown_start_ms = uwTick;
@@ -54,10 +54,12 @@
 			if (shutdown_time_counter_ms < shutdown_duration_ms) {
 				shutdownFunction(shutdown_time_counter_ms);
 			}
-			else {
+			else if(shutdown_time_counter_ms< shutdown_duration_ms+postShutdownWait_ms) {
 				system_mode = system_modes::IDLE;
 				actuator_mode = controller_modes::DISABLE;
 				controller_mode = this->actuator_mode;
+			}
+			else {
 				*log_recording = false;
 				running = false;
 			}

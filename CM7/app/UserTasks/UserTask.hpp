@@ -16,6 +16,7 @@ void shutdownFunction(uint32_t time_ms);
 
 extern uint32_t ops_duration_ms; // ms
 extern uint32_t shutdown_duration_ms; // ms
+extern uint32_t postShutdownWait_ms;
 extern controller_modes actuator_mode_desired;
 
 #endif /* USERTASKS_USERTASK_HPP_ */
