@@ -304,6 +304,7 @@ void app_loop() {
 		+ load_cell_profiler.cpu_usage
 		+ crc_profiler.cpu_usage
 		+ IMU_profiler.cpu_usage;
+		printf("angle = %d, cur = %d\n\r", int(actuator[0].hallEffect.valveAngle), int(actuator[0].get_current()));
 		printf("total cpu usage accounted %%%d.%d \n\r", (int)total_usage, FRACTIONAL(total_usage));
 #endif
 		printf("ACTUATOR 1\n\r");
