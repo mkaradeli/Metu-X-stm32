@@ -12,19 +12,7 @@
 #include "stm32h7xx_hal.h"              /* for __DMB(); swap header if needed */
 
 extern int __io_putchar(int ch);
-
-/* Lamport SPSC: producer owns head, consumer owns tail.
- * Both 32-bit aligned -> single-word loads/stores are atomic on Cortex-M. */
-//__attribute__((section(".shared_memory"), used))
-// volatile uint32_t head;
-//__attribute__((section(".shared_memory"), used))
-//volatile uint32_t tail;
-//__attribute__((section(".shared_memory"), used))
-//volatile uint32_t dropped;
-//__attribute__((section(".shared_memory"), used))
-//char              buffer[RB_SIZE];
-
-__attribute__((section(".sram4"), used))
+__attribute__((section(".ramd3"), used))
 volatile common_print_buffer_t common_print_buffer;
 
 void rb_init(volatile common_print_buffer_t* cpb)
