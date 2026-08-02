@@ -24,4 +24,9 @@
 extern Actuator actuator[4];
 extern LoadCell loadCell;
 
+extern const uint16_t logFormatId;
+extern const char logHeader[];
+extern const uint8_t logHeaderSize;
+extern const uint16_t sensorDataLength;
+
 #endif /* GLOBALS_HPP_ */

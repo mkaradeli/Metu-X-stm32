@@ -12,7 +12,7 @@
 #include "stm32h7xx_hal.h"              /* for __DMB(); swap header if needed */
 
 extern int __io_putchar(int ch);
-__attribute__((section(".ramd3"), used))
+__attribute__((section(".RAM_D3_Section"), used))
 volatile common_print_buffer_t common_print_buffer;
 
 void rb_init(volatile common_print_buffer_t* cpb)

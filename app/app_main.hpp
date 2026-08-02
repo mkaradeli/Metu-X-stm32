@@ -30,13 +30,14 @@ extern "C" {
 	void tim4_trigger();
 	void tim2_trigger();
 	void tim5_trigger();
-	extern volatile uint64_t cpuTicks_overflow;   // match the actual type
+	extern volatile uint64_t micros_overflow;   // match the actual type
 	extern TIM_HandleTypeDef htim5;
-	inline uint64_t cpuTicks(){
-		return (cpuTicks_overflow<<32) + __HAL_TIM_GET_COUNTER(&htim5); // tim5 is in 200Mhz
-	}
+//	inline uint64_t cpuTicks(){
+//		return (cpuTicks_overflow<<32) + __HAL_TIM_GET_COUNTER(&htim5); // tim5 is in 200Mhz
+//	}
 	inline uint64_t micros() {
-		return cpuTicks() / 200;
+//		return cpuTicks() / 200;
+		return (micros_overflow<<32) + __HAL_TIM_GET_COUNTER(&htim5); // tim5 is in 1Mhz
 	}
 
 

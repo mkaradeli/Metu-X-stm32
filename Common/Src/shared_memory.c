@@ -1,4 +1,3 @@
-
 /*
  * shared_memory.c
  *
@@ -7,142 +6,191 @@
  */
 #include "shared_memory.h"
 #include "cmsis_compiler.h"   /* __DMB() */
-#include "string.h"
+#include <string.h>
 
-
-//__attribute__((section(".log_data")))
+/* 32-byte aligned so the halves can later be handed to a DMA-capable SDMMC
+ * or SPI driver without straddling cache lines. Lives in .bss -> AXI SRAM. */
+__attribute__((aligned(32)))
 SensorData_Buffer_t logData;
 
-//__attribute__((section(".log_data"), aligned(4)))
-//SensorData_Buffer_t logData_axiram;
 
+void SensorData_Buffer_Init(SensorData_Buffer_t *b)
+{
+    b->write_idx    = 0u;
+    b->fill_half    = 0u;
+    b->half_full[0] = 0u;
+    b->half_full[1] = 0u;
+    b->flush_half   = 0u;
+    b->dropped      = 0u;
+    b->written      = 0u;
+    b->record       = false;
+    b->ready        = false;      /* the old Init() forgot this one */
 
-static inline uint32_t SensorData_next(uint32_t i) {
-	uint32_t n = i + 1u;
-	return (n >= BUFFER_PACKET_COUNT) ? 0u : n;
+    __DMB();
 }
 
-void SensorData_Buffer_Init(SensorData_Buffer_t * logData) {
-	logData->head = 0;
-	logData->tail = 0;
-	logData->dropped = 0;
-	logData->record=0;
-	logData->written=0;
 
-	__DMB();
-};
+/* ------------------------------------------------------------------ */
+/* Producer (ISR context)                                              */
+/* ------------------------------------------------------------------ */
 
-bool SensorData_Buffer_Push(SensorData_Buffer_t *logData, const SensorData_t *entry) { // only used in CM7
-	const uint32_t head = logData->head;
-	const uint32_t tail = logData->tail;          /* snapshot consumer ptr */
-	const uint32_t next = SensorData_next(head);
-
-	if (next == tail) {                            /* buffer full           */
-		logData->dropped++;
-		return false;
-	}
-
-	logData->sensorData[head] = *entry;            /* write payload first   */
-
-	__DMB();                                       /* payload visible ...   */
-	logData->head = next;                          /* ... before publish    */
-	return true;
+bool SensorData_Buffer_Push(SensorData_Buffer_t *b, const SensorData_t *entry)
+{
+    SensorData_t *slot = SensorData_Buffer_Reserve(b);
+    if (slot == NULL) {
+        return false;                      /* Reserve() already counted it */
+    }
+    *slot = *entry;
+    SensorData_Buffer_Commit(b);
+    return true;
 }
 
-bool SensorData_Buffer_Pop(SensorData_Buffer_t *logData, SensorData_t *entry) { // only used in CM4
-	const uint32_t tail = logData->tail;
-	const uint32_t head = logData->head;           /* snapshot producer ptr */
 
-	if (head == tail) {                            /* empty                 */
-		return false;
-	}
+SensorData_t *SensorData_Buffer_Reserve(SensorData_Buffer_t *b)
+{
+    const uint32_t h = b->fill_half;
 
-	__DMB();                                       /* order head-read       */
-	                                               /* before payload-read   */
-	*entry = logData->sensorData[tail];
-
-	__DMB();                                       /* payload read done ... */
-	logData->tail = SensorData_next(tail);         /* ... before slot freed */
-	return true;
+    if (b->half_full[h]) {                 /* consumer hasn't caught up */
+        b->dropped++;
+        return NULL;
+    }
+    return &b->rec[h][b->write_idx];
 }
 
-size_t SensorData_Buffer_PopAll(SensorData_Buffer_t *logData, SensorData_t *dest, size_t max_entries) {
-	const uint32_t tail = logData->tail;
-	const uint32_t head = logData->head;
 
-	size_t n = (head >= tail) ? (size_t)(head - tail)
-	                          : (size_t)(head + BUFFER_PACKET_COUNT - tail);
+void SensorData_Buffer_Commit(SensorData_Buffer_t *b)
+{
+    const uint32_t next = b->write_idx + 1u;
 
-	if (n == 0u || max_entries == 0u) {
-		return 0u;
-	}
-	if (n > max_entries) {
-		n = max_entries;
-	}
+    if (next == LOG_HALF_RECORDS) {        /* this record closed the half */
+        const uint32_t h = b->fill_half;
 
-	__DMB();                                       /* see published records */
+        __DMB();                           /* payload visible ...          */
+        b->half_full[h] = 1u;              /* ... before the handoff flag  */
 
-	const uint32_t to_end = BUFFER_PACKET_COUNT - tail;   /* before wrap    */
-
-	if (n <= (size_t)to_end) {
-		memcpy(dest,
-		       &logData->sensorData[tail],
-		       n * sizeof(SensorData_t));
-	} else {
-		memcpy(dest,
-		       &logData->sensorData[tail],
-		       (size_t)to_end * sizeof(SensorData_t));
-		memcpy(dest + to_end,
-		       &logData->sensorData[0],
-		       (n - to_end) * sizeof(SensorData_t));
-	}
-
-	__DMB();                                       /* reads done ...        */
-	uint32_t new_tail = tail + (uint32_t)n;        /* ... before freeing    */
-	if (new_tail >= BUFFER_PACKET_COUNT) {
-		new_tail -= BUFFER_PACKET_COUNT;
-	}
-	logData->written += n;
-	logData->tail = new_tail;
-	return n;
+        b->fill_half = h ^ 1u;
+        b->write_idx = 0u;
+    } else {
+        b->write_idx = next;
+    }
 }
 
-size_t SensorData_Buffer_Count(const SensorData_Buffer_t *logData) {
-	const uint32_t h = logData->head;
-	const uint32_t t = logData->tail;
-	return (h >= t) ? (h - t) : (h + BUFFER_PACKET_COUNT - t);
 
-};
+/* ------------------------------------------------------------------ */
+/* Consumer (main loop)                                                */
+/* ------------------------------------------------------------------ */
 
-bool SensorData_Buffer_IsEmpty(const SensorData_Buffer_t *logData) {
-	return logData->head == logData->tail;
-};
+const SensorData_t *SensorData_Buffer_ClaimHalf(SensorData_Buffer_t *b, size_t *n)
+{
+    const uint32_t h = b->flush_half;
 
-bool SensorData_Buffer_IsFull(const SensorData_Buffer_t *logData) {
-	return SensorData_next(logData->head) == logData->tail;
-};
+    if (!b->half_full[h]) {
+        *n = 0u;
+        return NULL;
+    }
 
-bool SensorData_Buffer_Reset_Dropped(SensorData_Buffer_t *logData){
-	logData->dropped = 0;
-	return logData->dropped;
-}
-bool SensorData_Buffer_StartRecord(SensorData_Buffer_t *logData) {
-	if (logData->ready)
-		return logData->record = true;
-	else
-		return false;
+    __DMB();                               /* flag read before payload read */
+    *n = LOG_HALF_RECORDS;
+    return b->rec[h];
 }
 
-bool SensorData_Buffer_StopRecord(SensorData_Buffer_t *logData) {
-	if (logData->record) {
-		logData->record = false;
-		return true;
-	}
-	else
-		return false;
+
+void SensorData_Buffer_ReleaseHalf(SensorData_Buffer_t *b)
+{
+    const uint32_t h = b->flush_half;
+
+    b->written += LOG_HALF_RECORDS;
+
+    __DMB();                               /* reads done ...               */
+    b->half_full[h] = 0u;                  /* ... before slot is freed     */
+    b->flush_half   = h ^ 1u;              /* strict alternation = FIFO    */
 }
 
-bool SensorData_Buffer_isReady(SensorData_Buffer_t *logData) {
-	return logData->ready;
+
+/* ------------------------------------------------------------------ */
+/* End-of-recording tail flush                                         */
+/* ------------------------------------------------------------------ */
+/*
+ * Returns the records sitting in the half that is currently being filled.
+ * There is no interlock here: the caller must have stopped the producer
+ * first (record = false, then let at least one ISR period elapse).
+ */
+size_t SensorData_Buffer_ClaimTail(SensorData_Buffer_t *b, const SensorData_t **p)
+{
+    const uint32_t i = b->write_idx;
+
+    if (i == 0u) {                         /* half is empty */
+        *p = NULL;
+        return 0u;
+    }
+
+    __DMB();
+    *p = b->rec[b->fill_half];
+    return (size_t)i;
 }
 
+
+void SensorData_Buffer_ReleaseTail(SensorData_Buffer_t *b, size_t n)
+{
+    b->written += (uint32_t)n;
+    __DMB();
+    b->write_idx = 0u;
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Status                                                              */
+/* ------------------------------------------------------------------ */
+
+size_t SensorData_Buffer_Count(const SensorData_Buffer_t *b)
+{
+    size_t n = (size_t)b->write_idx;       /* partially filled half */
+
+    if (b->half_full[0]) n += LOG_HALF_RECORDS;
+    if (b->half_full[1]) n += LOG_HALF_RECORDS;
+    return n;
+}
+
+
+bool SensorData_Buffer_IsEmpty(const SensorData_Buffer_t *b)
+{
+    return SensorData_Buffer_Count(b) == 0u;
+}
+
+
+bool SensorData_Buffer_IsFull(const SensorData_Buffer_t *b)
+{
+    return b->half_full[b->fill_half] != 0u;
+}
+
+
+void SensorData_Buffer_Reset_Dropped(SensorData_Buffer_t *b)
+{
+    b->dropped = 0u;
+}
+
+
+bool SensorData_Buffer_StartRecord(SensorData_Buffer_t *b)
+{
+    if (!b->ready) {
+        return false;
+    }
+    b->record = true;
+    return true;
+}
+
+
+bool SensorData_Buffer_StopRecord(SensorData_Buffer_t *b)
+{
+    if (!b->record) {
+        return false;
+    }
+    b->record = false;
+    return true;
+}
+
+
+bool SensorData_Buffer_isReady(SensorData_Buffer_t *b)
+{
+    return b->ready;
+}

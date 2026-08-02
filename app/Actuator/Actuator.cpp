@@ -24,7 +24,7 @@ Actuator::Actuator(
 
 
 void Actuator::updateCurrent(uint16_t raw_value) {
-	this->current_meas = -((float) raw_value * 3.3f / ADC_16B_MAX - 2.5) / 0.066 - this->current_bias ;
+	this->current_meas = ((float) raw_value * 3.3f / ADC_16B_MAX - 2.5) / 0.066 - this->current_bias ;
 }
 float Actuator::get_current() {
 	return this->current_meas;

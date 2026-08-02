@@ -7,6 +7,8 @@
 #include "globals.hpp"
 #include "main.h"
 #include "PressureSensor.hpp"
+#include "shared_memory.h"
+
 
 
 extern uint16_t adc_dma_buf_encoder[8*4];
@@ -39,3 +41,9 @@ Actuator actuator[4] = {
 PressureSensor* Actuator::manifold = &psSensors[4];
 
 LoadCell loadCell(&adc_dma_buf_pressure[3]);
+
+
+const uint16_t logFormatId = 14;
+const char logHeader[] = "test";
+const uint8_t logHeaderSize = sizeof(logHeader);
+const uint16_t sensorDataLength = sizeof(SensorData_t);

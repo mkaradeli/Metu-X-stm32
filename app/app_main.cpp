@@ -24,7 +24,7 @@
 #include "MissionControl.hpp"
 
 #include "BNO085.hpp"
-
+#include "sd_task.hpp"
 BNO085 imu;
 
 
@@ -39,7 +39,7 @@ BNO085 imu;
 // TODO: islemci acilma sirasinda akim sensorlerini sifirlayacak.
 
 
-volatile uint64_t cpuTicks_overflow=0;
+volatile uint64_t micros_overflow=0;
 float load;
 uint32_t local_sensor_data_dropped=0;
 
@@ -51,12 +51,13 @@ void pressure_adc_complete();
 task_timer_t test_point_gpio = {5000,0};
 task_timer_t button_task = {1,0};
 task_timer_t IMU_task = {1,0};
+task_timer_t sd_card_task = {500,0};
 
-__attribute__((section(".ramd2"), used))
+__attribute__((section(".RAM_D2_Section"), used))
 volatile uint16_t adc_dma_buf_current[4];
-__attribute__((section(".ramd2"), used))
+__attribute__((section(".RAM_D2_Section"), used))
 volatile uint16_t adc_dma_buf_encoder[8*4];
-__attribute__((section(".ramd2"), used))
+__attribute__((section(".RAM_D2_Section"), used))
 volatile uint16_t adc_dma_buf_pressure[5];
 
 uint32_t timeOfLastPrint=uwTick;
@@ -69,7 +70,7 @@ bool mount_ok;
 bool file_creation_ok;
 float time_sec = 0;
 int load_cell_counter = 0;
-uint64_t start_flag;
+//uint64_t start_flag;
 
 //controller::current currentController;
 
@@ -95,6 +96,8 @@ Profiler tim4_profiler;
 Profiler button_profiler;
 Profiler crc_profiler;
 Profiler IMU_profiler;
+Profiler sd_card_profiler;
+
 
 bool True = true;
 MissionControl missionControl(&True,
@@ -166,6 +169,7 @@ void app_init() {
 	    button_profiler.reset();
 	    crc_profiler.reset();
 	    IMU_profiler.reset();
+	    sd_card_profiler.reset();
 
 	    rb_init(&common_print_buffer);
 	    setvbuf(stdout, NULL, _IONBF, 0);   /* important: disable stdio line buffering */
@@ -188,7 +192,7 @@ void app_init() {
 
 		}
 
-		start_flag = cpuTicks();
+//		start_flag = micros();
 //		actuator[0].static_manifold = &psSensors[4];
 		for (int i=0; i<4; i++)
 			actuator[i].setDuty(1);
@@ -241,7 +245,7 @@ void app_loop() {
 
 		timeOfLastPrint+= 1000;
 		printf(CLR_SCREEN);
-		printf("timestamp = %ld, %ld \n\r", uwTick, cpuTicks());
+		printf("timestamp = %ld, %ld \n\r", uwTick, micros());
 
 #ifdef SHOW_INTERRUPT_TIMER_COUNTERS
 		printf("\n\rWelcome to STM32 world ! counter=%d\n\r", (int16_t)(uwTick/1e3));
@@ -262,7 +266,7 @@ void app_loop() {
 //		ready_to_write_a++;
 //		actuator[0].setDuty(actuator[0].getDutyCycle() * -1.0f);
 		printf("%%%d\n\r", (int)(actuator[0].getDutyCycle()*100));
-		printf("timestamp = %ld, %ld \n\r", uwTick, cpuTicks());
+		printf("timestamp = %ld, %ld \n\r", uwTick, micros());
 
 		if (adc1_profiler.get_start_click() < adc2_profiler.get_start_click())
 			printf("encoder is before current controller\n\r");
@@ -315,8 +319,9 @@ void app_loop() {
 		printf("Manifold Pressure = %d.%d\n\r", (int)Actuator::manifold->getBar(), FRACTIONAL(Actuator::manifold->getBar()) );
 		printf("measured weight = %d.%d\n\r", (int)loadCell.weight_kg_filtered, FRACTIONAL(loadCell.weight_kg_filtered));
 
-		printf("logData head = %ld, tail = %ld, written =%ld, dropped = %ld\n\r", logData.head, logData.tail, logData.written, logData.dropped);
-		printf("\n\r\n\r");
+		printf("logData wr=%lu half=[%u,%u] written=%lu dropped=%lu\n\r",
+		       logData.write_idx, logData.half_full[0], logData.half_full[1],
+		       logData.written, logData.dropped);		printf("\n\r\n\r");
 
 
 		main_loop_profiler.metrics();
@@ -331,6 +336,7 @@ void app_loop() {
 		button_profiler.metrics();
 		crc_profiler.metrics();
 		IMU_profiler.metrics();
+		sd_card_profiler.metrics();
 		main_loop_profiler.end();
 
 
@@ -348,6 +354,12 @@ void app_loop() {
 		}
 		IMU_profiler.end();
 	}
+	if (task_ready(&sd_card_task)) {
+			sd_card_prep();
+		}
+
+
+		sd_card_task_function();
 
 }
 
@@ -371,7 +383,7 @@ void tim2_trigger(){
 
 void tim5_trigger(){
 //	tim2_profiler.start();
-	cpuTicks_overflow++;
+	micros_overflow++;
 //	tim2_profiler.end();
 }
 
@@ -408,7 +420,7 @@ void pressure_adc_complete(){
 		actuator[i].actuator_controller_step();
 	}
 
-	local_sensor_data.timestamp = cpuTicks()/200; //microseconds
+	local_sensor_data.timestamp = micros(); //microseconds
 
 	for (int j=0;j<4;j++){
 		local_sensor_data.actuatorData[j].current_measured = actuator[j].get_current();
@@ -434,13 +446,15 @@ void pressure_adc_complete(){
 		local_sensor_data.manifold_pressure = Actuator::manifold->getPsi();
 		local_sensor_data.manifold_raw = *Actuator::manifold->raw_value;
 
+
 		if (missionControl.running and logData.ready) {
-		if (!local_sensor_data_ready){
-			memcpy(&local_sensor_data_crc, &local_sensor_data, sizeof(local_sensor_data));
-			local_sensor_data_ready = true;
-		}
-		else {
-			local_sensor_data_dropped++;
+		    SensorData_t *slot = SensorData_Buffer_Reserve(&logData);
+		if (slot){
+			*slot = local_sensor_data;
+			crc_profiler.start();
+			slot->crc = crc16_calc((uint8_t*)slot, sizeof(SensorData_t) - 2);
+			crc_profiler.end();
+			SensorData_Buffer_Commit(&logData);
 		}
 	}
 
