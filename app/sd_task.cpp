@@ -24,6 +24,7 @@
 #include "globals.hpp"
 #include <string.h>
 #include <stdio.h>
+#include "UserTask.hpp"
 
 extern Profiler sd_card_profiler;
 extern Disk_drvTypeDef disk;
@@ -154,7 +155,8 @@ static void sd_create_file()
     /* f_expand(&Fil, 16u*1024u*1024u, 1); // contiguous preallocation:
      * makes f_sync cheap, but sets the file size to the full extent up front,
      * so the parser must stop at the last valid frame rather than at EOF. */
-
+    uint32_t task_length = ops_duration_ms + shutdown_duration_ms + postShutdownWait_ms;
+    f_expand(&Fil, task_length * PACKET_SIZE, 1);
     res = write_log_header();
     if (res != FR_OK) {
         sd_fault("writing log header", res);

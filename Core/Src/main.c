@@ -35,6 +35,8 @@
 #include "ring_buffer.h"
 #include "task_timer.h"
 #include "shared_memory.h"
+#include <stdio.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,8 +59,6 @@ void sd_mount_check (void);
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-
-COM_InitTypeDef BspCOMInit;
 
 /* USER CODE BEGIN PV */
 __IO uint32_t BspButtonState = BUTTON_RELEASED;
@@ -86,7 +86,9 @@ int _write(int file, char *ptr, int len)
 #if ENABLE_PRINT
 //	SCB_InvalidateDCache_by_Addr((uint32_t *)&common_print_buffer, sizeof(common_print_buffer));
     (void)file;
-    return (int)rb_push_n(&common_print_buffer, ptr, (size_t)len);
+    return (int)rb_write(&common_print_buffer, ptr, (size_t)len);
+//
+//    return (int)rb_push_n(&common_print_buffer, ptr, (size_t)len);
 #else
 	return;
 #endif
@@ -148,8 +150,11 @@ int main(void)
   MX_USART6_UART_Init();
   MX_TIM5_Init();
   MX_FATFS_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  rb_init(&common_print_buffer);
+  rb_tx_init(&common_print_buffer, &huart3);
+  setvbuf(stdout, NULL, _IONBF, 0);   /* important: disable stdio line buffering */
   /* USER CODE END 2 */
 
   /* Initialize leds */
@@ -158,17 +163,6 @@ int main(void)
 
   /* Initialize User push-button without interrupt mode. */
   BSP_PB_Init(BUTTON_USER, BUTTON_MODE_GPIO);
-
-  /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity */
-  BspCOMInit.BaudRate   = 115200;
-  BspCOMInit.WordLength = COM_WORDLENGTH_8B;
-  BspCOMInit.StopBits   = COM_STOPBITS_1;
-  BspCOMInit.Parity     = COM_PARITY_NONE;
-  BspCOMInit.HwFlowCtl  = COM_HWCONTROL_NONE;
-  if (BSP_COM_Init(COM1, &BspCOMInit) != BSP_ERROR_NONE)
-  {
-    Error_Handler();
-  }
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -339,6 +333,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 
 }
+//
+//void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+//	if (huart == &huart3) {
+//		rb_tx_complete_isr();
+//	}
+//}
 
 /* USER CODE END 4 */
 

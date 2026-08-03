@@ -52,6 +52,7 @@ task_timer_t test_point_gpio = {5000,0};
 task_timer_t button_task = {1,0};
 task_timer_t IMU_task = {1,0};
 task_timer_t sd_card_task = {500,0};
+task_timer_t printf_task = {1000, 0};
 
 __attribute__((section(".RAM_D2_Section"), used))
 volatile uint16_t adc_dma_buf_current[4];
@@ -99,8 +100,8 @@ Profiler IMU_profiler;
 Profiler sd_card_profiler;
 
 
-bool True = true;
-MissionControl missionControl(&True,
+//bool True = true;
+MissionControl missionControl(&logData.ready,
 			&logData.record);
 
 
@@ -141,6 +142,7 @@ void app_init() {
 	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
 	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+      BSP_LED_On(LED_RED);
 
 //	  actuator[0].setDuty(1.0f);
 //	  motors[0].setDuty(1.0f);
@@ -171,8 +173,7 @@ void app_init() {
 	    IMU_profiler.reset();
 	    sd_card_profiler.reset();
 
-	    rb_init(&common_print_buffer);
-	    setvbuf(stdout, NULL, _IONBF, 0);   /* important: disable stdio line buffering */
+
 
 //	    SCB_InvalidateDCache_by_Addr((uint32_t *)adc_dma_buf_encoder, sizeof(adc_dma_buf_encoder));
 	    HAL_Delay(10);
@@ -295,7 +296,9 @@ void app_loop() {
 		printf("tim4_profiler cpu usage = %%%d.%d\n\r",(int)tim4_profiler.cpu_usage,FRACTIONAL(tim4_profiler.cpu_usage));
 		printf("button_profiler cpu usage = %%%d.%d\n\r",(int)button_profiler.cpu_usage,FRACTIONAL(button_profiler.cpu_usage));
 		printf("crc_profiler cpu usage = %%%d.%d\n\r",(int)crc_profiler.cpu_usage,FRACTIONAL(crc_profiler.cpu_usage));
+		printf("sd_card_profiler cpu usage = %%%d.%d\n\r",(int)sd_card_profiler.cpu_usage,FRACTIONAL(sd_card_profiler.cpu_usage));
 		printf("IMU_profiler cpu usage = %%%d.%d\n\r",(int)IMU_profiler.cpu_usage,FRACTIONAL(IMU_profiler.cpu_usage));
+
 		float total_usage = main_loop_profiler.cpu_usage
 		+ free_profiler.cpu_usage
 		+ printf_profiler.cpu_usage
@@ -308,7 +311,7 @@ void app_loop() {
 		+ button_profiler.cpu_usage
 		+ load_cell_profiler.cpu_usage
 		+ crc_profiler.cpu_usage
-		+ IMU_profiler.cpu_usage;
+		+ IMU_profiler.cpu_usage +sd_card_profiler.cpu_usage;
 		printf("angle = %d, cur = %d\n\r", int(actuator[0].hallEffect.valveAngle), int(actuator[0].get_current()));
 		printf("total cpu usage accounted %%%d.%d \n\r", (int)total_usage, FRACTIONAL(total_usage));
 #endif
@@ -341,6 +344,13 @@ void app_loop() {
 
 
 	}
+	if (task_ready(&printf_task)) {
+		printf_profiler.start();
+		printf("%d %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);
+		printf("uwTick = %ld \n\r",uwTick);
+		rb_flush();
+		printf_profiler.end();
+	  }
 
 	if (task_ready(&IMU_task)) {
 		IMU_profiler.start();
