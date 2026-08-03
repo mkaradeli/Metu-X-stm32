@@ -32,7 +32,7 @@ static constexpr uint32_t kWriteBusyTimeoutMs = 50;
 
 // DMA buffer placement/alignment. See header comment #1 above.
 #ifndef BNO085_DMA_BUF_ATTR
-#define BNO085_DMA_BUF_ATTR __attribute__((aligned(32)))
+#define BNO085_DMA_BUF_ATTR __attribute__((section(".RAM_D2_Section")))
 #endif
 
 // ---------------------------------------------------------------------------
@@ -66,9 +66,9 @@ static uint32_t timeNowUs()
 
 static inline void invalidateRxBuf(size_t bytes)
 {
-    SCB_InvalidateDCache_by_Addr(
-        reinterpret_cast<uint32_t*>(s_rxBuf),
-        static_cast<int32_t>(((bytes + 31u) / 32u) * 32u));
+//    SCB_InvalidateDCache_by_Addr(
+//        reinterpret_cast<uint32_t*>(s_rxBuf),
+//        static_cast<int32_t>(((bytes + 31u) / 32u) * 32u));
 }
 
 // ---------------------------------------------------------------------------

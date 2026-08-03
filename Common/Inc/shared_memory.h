@@ -60,7 +60,7 @@ typedef struct __attribute__((packed)) {
 
 
 //typedef struct __attribute
-#define LOG_HALF_RECORDS   768u // 128 * 6
+#define LOG_HALF_RECORDS   896u // 128 * 6
 #define LOG_TOTAL_RECORDS  (2u * LOG_HALF_RECORDS)
 #define LOG_HALF_BYTES     (LOG_HALF_RECORDS * PACKET_SIZE)
 

@@ -110,8 +110,7 @@ int main(void)
   /* MPU Configuration--------------------------------------------------------*/
   MPU_Config();
 
-  /* MCU Configurationframe check: 32255 bad sync, 1 bad CRC, 23551/55807 frames OK
-   * --------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();

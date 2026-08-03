@@ -6,7 +6,7 @@
  */
 
 #include "globals.hpp"
-
+#define DISABLE_CRC true
 #define CHECK_TIMER_FREQUENCIES false
 
 #include "shared_memory.h"
@@ -463,8 +463,12 @@ void pressure_adc_complete(){
 
 uint16_t crc16_calc(const uint8_t *p, size_t n)
 {
+#ifdef DISABLE_CRC
+	return (uint16_t) 0;
+#else
     CRC->CR |= CRC_CR_RESET;               // reload INIT (0xFFFF), self-clears
     while (n--)
         *(volatile uint8_t *)&CRC->DR = *p++;   // STRB: byte-wide feed
     return (uint16_t)CRC->DR;
+#endif
 }
