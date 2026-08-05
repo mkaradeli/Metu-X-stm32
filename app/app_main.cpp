@@ -100,8 +100,8 @@ Profiler IMU_profiler;
 Profiler sd_card_profiler;
 
 
-//bool True = true;
-MissionControl missionControl(&logData.ready,
+bool True = true;
+MissionControl missionControl(&True,
 			&logData.record);
 
 
