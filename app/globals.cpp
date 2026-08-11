@@ -44,6 +44,6 @@ LoadCell loadCell(&adc_dma_buf_pressure[3]);
 
 
 const uint16_t logFormatId = 14;
-const char logHeader[] = "test";
-const uint8_t logHeaderSize = sizeof(logHeader);
+
+
 const uint16_t sensorDataLength = sizeof(SensorData_t);

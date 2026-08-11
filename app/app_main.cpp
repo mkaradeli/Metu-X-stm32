@@ -358,6 +358,7 @@ void app_loop() {
 
 		if (imu.hasNewQuaternion()) {
 			float w = imu.quaternion.real;   // i, j, k likewise
+			printf("%d, %d, %d, \n\r", imu.quaternion.i, imu.quaternion.j, imu.quaternion.k);
 		}
 		if (imu.hasNewAccel()) {
 			float ax = imu.linearAccel.x;
