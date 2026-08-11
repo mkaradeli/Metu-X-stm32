@@ -325,7 +325,7 @@ void app_loop() {
 		printf("logData wr=%lu half=[%u,%u] written=%lu dropped=%lu\n\r",
 		       logData.write_idx, logData.half_full[0], logData.half_full[1],
 		       logData.written, logData.dropped);		printf("\n\r\n\r");
-
+		printf("%d, %d, %d, \n\r", imu.quaternion.i, imu.quaternion.j, imu.quaternion.k);
 
 		main_loop_profiler.metrics();
 		printf_profiler.metrics();
@@ -358,7 +358,7 @@ void app_loop() {
 
 		if (imu.hasNewQuaternion()) {
 			float w = imu.quaternion.real;   // i, j, k likewise
-			printf("%d, %d, %d, \n\r", imu.quaternion.i, imu.quaternion.j, imu.quaternion.k);
+
 		}
 		if (imu.hasNewAccel()) {
 			float ax = imu.linearAccel.x;
