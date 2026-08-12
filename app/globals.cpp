@@ -43,7 +43,7 @@ PressureSensor* Actuator::manifold = &psSensors[4];
 LoadCell loadCell(&adc_dma_buf_pressure[3]);
 
 
-const uint16_t logFormatId = 14;
+const uint16_t logFormatId = 15;
 
 
 const uint16_t sensorDataLength = sizeof(SensorData_t);

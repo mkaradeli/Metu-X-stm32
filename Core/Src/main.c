@@ -280,8 +280,8 @@ void PeriphCommonClock_Config(void)
 extern SensorData_Buffer_t logData;
 void LED_Counter_Tick(void)
 {
-	const static uint8_t timing[] = {1, 0, 1, 0, 0, 0, 0};
-	const static uint8_t timing_logging[]= {1, 0, 1, 0, 1, 0, 0};
+	static const uint8_t timing[] = {1, 0, 1, 0, 0, 0, 0};
+	static const uint8_t timing_logging[]= {1, 0, 1, 0, 1, 0, 0};
 	static uint8_t index = 0;
 	if (logData.record){
 		if (timing_logging[index])

@@ -9,7 +9,7 @@
 #include "globals.hpp"
 
 
-#define missionID 3
+#define missionID 2
 const char logHeader[] = "Nozzle Dia = 2.8, Nozzle 1, Mission ID = 3";
 
 

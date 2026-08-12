@@ -145,7 +145,7 @@ void HallEffect::update_subBuffer() {
 	this->wasInMiddle_subBuffer = inMiddle;
 
 	this->motorAngle = (static_cast<double>(mean) + static_cast<double>(this->shifter_subBuffer) * HALF_ADC_16B_MAX) / ADC_16B_MAX * 360.0f + calibration;
-	this->valveAngle = this->motorAngle / GEARBOX_RATIO;
+	this->valveAngle = -this->motorAngle / GEARBOX_RATIO;
 	// this->valveAngle = motorAngle - angleRaw;
 
 	this->kalman->rtU.Encoder = this->valveAngle;

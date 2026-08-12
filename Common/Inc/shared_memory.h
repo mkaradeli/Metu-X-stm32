@@ -16,6 +16,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "sh2_SensorValue.h"
 
 
 typedef struct __attribute__((packed)) {
@@ -51,6 +52,10 @@ typedef struct __attribute__((packed)) {
 	uint16_t manifold_raw;
     float thrust_measured;
 	uint16_t thrust_raw;
+
+	sh2_RotationVector_t quaternion;
+	sh2_Accelerometer_t  linearAccel;
+
 	uint16_t crc;
 } SensorData_t;
 

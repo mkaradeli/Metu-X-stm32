@@ -30,7 +30,7 @@ BNO085 imu;
 
 #define FRACTIONAL(x) int(floor(int((x)*100)))%100
 
-#define PI 3.1415926536f
+//#define PI 3.1415926536f
 
 // TODO: PS sensor 3 encodere yakin olan
 // TODO: PS sensor 0 alttaki
@@ -41,7 +41,7 @@ BNO085 imu;
 
 volatile uint64_t micros_overflow=0;
 float load;
-uint32_t local_sensor_data_dropped=0;
+//uint32_t local_sensor_data_dropped=0;
 
 
 void current_adc_complete();
@@ -71,16 +71,11 @@ bool mount_ok;
 bool file_creation_ok;
 float time_sec = 0;
 int load_cell_counter = 0;
-//uint64_t start_flag;
-
-//controller::current currentController;
 
 SensorData_t local_sensor_data{'K','D'};
-SensorData_t local_sensor_data_crc{};
-volatile bool local_sensor_data_ready = false; // data state for crc checksum calculation.
 
 
-//Motor motor1(1, true, LEFT_EN_1_GPIO_Port, LEFT_EN_1_Pin, RIGHT_EN_1_GPIO_Port, RIGHT_EN_1_Pin, &htim1, TIM_CHANNEL_1);
+
 LowPass load_lpf{1.0f, 1000,1};  // 30 Hz cutoff @ 1 kHz sample rate
 
 
@@ -214,7 +209,7 @@ extern bool pc8_active;
 }
 bool selfTrigger = false;
 void app_loop() {
-	if (task_ready(&button_task)) {
+	if (task_ready(&button_task)) { // 1ms
 		Button.update();
 
 		if (Button.pressed()) {
@@ -230,23 +225,12 @@ void app_loop() {
 	}
 
 
-	if (local_sensor_data_ready){
-		crc_profiler.start();
-		local_sensor_data_crc.crc = crc16_calc((uint8_t *)&local_sensor_data_crc, sizeof(SensorData_t)-2);
-		crc_profiler.end();
-		// sensor data paketlendi ve crc hesaplamasi yapilip cm4 e gondeilecek
-
-		SensorData_Buffer_Push(&logData, &local_sensor_data_crc);
-		local_sensor_data_ready = false;
-	}
-
-
 	if (uwTick - timeOfLastPrint >= 1000){
 		main_loop_profiler.start();
 
 		timeOfLastPrint+= 1000;
 		printf(CLR_SCREEN);
-		printf("timestamp = %ld, %ld \n\r", uwTick, micros());
+		printf("timestamp = %ld \n\r", uwTick);
 
 #ifdef SHOW_INTERRUPT_TIMER_COUNTERS
 		printf("\n\rWelcome to STM32 world ! counter=%d\n\r", (int16_t)(uwTick/1e3));
@@ -325,7 +309,7 @@ void app_loop() {
 		printf("logData wr=%lu half=[%u,%u] written=%lu dropped=%lu\n\r",
 		       logData.write_idx, logData.half_full[0], logData.half_full[1],
 		       logData.written, logData.dropped);		printf("\n\r\n\r");
-		printf("%d, %d, %d, \n\r", imu.quaternion.i, imu.quaternion.j, imu.quaternion.k);
+//		printf("%d, %d, %d, \n\r", imu.quaternion.i, imu.quaternion.j, imu.quaternion.k);
 
 		main_loop_profiler.metrics();
 		printf_profiler.metrics();
@@ -344,34 +328,23 @@ void app_loop() {
 
 
 	}
-	if (task_ready(&printf_task)) {
+	if (task_ready(&printf_task)) { // 1000 ms
 		printf_profiler.start();
-		printf("%d %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);
+		printf("%ld %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);
 		printf("uwTick = %ld \n\r",uwTick);
 		rb_flush();
 		printf_profiler.end();
 	  }
 
-	if (task_ready(&IMU_task)) {
+	if (task_ready(&IMU_task)) { // 1 ms
 		IMU_profiler.start();
 		imu.service();                 // poll at least every ~1 ms
-
-		if (imu.hasNewQuaternion()) {
-			float w = imu.quaternion.real;   // i, j, k likewise
-
-		}
-		if (imu.hasNewAccel()) {
-			float ax = imu.linearAccel.x;
-		}
 		IMU_profiler.end();
 	}
-	if (task_ready(&sd_card_task)) {
+	if (task_ready(&sd_card_task)) { // 500 ms
 			sd_card_prep();
 		}
-
-
-		sd_card_task_function();
-
+	sd_card_task_function(); // every iter
 }
 
 
@@ -456,6 +429,10 @@ void pressure_adc_complete(){
 		local_sensor_data.thrust_raw = *loadCell.raw_value;
 		local_sensor_data.manifold_pressure = Actuator::manifold->getPsi();
 		local_sensor_data.manifold_raw = *Actuator::manifold->raw_value;
+		if (imu.hasNewAccel())
+			local_sensor_data.linearAccel = imu.linearAccel;
+		if (imu.hasNewQuaternion())
+			local_sensor_data.quaternion = imu.quaternion;
 
 
 		if (missionControl.running and logData.ready) {
