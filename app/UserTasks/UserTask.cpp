@@ -10,14 +10,14 @@
 
 
 #define missionID 2
-const char logHeader[] = "Nozzle Dia = 2.8, Nozzle 1, Mission ID = 3";
+const char logHeader[] = "Nozzle Dia = 3.5, Nozzle 1, Mission ID = 2";
 
 
 const uint8_t logHeaderSize = sizeof(logHeader);
 
 
 controller_modes actuator_mode_desired = controller_modes::POSITION;
-uint32_t ops_duration_ms = 9e3; // ms
+uint32_t ops_duration_ms = 10e3; // ms
 uint32_t shutdown_duration_ms = 3e3; // ms
 uint32_t postShutdownWait_ms = 0e3; //ms
 
@@ -36,6 +36,7 @@ void taskFunction(uint32_t time_ms) { // position control mode
 		if (time_ms>9000) actuator[i].actuatorController.rtU.pos_ref_ext= 10;
 	}
 }
+
 
 
 void shutdownFunction(uint32_t time_ms) { // current control mode
