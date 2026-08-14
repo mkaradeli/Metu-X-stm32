@@ -30,6 +30,8 @@ extern "C" {
 	void tim4_trigger();
 	void tim2_trigger();
 	void tim5_trigger();
+	void tim7_trigger();
+
 	extern volatile uint64_t micros_overflow;   // match the actual type
 	extern TIM_HandleTypeDef htim5;
 //	inline uint64_t cpuTicks(){
@@ -51,6 +53,7 @@ extern "C" {
     extern TIM_HandleTypeDef htim4;
     extern TIM_HandleTypeDef htim6;
     extern TIM_HandleTypeDef htim5;
+    extern TIM_HandleTypeDef htim7;
 
 #ifdef __cplusplus
 }

@@ -21,8 +21,6 @@ static Motor motors[4] = {
 		Motor(LEFT_EN_4_GPIO_Port, LEFT_EN_4_Pin, RIGHT_EN_4_GPIO_Port, RIGHT_EN_4_Pin, &htim1, TIM_CHANNEL_3),
 };
 
-
-
 static PressureSensor psSensors[5] = {
 		PressureSensor(&adc_dma_buf_pressure[0]),
 		PressureSensor(&adc_dma_buf_pressure[1]),
@@ -43,7 +41,12 @@ PressureSensor* Actuator::manifold = &psSensors[4];
 LoadCell loadCell(&adc_dma_buf_pressure[3]);
 
 
-const uint16_t logFormatId = 15;
+const uint16_t logFormatId = 16;
 
 
 const uint16_t sensorDataLength = sizeof(SensorData_t);
+
+static_assert(sensorDataLength == 284,"aaaaaaa");
+
+
+Lidar lidar = Lidar(&huart6);

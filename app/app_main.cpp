@@ -9,6 +9,7 @@
 #define DISABLE_CRC true
 #define CHECK_TIMER_FREQUENCIES false
 
+
 #include "shared_memory.h"
 #include "app_main.hpp"
 #include "main.h"
@@ -29,6 +30,7 @@ BNO085 imu;
 
 
 #define FRACTIONAL(x) int(floor(int((x)*100)))%100
+#define LOG_TERMINATOR  0x0A0Du   /* LF,CR packed MSB-first */
 
 //#define PI 3.1415926536f
 
@@ -53,6 +55,8 @@ task_timer_t button_task = {1,0};
 task_timer_t IMU_task = {1,0};
 task_timer_t sd_card_task = {500,0};
 task_timer_t printf_task = {1000, 0};
+
+task_timer_t uart_logging = { 10, 0};
 
 __attribute__((section(".RAM_D2_Section"), used))
 volatile uint16_t adc_dma_buf_current[4];
@@ -93,6 +97,9 @@ Profiler button_profiler;
 Profiler crc_profiler;
 Profiler IMU_profiler;
 Profiler sd_card_profiler;
+Profiler tim7_profiler;
+
+
 
 
 bool True = true;
@@ -131,6 +138,8 @@ void app_init() {
 	  HAL_TIM_Base_Start(&htim4);  /* encoder  */
 #endif
 	  HAL_TIM_Base_Start_IT(&htim5);  /* _IT = interrupt ile */
+	  HAL_TIM_Base_Start_IT(&htim7);  /* _IT = interrupt ile */
+
 	  HAL_TIM_Base_Start(&htim1);  /* _IT = interrupt ile */
 
 	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -147,6 +156,10 @@ void app_init() {
 	      }
 	  imu.enableReport(SH2_GAME_ROTATION_VECTOR, 2500);   // 400 Hz
 	  imu.enableReport(SH2_LINEAR_ACCELERATION,  2500);
+
+		lidar.Reset();
+
+		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);
 //	  dummy_init();
 //	  printf(CLR_SCREEN);
 
@@ -167,6 +180,7 @@ void app_init() {
 	    crc_profiler.reset();
 	    IMU_profiler.reset();
 	    sd_card_profiler.reset();
+	    tim7_profiler.reset();
 
 
 
@@ -209,20 +223,20 @@ extern bool pc8_active;
 }
 bool selfTrigger = false;
 void app_loop() {
-	if (task_ready(&button_task)) { // 1ms
-		Button.update();
-
-		if (Button.pressed()) {
-			button_profiler.start();
-			missionControl.Toggle();
-		} else {
-			if (selfTrigger and uwTick==10000) {
-				selfTrigger = false;
-				missionControl.Toggle();
-			}
-		button_profiler.end();
-		}
-	}
+//	if (task_ready(&button_task)) { // 1ms
+//		Button.update();
+//
+//		if (Button.pressed()) {
+//			button_profiler.start();
+//			missionControl.Toggle();
+//		} else {
+//			if (selfTrigger and uwTick==10000) {
+//				selfTrigger = false;
+//				missionControl.Toggle();
+//			}
+//		button_profiler.end();
+//		}
+//	}
 
 
 	if (uwTick - timeOfLastPrint >= 1000){
@@ -324,23 +338,24 @@ void app_loop() {
 		crc_profiler.metrics();
 		IMU_profiler.metrics();
 		sd_card_profiler.metrics();
+		tim7_profiler.metrics();
 		main_loop_profiler.end();
 
 
 	}
-	if (task_ready(&printf_task)) { // 1000 ms
-		printf_profiler.start();
-		printf("%ld %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);
-		printf("uwTick = %ld \n\r",uwTick);
-		rb_flush();
-		printf_profiler.end();
-	  }
+//	if (task_ready(&printf_task)) { // 1000 ms
+//		printf_profiler.start();
+//		printf("%ld %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);
+//		printf("uwTick = %ld \n\r",uwTick);
+//		rb_flush();
+//		printf_profiler.end();
+//	  }
 
-	if (task_ready(&IMU_task)) { // 1 ms
-		IMU_profiler.start();
-		imu.service();                 // poll at least every ~1 ms
-		IMU_profiler.end();
-	}
+//	if (task_ready(&IMU_task)) { // 1 ms
+//		IMU_profiler.start();
+//		imu.service();                 // poll at least every ~1 ms
+//		IMU_profiler.end();
+//	}
 	if (task_ready(&sd_card_task)) { // 500 ms
 			sd_card_prep();
 		}
@@ -369,6 +384,33 @@ void tim5_trigger(){
 //	tim2_profiler.start();
 	micros_overflow++;
 //	tim2_profiler.end();
+}
+
+void tim7_trigger() { // 1 khz low priority
+	tim7_profiler.start();
+	if (task_ready(&button_task)) { // 1ms
+		Button.update();
+
+		if (Button.pressed()) {
+			button_profiler.start();
+			missionControl.Toggle();
+		} else {
+			if (selfTrigger and uwTick==10000) {
+				selfTrigger = false;
+				missionControl.Toggle();
+			}
+			button_profiler.end();
+		}
+	}
+
+
+	rb_flush();
+	if (task_ready(&IMU_task)) { // 1 ms
+		IMU_profiler.start();
+		imu.service();                 // poll at least every ~1 ms
+		IMU_profiler.end();
+	}
+	tim7_profiler.end();
 }
 
 
@@ -433,7 +475,13 @@ void pressure_adc_complete(){
 			local_sensor_data.linearAccel = imu.linearAccel;
 		if (imu.hasNewQuaternion())
 			local_sensor_data.quaternion = imu.quaternion;
+		local_sensor_data.lidarDistance = lidar.getDistance();
+		local_sensor_data.lidarStrength = lidar.getStrength();
 
+
+		if(task_ready(&uart_logging)){
+			rb_write(&common_print_buffer, &local_sensor_data, (size_t)sizeof(SensorData_t));
+		}
 
 		if (missionControl.running and logData.ready) {
 		    SensorData_t *slot = SensorData_Buffer_Reserve(&logData);
@@ -449,10 +497,35 @@ void pressure_adc_complete(){
 	adc3_profiler.end();
 }
 
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
+	if (huart == &huart6){
+//		lidar_profiler.start();
+//		printf("aaaa lidar frame captured!\n\r");
+		lidar.FrameHandler(Size);
+		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);  // re-arm!
+//		lidar_profiler.end();
+	}
+}
+void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
+    if (huart == &huart6){
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);  // recover
+    }
+	if (huart == s_huart) {
+		rb_tx_error_isr();
+	}
+}
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if (huart == s_huart) {
+		rb_tx_complete_isr();
+	}
+}
+
 uint16_t crc16_calc(const uint8_t *p, size_t n)
 {
 #ifdef DISABLE_CRC
-	return (uint16_t) 0;
+	return LOG_TERMINATOR;
+//	return (uint16_t) '\n\r';
 #else
     CRC->CR |= CRC_CR_RESET;               // reload INIT (0xFFFF), self-clears
     while (n--)

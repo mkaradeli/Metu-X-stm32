@@ -46,7 +46,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ENABLE_PRINT true
+#define ENABLE_PRINT false
 
 void LED_Counter_Tick(void);
 void sd_mount_check (void);
@@ -90,7 +90,7 @@ int _write(int file, char *ptr, int len)
 //
 //    return (int)rb_push_n(&common_print_buffer, ptr, (size_t)len);
 #else
-	return;
+	return 1;
 #endif
 
 }
@@ -151,6 +151,7 @@ int main(void)
   MX_TIM5_Init();
   MX_FATFS_Init();
   MX_USART3_UART_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
   rb_init(&common_print_buffer);
   rb_tx_init(&common_print_buffer, &huart3);
@@ -330,6 +331,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
     else if (htim->Instance == TIM5) {
     	tim5_trigger();
+    }
+    else if (htim->Instance == TIM7) {
+    	tim7_trigger();
     }
 
 }

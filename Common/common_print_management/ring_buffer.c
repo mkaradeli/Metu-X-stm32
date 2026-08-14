@@ -18,7 +18,7 @@ rb_t common_print_buffer;
 
 #define RB_TX_CLAIMED  0xFFFFFFFFu      /* claimed, length not yet decided */
 
-static UART_HandleTypeDef *s_huart = NULL;
+UART_HandleTypeDef *s_huart = NULL;
 static rb_t               *s_rb    = NULL;
 static volatile uint32_t   s_tx_len = 0u;   /* 0 = idle, else bytes in flight */
 
@@ -211,18 +211,18 @@ void rb_flush_panic(void)
  * callbacks if they are already defined elsewhere (-DRB_NO_UART_CALLBACKS). */
 #ifndef RB_NO_UART_CALLBACKS
 
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
-	if (huart == s_huart) {
-		rb_tx_complete_isr();
-	}
-}
+//void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+//{
+//	if (huart == s_huart) {
+//		rb_tx_complete_isr();
+//	}
+//}
 
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
-{
-	if (huart == s_huart) {
-		rb_tx_error_isr();
-	}
-}
+//void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+//{
+//	if (huart == s_huart) {
+//		rb_tx_error_isr();
+//	}
+//}
 
 #endif /* RB_NO_UART_CALLBACKS */

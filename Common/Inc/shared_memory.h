@@ -56,6 +56,9 @@ typedef struct __attribute__((packed)) {
 	sh2_RotationVector_t quaternion;
 	sh2_Accelerometer_t  linearAccel;
 
+	uint16_t lidarDistance;
+	uint16_t lidarStrength;
+
 	uint16_t crc;
 } SensorData_t;
 
@@ -63,9 +66,12 @@ typedef struct __attribute__((packed)) {
 //#define BUFFER_PACKET_COUNT (SHARED_MEM_SIZE / PACKET_SIZE -1)
 //#define BUFFER_SIZE (PACKET_SIZE * BUFFER_PACKET_COUNT)
 
+//#if sizeof(SensorData_t)>2
+//
+//#endif
 
 //typedef struct __attribute
-#define LOG_HALF_RECORDS   896u // 128 * 6
+#define LOG_HALF_RECORDS   768u // 128 * 6
 #define LOG_TOTAL_RECORDS  (2u * LOG_HALF_RECORDS)
 #define LOG_HALF_BYTES     (LOG_HALF_RECORDS * PACKET_SIZE)
 
@@ -90,6 +96,7 @@ typedef struct {
 	SensorData_t rec[2][LOG_HALF_RECORDS];
 //	SensorData_t sensorData[5]; //BUFFER_PACKET_COUNT = 1560
 } SensorData_Buffer_t;
+
 
 
 

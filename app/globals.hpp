@@ -16,6 +16,8 @@
 #include "currentController.h"
 #include "Motor.hpp"
 #include "LoadCell.hpp"
+#include "Lidar.hpp"
+
 
 #include "app_main.hpp"
 #include "Actuator.hpp"
@@ -28,5 +30,7 @@ extern const uint16_t logFormatId;
 extern const char logHeader[];
 extern const uint8_t logHeaderSize;
 extern const uint16_t sensorDataLength;
+extern Lidar lidar;
+
 
 #endif /* GLOBALS_HPP_ */

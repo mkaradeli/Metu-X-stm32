@@ -33,6 +33,7 @@ void taskFunction(uint32_t time_ms) { // position control mode
 		actuator[i].actuatorController.rtU.pos_ref_ext= 1080;
 
 #endif
+		if (time_ms>9000) actuator[i].actuatorController.rtU.pos_ref_ext= 10;
 	}
 }
 

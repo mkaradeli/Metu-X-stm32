@@ -28,7 +28,7 @@ extern "C" {
 #include <string.h>
 #include "stm32h7xx_hal.h"
 
-#define RB_SIZE  4096u                  /* must be power of 2 */
+#define RB_SIZE  16384u                  /* must be power of 2 */
 #define RB_MASK  (RB_SIZE - 1u)
 
 /* Upper bound on one DMA burst. Bounds the interval between TX-complete
@@ -119,6 +119,7 @@ void   rb_drain_blocking(uint32_t timeout_ms);
 void   rb_flush_panic(void);
 
 extern rb_t common_print_buffer;
+extern UART_HandleTypeDef *s_huart;
 
 #ifdef __cplusplus
 }
