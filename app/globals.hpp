@@ -32,5 +32,7 @@ extern const uint8_t logHeaderSize;
 extern const uint16_t sensorDataLength;
 extern Lidar lidar;
 
+extern const float ValveFitPressureRatios[4][12];
+
 
 #endif /* GLOBALS_HPP_ */

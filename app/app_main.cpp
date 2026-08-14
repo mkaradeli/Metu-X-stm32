@@ -56,7 +56,7 @@ task_timer_t IMU_task = {1,0};
 task_timer_t sd_card_task = {500,0};
 task_timer_t printf_task = {1000, 0};
 
-task_timer_t uart_logging = { 10, 0};
+task_timer_t uart_logging = { 2, 0};
 
 __attribute__((section(".RAM_D2_Section"), used))
 volatile uint16_t adc_dma_buf_current[4];
@@ -110,6 +110,12 @@ MissionControl missionControl(&True,
 
 void app_init() {
 	SensorData_Buffer_Init(&logData);
+
+	for (int i = 0; i<4; i++){
+		for (int j=0; j<12; j++){
+			actuator[i].actuatorController.rtU.ValveFitPressureRatios[j] = ValveFitPressureRatios[i][j];
+		}
+	}
 //	Button.DebouncedButton(1);
 	logData.ready=false;
 //	logData.record = false;
