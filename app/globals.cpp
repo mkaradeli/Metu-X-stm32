@@ -8,7 +8,7 @@
 #include "main.h"
 #include "PressureSensor.hpp"
 #include "shared_memory.h"
-
+constexpr int encoderSigns[4] = {1,1,-1,1};
 
 
 extern uint16_t adc_dma_buf_encoder[8*4];
@@ -30,10 +30,10 @@ static PressureSensor psSensors[5] = {
 };
 
 Actuator actuator[4] = {
-		{&psSensors[0], &adc_dma_buf_encoder[0],&motors[0]},
-		{&psSensors[1], &adc_dma_buf_encoder[1],&motors[1]},
-		{&psSensors[2], &adc_dma_buf_encoder[2],&motors[2]},
-		{&psSensors[3], &adc_dma_buf_encoder[3],&motors[3]}
+		{&psSensors[0], &adc_dma_buf_encoder[0],&motors[0], encoderSigns[0]},
+		{&psSensors[1], &adc_dma_buf_encoder[1],&motors[1], encoderSigns[1]},
+		{&psSensors[2], &adc_dma_buf_encoder[2],&motors[2], encoderSigns[2]},
+		{&psSensors[3], &adc_dma_buf_encoder[3],&motors[3], encoderSigns[3]}
 };
 
 PressureSensor* Actuator::manifold = &psSensors[4];
@@ -46,7 +46,7 @@ const uint16_t logFormatId = 16;
 
 const uint16_t sensorDataLength = sizeof(SensorData_t);
 
-static_assert(sensorDataLength == 284,"aaaaaaa");
+static_assert(sensorDataLength == 317,"aaaaaaa");
 
 
 Lidar lidar = Lidar(&huart6);
@@ -55,3 +55,10 @@ const float ValveFitPressureRatios[4][12] = {{0, 0.057631480834633, 0.1719973825
 											 {0, 0.057631480834633, 0.171997382575738, 0.280936562859588, 0.373770506465553, 0.460925365691390, 0.549715259309827, 0.627065318978796, 0.673531606657655, 0.705225494170721, 0.719071509814285, 0.735751202120408},
 											 {0, 0.057631480834633, 0.171997382575738, 0.280936562859588, 0.373770506465553, 0.460925365691390, 0.549715259309827, 0.627065318978796, 0.673531606657655, 0.705225494170721, 0.719071509814285, 0.735751202120408},
 											 {0, 0.057631480834633, 0.171997382575738, 0.280936562859588, 0.373770506465553, 0.460925365691390, 0.549715259309827, 0.627065318978796, 0.673531606657655, 0.705225494170721, 0.719071509814285, 0.735751202120408}};
+gnc::AltitudeEstimator altEstimator;
+
+
+static_assert(encoderSigns[0]==1 or encoderSigns[0]==-1,"degerler sadece +1 ve -1 olabilir.");
+static_assert(encoderSigns[1]==1 or encoderSigns[1]==-1,"degerler sadece +1 ve -1 olabilir.");
+static_assert(encoderSigns[2]==1 or encoderSigns[2]==-1,"degerler sadece +1 ve -1 olabilir.");
+static_assert(encoderSigns[3]==1 or encoderSigns[3]==-1,"degerler sadece +1 ve -1 olabilir.");

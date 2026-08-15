@@ -58,6 +58,15 @@ typedef struct __attribute__((packed)) {
 
 	uint16_t lidarDistance;
 	uint16_t lidarStrength;
+	float kf_altitude;
+	float kf_velocity;
+	float kf_accelBias;
+	float kf_sigmaH;
+	float kf_sigmaV;
+	float kf_meanNis;
+	float kf_tiltCos;
+	uint32_t kf_rejects;
+	uint8_t kf_flags;
 
 	uint16_t crc;
 } SensorData_t;

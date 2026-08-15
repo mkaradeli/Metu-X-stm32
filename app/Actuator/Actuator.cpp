@@ -14,8 +14,9 @@ Actuator::Actuator(
 		PressureSensor *psSensor_ptr,
 //		PressureSensor *manifold_ptr,`
 		uint16_t* encoder_adc_buffer,
-		Motor* motor_ptr) {
-	this->hallEffect.init(encoder_adc_buffer, &motorKalman);
+		Motor* motor_ptr, int sign) {
+
+	this->hallEffect.init(encoder_adc_buffer, &motorKalman, sign);
 	this->motor = motor_ptr;
 	this->current.initialize();
 	this->psSensor = psSensor_ptr;

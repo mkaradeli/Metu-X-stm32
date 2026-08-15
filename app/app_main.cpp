@@ -98,7 +98,7 @@ Profiler crc_profiler;
 Profiler IMU_profiler;
 Profiler sd_card_profiler;
 Profiler tim7_profiler;
-
+Profiler kf_profiler;
 
 
 
@@ -161,10 +161,10 @@ void app_init() {
 //	          Error_Handler();
 	      }
 	  imu.enableReport(SH2_GAME_ROTATION_VECTOR, 2500);   // 400 Hz
-	  imu.enableReport(SH2_LINEAR_ACCELERATION,  2500);
+	  imu.enableReport(SH2_ACCELEROMETER,  2500);
 
 		lidar.Reset();
-
+		altEstimator.begin();
 		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);
 //	  dummy_init();
 //	  printf(CLR_SCREEN);
@@ -187,6 +187,7 @@ void app_init() {
 	    IMU_profiler.reset();
 	    sd_card_profiler.reset();
 	    tim7_profiler.reset();
+	    kf_profiler.reset();
 
 
 
@@ -344,6 +345,7 @@ void app_loop() {
 		crc_profiler.metrics();
 		IMU_profiler.metrics();
 		sd_card_profiler.metrics();
+		kf_profiler.metrics();
 		tim7_profiler.metrics();
 		main_loop_profiler.end();
 
@@ -416,6 +418,25 @@ void tim7_trigger() { // 1 khz low priority
 		imu.service();                 // poll at least every ~1 ms
 		IMU_profiler.end();
 	}
+    kf_profiler.start();
+    {
+        // Evaluate both flags separately: && would short-circuit and leave one
+        // uncleared. Both are consume-on-read.
+        const bool newQuat  = imu.hasNewQuaternion();
+        const bool newAccel = imu.hasNewAccel();
+
+        // TODO: confirm these member names against your BNO085.hpp.
+        // sh2 rotation vector fields are conventionally {real, i, j, k}.
+        const gnc::Quat q{ imu.quaternion.real, imu.quaternion.i,
+                           imu.quaternion.j,    imu.quaternion.k };
+        // TODO: after switching to SH2_ACCELEROMETER, check what your driver
+        // populates. It may still be called linearAccel, or it may be accel.
+        const gnc::Vec3 a{ imu.accel.x, imu.accel.y, imu.accel.z };
+
+        altEstimator.service(newQuat || newAccel, q, a, micros());
+    }
+    kf_profiler.end();
+
 	tim7_profiler.end();
 }
 
@@ -448,6 +469,8 @@ void pressure_adc_complete(){
 
 	missionControl.Iter();
 
+	altEstimator.setClamped(!missionControl.running);
+
 	for (int i=0; i<4; i++) {
 		actuator[i].actuator_controller_step();
 	}
@@ -477,13 +500,22 @@ void pressure_adc_complete(){
 		local_sensor_data.thrust_raw = *loadCell.raw_value;
 		local_sensor_data.manifold_pressure = Actuator::manifold->getPsi();
 		local_sensor_data.manifold_raw = *Actuator::manifold->raw_value;
-		if (imu.hasNewAccel())
-			local_sensor_data.linearAccel = imu.linearAccel;
-		if (imu.hasNewQuaternion())
-			local_sensor_data.quaternion = imu.quaternion;
+		local_sensor_data.linearAccel = imu.accel;
+		local_sensor_data.quaternion = imu.quaternion;
 		local_sensor_data.lidarDistance = lidar.getDistance();
 		local_sensor_data.lidarStrength = lidar.getStrength();
 
+
+        local_sensor_data.kf_altitude   = altEstimator.altitude();
+        local_sensor_data.kf_velocity   = altEstimator.velocity();
+        local_sensor_data.kf_accelBias  = altEstimator.accelBias();
+        local_sensor_data.kf_sigmaH     = altEstimator.altitudeSigma();
+        local_sensor_data.kf_sigmaV     = altEstimator.velocitySigma();
+        local_sensor_data.kf_meanNis    = altEstimator.meanNis();
+        local_sensor_data.kf_tiltCos    = altEstimator.tiltCosine();
+        local_sensor_data.kf_rejects    = altEstimator.rejectCount();
+        local_sensor_data.kf_flags      = (uint8_t)altEstimator.phase()
+                                        | (uint8_t)(altEstimator.lastResult() << 4);
 
 		if(task_ready(&uart_logging)){
 			rb_write(&common_print_buffer, &local_sensor_data, (size_t)sizeof(SensorData_t));
@@ -508,6 +540,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
 //		lidar_profiler.start();
 //		printf("aaaa lidar frame captured!\n\r");
 		lidar.FrameHandler(Size);
+		if (lidar.hasNewReading()) altEstimator.onLidarFrame(lidar.getDistance(), lidar.getStrength());
+
 		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);  // re-arm!
 //		lidar_profiler.end();
 	}

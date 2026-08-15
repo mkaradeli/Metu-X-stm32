@@ -437,7 +437,12 @@ void BNO085::handleSensorEvent(const sh2_SensorEvent_t* event)
         lastAccelStamp_us_ = now;
         newAccel_ = true;
         break;
-
+    case SH2_ACCELEROMETER:
+    	accel = value.un.accelerometer;
+    	accelInterval_us = now - lastAccelStamp_us_;
+		lastAccelStamp_us_ = now;
+		newAccel_ = true;
+		break;
     case SH2_GAME_ROTATION_VECTOR:
         quaternion = value.un.gameRotationVector;
         quaternionInterval_us = now - lastQuatStamp_us_;

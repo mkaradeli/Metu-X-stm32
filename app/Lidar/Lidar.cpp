@@ -31,6 +31,7 @@ void Lidar::FrameHandler(uint16_t size){
         this->status = false;
         return; // Checksum mismatch
     }
+    status = true;
     this->checksum = 0;
 
     this->interval_us = micros() - this->flag_us;
@@ -39,6 +40,7 @@ void Lidar::FrameHandler(uint16_t size){
     this->distance = this->buffer[2] | (this->buffer[3] << 8);
     this->strength = this->buffer[4] | (this->buffer[5] << 8);
     this->temperature = this->buffer[6] | (this->buffer[7] << 8);
+    this->newReading = true;
 
 }
 

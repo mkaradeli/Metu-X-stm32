@@ -79,6 +79,7 @@ public:
 
     sh2_RotationVector_t quaternion  {};   // SH2_GAME_ROTATION_VECTOR
     sh2_Accelerometer_t  linearAccel {};   // SH2_LINEAR_ACCELERATION
+    sh2_Accelerometer_t  accel {};
 
     // Measured interval between consecutive reports (us), for diagnostics.
     uint32_t quaternionInterval_us = 0;

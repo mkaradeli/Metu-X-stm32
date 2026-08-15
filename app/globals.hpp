@@ -18,6 +18,8 @@
 #include "LoadCell.hpp"
 #include "Lidar.hpp"
 
+#include "AltitudeEstimator.hpp"
+
 
 #include "app_main.hpp"
 #include "Actuator.hpp"
@@ -33,6 +35,7 @@ extern const uint16_t sensorDataLength;
 extern Lidar lidar;
 
 extern const float ValveFitPressureRatios[4][12];
+extern const int encoderSigns[4];
 
 
 #endif /* GLOBALS_HPP_ */

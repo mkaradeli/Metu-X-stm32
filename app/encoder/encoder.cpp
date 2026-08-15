@@ -33,7 +33,7 @@ HallEffect::HallEffect() {
 	this->unstableCount = 0;
 }
 
-void HallEffect::init(uint16_t* adc_buffer, Kalman* actuatorKalman) {
+void HallEffect::init(uint16_t* adc_buffer, Kalman* actuatorKalman, int sign) {
 	this->adc_buffer = adc_buffer;
 	this->shifter = 0;
 	this->shifter_subBuffer = 0;
@@ -48,6 +48,7 @@ void HallEffect::init(uint16_t* adc_buffer, Kalman* actuatorKalman) {
 	this->kalman = actuatorKalman;
 	this->kalman->initialize();
 	this->unstableCount = 0;
+	this->sign = sign;
 };
 
 void HallEffect::calibrate() {
@@ -145,7 +146,7 @@ void HallEffect::update_subBuffer() {
 	this->wasInMiddle_subBuffer = inMiddle;
 
 	this->motorAngle = (static_cast<double>(mean) + static_cast<double>(this->shifter_subBuffer) * HALF_ADC_16B_MAX) / ADC_16B_MAX * 360.0f + calibration;
-	this->valveAngle = this->motorAngle / GEARBOX_RATIO;
+	this->valveAngle = (this->sign)*this->motorAngle / GEARBOX_RATIO;
 	// this->valveAngle = motorAngle - angleRaw;
 
 	this->kalman->rtU.Encoder = this->valveAngle;
