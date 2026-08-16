@@ -8,6 +8,7 @@
 #include "main.h"
 #include "PressureSensor.hpp"
 #include "shared_memory.h"
+
 constexpr int encoderSigns[4] = {1,1,-1,1};
 
 
@@ -62,3 +63,5 @@ static_assert(encoderSigns[0]==1 or encoderSigns[0]==-1,"degerler sadece +1 ve -
 static_assert(encoderSigns[1]==1 or encoderSigns[1]==-1,"degerler sadece +1 ve -1 olabilir.");
 static_assert(encoderSigns[2]==1 or encoderSigns[2]==-1,"degerler sadece +1 ve -1 olabilir.");
 static_assert(encoderSigns[3]==1 or encoderSigns[3]==-1,"degerler sadece +1 ve -1 olabilir.");
+
+platformController platform_controller;

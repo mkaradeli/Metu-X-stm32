@@ -155,6 +155,7 @@ int main(void)
   MX_FATFS_Init();
   MX_USART3_UART_Init();
   MX_TIM7_Init();
+  MX_TIM12_Init();
   /* USER CODE BEGIN 2 */
   rb_init(&common_print_buffer);
   rb_tx_init(&common_print_buffer, &huart3);
@@ -337,6 +338,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
     else if (htim->Instance == TIM7) {
     	tim7_trigger();
+    }
+    else if (htim->Instance == TIM12) {
+    	tim12_trigger();
     }
 
 }

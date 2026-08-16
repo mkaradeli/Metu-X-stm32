@@ -20,7 +20,7 @@
 
 #include "AltitudeEstimator.hpp"
 
-
+#include "platformController.h"
 #include "app_main.hpp"
 #include "Actuator.hpp"
 #define ADC_16B_MAX 65536U
@@ -36,6 +36,7 @@ extern Lidar lidar;
 
 extern const float ValveFitPressureRatios[4][12];
 extern const int encoderSigns[4];
+extern platformController platform_controller;
 
 
 #endif /* GLOBALS_HPP_ */

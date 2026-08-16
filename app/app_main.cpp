@@ -23,6 +23,7 @@
 #include "string.h"
 #include "UserTask.hpp"
 #include "MissionControl.hpp"
+//#include "platformController.h"
 
 #include "BNO085.hpp"
 #include "sd_task.hpp"
@@ -68,7 +69,8 @@ volatile uint16_t adc_dma_buf_pressure[5];
 uint32_t timeOfLastPrint=uwTick;
 
 
-DebouncedButton Button{1};
+DebouncedButton Button{1,BUTTON_USER_GPIO_PORT,BUTTON_USER_PIN};
+DebouncedButton SafetyConnector{1,SAFETY_CONNECTOR_GPIO_Port,SAFETY_CONNECTOR_Pin};
 volatile float load_filtered;
 uint16_t crc16_calc(const uint8_t *p, size_t n);
 bool mount_ok;
@@ -99,12 +101,14 @@ Profiler IMU_profiler;
 Profiler sd_card_profiler;
 Profiler tim7_profiler;
 Profiler kf_profiler;
-
+Profiler tim12_profiler;
 
 
 bool True = true;
 MissionControl missionControl(&True,
 			&logData.record);
+
+//platformController platform_controller;
 
 
 
@@ -145,6 +149,7 @@ void app_init() {
 #endif
 	  HAL_TIM_Base_Start_IT(&htim5);  /* _IT = interrupt ile */
 	  HAL_TIM_Base_Start_IT(&htim7);  /* _IT = interrupt ile */
+	  HAL_TIM_Base_Start_IT(&htim12);  /* _IT = interrupt ile */
 
 	  HAL_TIM_Base_Start(&htim1);  /* _IT = interrupt ile */
 
@@ -187,6 +192,7 @@ void app_init() {
 	    IMU_profiler.reset();
 	    sd_card_profiler.reset();
 	    tim7_profiler.reset();
+	    tim12_profiler.reset();
 	    kf_profiler.reset();
 
 
@@ -197,6 +203,7 @@ void app_init() {
 	    	actuator[i].calibrate();
 //	    currentController.initialize();
 	    Actuator::manifold->calibrate();
+	    platform_controller.initialize();
 
 //	    if (mount_ok and file_creation_ok)
 //			controller_mode = controller_modes::PRESSURE;
@@ -347,6 +354,7 @@ void app_loop() {
 		sd_card_profiler.metrics();
 		kf_profiler.metrics();
 		tim7_profiler.metrics();
+		tim12_profiler.metrics();
 		main_loop_profiler.end();
 
 
@@ -396,7 +404,7 @@ void tim5_trigger(){
 
 void tim7_trigger() { // 1 khz low priority
 	tim7_profiler.start();
-	if (task_ready(&button_task)) { // 1ms
+	if (true /*task_ready(&button_task)*/) { // 1ms
 		Button.update();
 
 		if (Button.pressed()) {
@@ -408,6 +416,11 @@ void tim7_trigger() { // 1 khz low priority
 				missionControl.Toggle();
 			}
 			button_profiler.end();
+		}
+	}
+	{ // safety connector
+		if (SafetyConnector.pressed()) {
+			missionControl.Toggle();
 		}
 	}
 
@@ -440,6 +453,22 @@ void tim7_trigger() { // 1 khz low priority
 	tim7_profiler.end();
 }
 
+void tim12_trigger(){ // mid priority 50hz platform control task
+	tim12_profiler.start();
+	platform_controller.rtU.Height = altEstimator.altitude(); // m
+	platform_controller.rtU.Velocity = altEstimator.velocity(); // m/s
+	platform_controller.rtU.ManifoldPressure = Actuator::manifold->getBar(); // bar
+	platform_controller.rtU.quaternion[0] = imu.quaternion.i;
+	platform_controller.rtU.quaternion[1] = imu.quaternion.j;
+	platform_controller.rtU.quaternion[2] = imu.quaternion.k;
+	platform_controller.rtU.quaternion[3] = imu.quaternion.real;
+	// TODO: add drop, and force relationships.
+	platform_controller.rtU.Dropped = false;
+//	platform_controller.rtU.T_max_allowed = ;
+//	platform_controller.rtU.T_alloc_total = ;
+	platform_controller.step();
+	tim12_profiler.end();
+}
 
 void current_adc_complete(){
 	adc2_profiler.start();

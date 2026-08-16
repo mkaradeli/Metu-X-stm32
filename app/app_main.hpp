@@ -31,6 +31,7 @@ extern "C" {
 	void tim2_trigger();
 	void tim5_trigger();
 	void tim7_trigger();
+	void tim12_trigger();
 
 	extern volatile uint64_t micros_overflow;   // match the actual type
 	extern TIM_HandleTypeDef htim5;
@@ -54,6 +55,7 @@ extern "C" {
     extern TIM_HandleTypeDef htim6;
     extern TIM_HandleTypeDef htim5;
     extern TIM_HandleTypeDef htim7;
+    extern TIM_HandleTypeDef htim12;
 
 #ifdef __cplusplus
 }
