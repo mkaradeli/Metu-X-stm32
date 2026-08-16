@@ -22,6 +22,8 @@
 #include "Button.hpp"
 #include "string.h"
 #include "UserTask.hpp"
+#include "MissionUart.hpp"
+
 #include "MissionControl.hpp"
 //#include "platformController.h"
 
@@ -107,18 +109,31 @@ Profiler tim12_profiler;
 bool True = true;
 MissionControl missionControl(&True,
 			&logData.record);
+//MissionControl missionControl(&logData.ready, &logData.record);
 
 //platformController platform_controller;
 
+
+
+/* Called by MissionControl the moment a mission is triggered, before
+ * log_recording goes true. Wire it to your f_expand pre-allocation. */
+//static void logPrepareHook(uint32_t estimated_duration_ms, const char *header)
+//{
+//    const uint32_t bytes_per_s = 1000u * sizeof(SensorData_t);   // ~1 kHz logging
+//    const uint32_t bytes = (estimated_duration_ms / 1000u) * bytes_per_s;
+////    sd_log_prepare(bytes, header);      // your sd_task API
+//
+//}
 
 
 void app_init() {
 	SensorData_Buffer_Init(&logData);
 
 	for (int i = 0; i<4; i++){
-		for (int j=0; j<12; j++){
-			actuator[i].actuatorController.rtU.ValveFitPressureRatios[j] = ValveFitPressureRatios[i][j];
+		for (int j=0; j<11; j++){
+//			actuator[i].actuatorController.rtU.ValveFitPressureRatios[j] = ValveFitPressureRatios[i][j];
 		}
+		actuator[i].actuatorController.rtU.nozzle_gain = nozzle_gain[i];
 	}
 //	Button.DebouncedButton(1);
 	logData.ready=false;
@@ -216,17 +231,24 @@ void app_init() {
 
 		}
 
+
+
 //		start_flag = micros();
 //		actuator[0].static_manifold = &psSensors[4];
 		for (int i=0; i<4; i++)
 			actuator[i].setDuty(1);
 	free_profiler.start();
-	missionControl.Init(taskFunction, shutdownFunction);
-	missionControl.actuator_mode_desired = actuator_mode_desired;
-	missionControl.system_mode_desired = system_modes::TESTFIRE;
-	missionControl.ops_duration_ms = ops_duration_ms;
-	missionControl.shutdown_duration_ms = shutdown_duration_ms;
-	missionControl.postShutdownWait_ms = postShutdownWait_ms;
+//	missionControl.Init(taskFunction, shutdownFunction);
+//	missionControl.actuator_mode_desired = actuator_mode_desired;
+//	missionControl.system_mode_desired = system_modes::TESTFIRE;
+//	missionControl.ops_duration_ms = ops_duration_ms;
+//	missionControl.shutdown_duration_ms = shutdown_duration_ms;
+//	missionControl.postShutdownWait_ms = postShutdownWait_ms;
+
+    missionControl.Init();        // or Init();
+    missionControl.Select(defaultMissionIndex);
+    mission_uart_init(&huart3);       // whichever UART your ground link is on
+
 //	const uint8_t tv[] = "123456789";
 //		uint16_t crc = crc16_calc(tv, 9);
 //	controller_mode = controller_modes::POSITION;
@@ -409,20 +431,22 @@ void tim7_trigger() { // 1 khz low priority
 
 		if (Button.pressed()) {
 			button_profiler.start();
-			missionControl.Toggle();
+            missionControl.RequestToggle();     // ISR-safe, serviced in Iter()
 		} else {
 			if (selfTrigger and uwTick==10000) {
 				selfTrigger = false;
-				missionControl.Toggle();
+	            missionControl.RequestToggle();     // ISR-safe, serviced in Iter()
 			}
 			button_profiler.end();
 		}
 	}
-	{ // safety connector
-		if (SafetyConnector.pressed()) {
-			missionControl.Toggle();
-		}
-	}
+//	{ // safety connector
+//		if (SafetyConnector.pressed()) {
+//			missionControl.Toggle();
+//		}
+//	}
+    mission_uart_poll();              // one DMA counter read when idle
+
 
 
 	rb_flush();
@@ -450,9 +474,20 @@ void tim7_trigger() { // 1 khz low priority
     }
     kf_profiler.end();
 
+//    missionControl.HandleCommand(rx_line, reply, sizeof(reply))
+    // TODO: recive handling
+
 	tim7_profiler.end();
 }
-
+struct ExtY {
+//  real32_T currentDemand;          // '<Root>/currentDemand'
+//  real32_T speedDemand;            // '<Root>/speedDemand'
+//  real32_T position_demand;        // '<Root>/position_demand'
+//  real32_T pos_ref_rate_limited;   // '<Root>/pos_ref_rate_limited'
+  real32_T P_nozzle_demand;        // '<Root>/P_nozzle_demand'
+  real32_T ThrustMax;              // '<Root>/ThrustMax'
+  real32_T ThrustEstimate;         // '<Root>/ThrustEstimate'
+};
 void tim12_trigger(){ // mid priority 50hz platform control task
 	tim12_profiler.start();
 	platform_controller.rtU.Height = altEstimator.altitude(); // m
@@ -462,6 +497,15 @@ void tim12_trigger(){ // mid priority 50hz platform control task
 	platform_controller.rtU.quaternion[1] = imu.quaternion.j;
 	platform_controller.rtU.quaternion[2] = imu.quaternion.k;
 	platform_controller.rtU.quaternion[3] = imu.quaternion.real;
+
+	float T_alloc_total  = 0;
+	for (int i=0; i++; i<4) T_alloc_total += actuator[0].actuatorController.rtY.ThrustEstimate;
+	float T_max_allowed  = 0;
+	for (int i=0; i++; i<4) T_max_allowed += actuator[0].actuatorController.rtY.ThrustMax;
+
+	platform_controller.rtU.T_alloc_total = T_alloc_total;
+	platform_controller.rtU.T_max_allowed = T_max_allowed;
+
 	// TODO: add drop, and force relationships.
 	platform_controller.rtU.Dropped = false;
 //	platform_controller.rtU.T_max_allowed = ;
@@ -496,13 +540,31 @@ void pressure_adc_complete(){
 	Actuator::manifold->updatePS();
 	loadCell.update();
 
-	missionControl.Iter();
+    missionControl.Iter();
 
-	altEstimator.setClamped(!missionControl.running);
+    altEstimator.setClamped(!missionControl.firing);   // was: !missionControl.running
+
+//	altEstimator.setClamped(!missionControl.running);
 
 	for (int i=0; i<4; i++) {
 		actuator[i].actuator_controller_step();
 	}
+	// External inputs (root inport signals with default storage)
+//	struct ExtU {
+	//  real32_T P_manifold;             // '<Root>/P_manifold'
+//	  real32_T P_nozzle_demand_ext;    // '<Root>/P_nozzle_demand_ext'
+	//  real32_T P_nozzle;               // '<Root>/P_nozzle'
+	//  real32_T SpeedFeedback;          // '<Root>/speed_feedback'
+//	  real32_T pos_ref_ext;            // '<Root>/pos_ref_ext'
+	//  real32_T pos_feedback;           // '<Root>/pos_feedback'
+//	  real32_T speedDemand_ext;        // '<Root>/speedDemand_ext'
+	//  real32_T ValveFitPressureRatios[11];// '<Root>/ValveFitPressureRatios'
+	  real32_T F_demand;               // '<Root>/F_demand'
+	//  real32_T nozzle_gain;            // '<Root>/nozzle_gain'
+//	};/
+
+	// External outputs (root outports fed by signals with default storage)
+
 
 	local_sensor_data.timestamp = micros(); //microseconds
 
@@ -513,7 +575,7 @@ void pressure_adc_complete(){
 		local_sensor_data.actuatorData[j].pos_ref = actuator[j].actuatorController.rtY.position_demand;
 		local_sensor_data.actuatorData[j].pos_ref_rate_limited = actuator[j].actuatorController.rtY.pos_ref_rate_limited;
 		local_sensor_data.actuatorData[j].speed_ref_rate_limited = actuator[j].actuatorController.rtY.speedDemand;
-		local_sensor_data.actuatorData[j].pressure_demand = actuator[j].actuatorController.rtU.P_nozzle_demand;
+		local_sensor_data.actuatorData[j].pressure_demand = actuator[j].actuatorController.rtY.P_nozzle_demand1;
 		local_sensor_data.actuatorData[j].valveAngle = actuator[j].hallEffect.valveAngle;
 		local_sensor_data.actuatorData[j].valveAngleKalman = actuator[j].hallEffect.valveAngleKalman;
 		local_sensor_data.actuatorData[j].valveVelocity = actuator[j].hallEffect.valveVelocity;
@@ -521,12 +583,12 @@ void pressure_adc_complete(){
 
 		local_sensor_data.actuatorData[j].nozzle_pressure = actuator[j].getPressurePsi();
 		local_sensor_data.actuatorData[j].nozzle_raw = *actuator[j].psSensor->raw_value;
-		local_sensor_data.actuatorData[j].thrust_demand = 0;
-		local_sensor_data.actuatorData[j].thrust_estimated = 0;
+		local_sensor_data.actuatorData[j].thrust_demand = actuator[j].actuatorController.rtU.F_demand;
+		local_sensor_data.actuatorData[j].thrust_estimated = actuator[j].actuatorController.rtY.ThrustEstimate;
 
 	}
-		local_sensor_data.thrust_measured = loadCell.getForce();
-		local_sensor_data.thrust_raw = *loadCell.raw_value;
+//		local_sensor_data.thrust_measured = loadCell.getForce();
+//		local_sensor_data.thrust_raw = *loadCell.raw_value;
 		local_sensor_data.manifold_pressure = Actuator::manifold->getPsi();
 		local_sensor_data.manifold_raw = *Actuator::manifold->raw_value;
 		local_sensor_data.linearAccel = imu.accel;
@@ -579,9 +641,10 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
     if (huart == &huart6){
         HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);  // recover
     }
-	if (huart == s_huart) {
-		rb_tx_error_isr();
-	}
+    if (huart == s_huart) {
+        rb_tx_error_isr();
+    }
+    mission_uart_error(huart);        // no-op unless it is the command UART
 }
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {

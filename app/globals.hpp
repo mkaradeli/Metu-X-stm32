@@ -29,14 +29,14 @@ extern Actuator actuator[4];
 extern LoadCell loadCell;
 
 extern const uint16_t logFormatId;
-extern const char logHeader[];
-extern const uint8_t logHeaderSize;
+//extern const char logHeader[];
+//extern const uint8_t logHeaderSize;
 extern const uint16_t sensorDataLength;
 extern Lidar lidar;
 
-extern const float ValveFitPressureRatios[4][12];
+extern const float ValveFitPressureRatios[4][11];
 extern const int encoderSigns[4];
 extern platformController platform_controller;
-
+extern const float nozzle_gain[4];
 
 #endif /* GLOBALS_HPP_ */

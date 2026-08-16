@@ -3,6 +3,8 @@
  *
  *  Created on: Jul 7, 2026
  *      Author: karadeli
+ *
+ *  This and UserTask.cpp are the ONLY files the mission team edits.
  */
 
 #ifndef USERTASKS_USERTASK_HPP_
@@ -11,12 +13,10 @@
 #include "stdint.h"
 #include "MissionControl.hpp"
 
-void taskFunction(uint32_t time_ms);
-void shutdownFunction(uint32_t time_ms);
-
-extern uint32_t ops_duration_ms; // ms
-extern uint32_t shutdown_duration_ms; // ms
-extern uint32_t postShutdownWait_ms;
-extern controller_modes actuator_mode_desired;
+/* missionTable[], missionTableCount and safetyConnectorReleased() are
+ * declared in MissionControl.hpp and defined in UserTask.cpp.
+ *
+ * Index of the mission that is selected at boot (before any UART SEL). */
+extern const uint8_t defaultMissionIndex;
 
 #endif /* USERTASKS_USERTASK_HPP_ */

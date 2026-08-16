@@ -43,6 +43,9 @@ void Actuator::current_controller_step() {
 		this->setDuty(0);
 };
 
+
+
+
 void Actuator::actuator_controller_step() {
 	this->actuatorController.rtU.P_nozzle = this->getPressurePsi();
 	this->actuatorController.rtU.P_manifold = Actuator::manifold->getPsi();
