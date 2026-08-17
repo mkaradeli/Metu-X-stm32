@@ -82,7 +82,8 @@ int load_cell_counter = 0;
 
 SensorData_t local_sensor_data{'K','D'};
 
-
+void onImuReport(const BNO085& r);
+void onLidarFrame(uint16_t distMm, uint16_t strength);
 
 LowPass load_lpf{1.0f, 1000,1};  // 30 Hz cutoff @ 1 kHz sample rate
 
@@ -106,10 +107,10 @@ Profiler kf_profiler;
 Profiler tim12_profiler;
 
 
-bool True = true;
-MissionControl missionControl(&True,
-			&logData.record);
-//MissionControl missionControl(&logData.ready, &logData.record);
+//bool True = true;
+//MissionControl missionControl(&True,
+//			&logData.record);
+MissionControl missionControl(&logData.ready, &logData.record);
 
 //platformController platform_controller;
 
@@ -131,7 +132,7 @@ void app_init() {
 
 	for (int i = 0; i<4; i++){
 		for (int j=0; j<11; j++){
-//			actuator[i].actuatorController.rtU.ValveFitPressureRatios[j] = ValveFitPressureRatios[i][j];
+			actuator[i].actuatorController.rtU.ValveFitPressureRatios[j] = ValveFitPressureRatios[i][j];
 		}
 		actuator[i].actuatorController.rtU.nozzle_gain = nozzle_gain[i];
 	}
@@ -176,7 +177,9 @@ void app_init() {
 
 //	  actuator[0].setDuty(1.0f);
 //	  motors[0].setDuty(1.0f);
-
+      p.lever[2]   = 0.62f;
+      p.sigmaAccel = 0.30f;
+      g_altEst.configure(p);
 	  if (!imu.begin(&hi2c1)) {          // 0x4A default, pass 0x4B if SA0 high
 //	          Error_Handler();
 	      }
@@ -184,7 +187,7 @@ void app_init() {
 	  imu.enableReport(SH2_ACCELEROMETER,  2500);
 
 		lidar.Reset();
-		altEstimator.begin();
+//		altEstimator.begin();
 		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);
 //	  dummy_init();
 //	  printf(CLR_SCREEN);
@@ -248,6 +251,8 @@ void app_init() {
     missionControl.Init();        // or Init();
     missionControl.Select(defaultMissionIndex);
     mission_uart_init(&huart3);       // whichever UART your ground link is on
+    g_altEst.beginCalibration();
+
 
 //	const uint8_t tv[] = "123456789";
 //		uint16_t crc = crc16_calc(tv, 9);
@@ -258,7 +263,15 @@ extern bool pc8_active;
 
 }
 bool selfTrigger = false;
+uint32_t altitudeEstimatorCounter_ms = 0;
+bool altitudeEstimatorDone = false;
 void app_loop() {
+
+	altitudeEstimatorCounter_ms = uwTick;
+	if (altitudeEstimatorCounter_ms>1500 and !altitudeEstimatorDone) {
+		g_altEst.finishCalibration();
+		altitudeEstimatorDone = true;
+	}
 //	if (task_ready(&button_task)) { // 1ms
 //		Button.update();
 //
@@ -455,23 +468,33 @@ void tim7_trigger() { // 1 khz low priority
 		imu.service();                 // poll at least every ~1 ms
 		IMU_profiler.end();
 	}
+	if(lidar.hasNewReading()) {
+		onLidarFrame(lidar.getDistance(), lidar.getStrength());
+	}
     kf_profiler.start();
     {
         // Evaluate both flags separately: && would short-circuit and leave one
         // uncleared. Both are consume-on-read.
         const bool newQuat  = imu.hasNewQuaternion();
         const bool newAccel = imu.hasNewAccel();
+        if (newQuat and newAccel) {
+        	onImuReport(imu);
+        }
 
         // TODO: confirm these member names against your BNO085.hpp.
         // sh2 rotation vector fields are conventionally {real, i, j, k}.
-        const gnc::Quat q{ imu.quaternion.real, imu.quaternion.i,
-                           imu.quaternion.j,    imu.quaternion.k };
+//        const gnc::Quat q{ imu.quaternion.real, imu.quaternion.i,
+//                           imu.quaternion.j,    imu.quaternion.k };
         // TODO: after switching to SH2_ACCELEROMETER, check what your driver
         // populates. It may still be called linearAccel, or it may be accel.
-        const gnc::Vec3 a{ imu.accel.x, imu.accel.y, imu.accel.z };
+//        const gnc::Vec3 a{ imu.accel.x, imu.accel.y, imu.accel.z };
 
-        altEstimator.service(newQuat || newAccel, q, a, micros());
+//        altEstimator.service(newQuat || newAccel, q, a, micros());
     }
+//    float R[3][3]; quatToR(q, R);
+//    float aw[3];
+//    for (int i = 0; i < 3; ++i)
+//        aw[i] = R[i][0]*a_b[0] + R[i][1]*a_b[1] + R[i][2]*a_b[2];
     kf_profiler.end();
 
 //    missionControl.HandleCommand(rx_line, reply, sizeof(reply))
@@ -490,8 +513,8 @@ struct ExtY {
 };
 void tim12_trigger(){ // mid priority 50hz platform control task
 	tim12_profiler.start();
-	platform_controller.rtU.Height = altEstimator.altitude(); // m
-	platform_controller.rtU.Velocity = altEstimator.velocity(); // m/s
+//	platform_controller.rtU.Height = altEstimator.altitude(); // m
+//	platform_controller.rtU.Velocity = altEstimator.velocity(); // m/s
 	platform_controller.rtU.ManifoldPressure = Actuator::manifold->getBar(); // bar
 	platform_controller.rtU.quaternion[0] = imu.quaternion.i;
 	platform_controller.rtU.quaternion[1] = imu.quaternion.j;
@@ -499,9 +522,9 @@ void tim12_trigger(){ // mid priority 50hz platform control task
 	platform_controller.rtU.quaternion[3] = imu.quaternion.real;
 
 	float T_alloc_total  = 0;
-	for (int i=0; i++; i<4) T_alloc_total += actuator[0].actuatorController.rtY.ThrustEstimate;
+	for (int i=0; i++; i<4) T_alloc_total += actuator[i].actuatorController.rtY.ThrustEstimate;
 	float T_max_allowed  = 0;
-	for (int i=0; i++; i<4) T_max_allowed += actuator[0].actuatorController.rtY.ThrustMax;
+	for (int i=0; i++; i<4) T_max_allowed += actuator[i].actuatorController.rtY.ThrustMax;
 
 	platform_controller.rtU.T_alloc_total = T_alloc_total;
 	platform_controller.rtU.T_max_allowed = T_max_allowed;
@@ -538,11 +561,11 @@ void pressure_adc_complete(){
 		actuator[i].readPressure();
 	}
 	Actuator::manifold->updatePS();
-	loadCell.update();
+//	loadCell.update();
 
     missionControl.Iter();
 
-    altEstimator.setClamped(!missionControl.firing);   // was: !missionControl.running
+//    altEstimator.setClamped(!missionControl.firing);   // was: !missionControl.running
 
 //	altEstimator.setClamped(!missionControl.running);
 
@@ -596,17 +619,28 @@ void pressure_adc_complete(){
 		local_sensor_data.lidarDistance = lidar.getDistance();
 		local_sensor_data.lidarStrength = lidar.getStrength();
 
+		local_sensor_data.kf_altitude = g_altEst.height();
+		local_sensor_data.kf_velocity = g_altEst.velocity();
+//        float    innovation          = 0.0f;  /* last y = z - h        [m] */
+//        float    nis                 = 0.0f;  /* last y^2 / S          [-] */
+//        float    cosTilt             = 1.0f;  /* vertical fraction     [-] */
+//        uint32_t lidarAccepted       = 0;
+//        uint32_t lidarRejected       = 0;     /* gate or tilt failures     */
+//        uint32_t lidarBlocksDropped  = 0;     /* too few valid raw frames  */
+//        uint32_t consecutiveRejects  = 0;
+//        bool     lastUpdateAccepted  = false;
 
-        local_sensor_data.kf_altitude   = altEstimator.altitude();
-        local_sensor_data.kf_velocity   = altEstimator.velocity();
-        local_sensor_data.kf_accelBias  = altEstimator.accelBias();
-        local_sensor_data.kf_sigmaH     = altEstimator.altitudeSigma();
-        local_sensor_data.kf_sigmaV     = altEstimator.velocitySigma();
-        local_sensor_data.kf_meanNis    = altEstimator.meanNis();
-        local_sensor_data.kf_tiltCos    = altEstimator.tiltCosine();
-        local_sensor_data.kf_rejects    = altEstimator.rejectCount();
-        local_sensor_data.kf_flags      = (uint8_t)altEstimator.phase()
-                                        | (uint8_t)(altEstimator.lastResult() << 4);
+		AltitudeEstimator::Status s = g_altEst.status();
+//        local_sensor_data.kf_altitude   = altEstimator.altitude();
+//        local_sensor_data.kf_velocity   = altEstimator.velocity();
+//        local_sensor_data.kf_accelBias  = altEstimator.accelBias();
+        local_sensor_data.kf_sigmaH     = g_altEst.heightSigma();
+        local_sensor_data.kf_sigmaV     = g_altEst.velocitySigma();
+        local_sensor_data.kf_meanNis    = s.nis;
+        local_sensor_data.kf_tiltCos    = s.cosTilt;
+        local_sensor_data.kf_rejects    = s.consecutiveRejects;
+//        local_sensor_data.kf_flags      = (uint8_t)altEstimator.phase()
+//                                        | (uint8_t)(altEstimator.lastResult() << 4);
 
 		if(task_ready(&uart_logging)){
 			rb_write(&common_print_buffer, &local_sensor_data, (size_t)sizeof(SensorData_t));
@@ -631,7 +665,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
 //		lidar_profiler.start();
 //		printf("aaaa lidar frame captured!\n\r");
 		lidar.FrameHandler(Size);
-		if (lidar.hasNewReading()) altEstimator.onLidarFrame(lidar.getDistance(), lidar.getStrength());
+//		if (lidar.hasNewReading()) altEstimator.onLidarFrame(lidar.getDistance(), lidar.getStrength());
 
 		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);  // re-arm!
 //		lidar_profiler.end();
@@ -651,8 +685,21 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 	if (huart == s_huart) {
 		rb_tx_complete_isr();
 	}
+//	imu.quaternionInterval_us
 }
 
+static uint32_t lastTs_ = 0;
+void onImuReport(const BNO085& r) {
+    const float q[4] = { r.quaternion.real, r.quaternion.i, r.quaternion.j, r.quaternion.k };
+    const float a[3] = { r.accel.x, r.accel.y, r.accel.z };
+    const float dt   = (r.quaternionInterval_us - lastTs_) * 1e-6f;
+    lastTs_ = r.quaternionInterval_us;
+    g_altEst.pushImu(a, q, dt);
+}
+void onLidarFrame(uint16_t distMm, uint16_t strength) {
+	static float q[4] = {imu.quaternion.real, imu.quaternion.i, imu.quaternion.j, imu.quaternion.k};
+    g_altEst.pushLidarFrame(distMm, strength, q);
+}
 uint16_t crc16_calc(const uint8_t *p, size_t n)
 {
 #ifdef DISABLE_CRC

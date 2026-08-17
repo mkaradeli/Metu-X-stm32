@@ -5,6 +5,7 @@
  *      Author: karadeli
  */
 
+#define ENABLE_MOTORS true
 #ifndef GLOBALS_HPP_
 #define GLOBALS_HPP_
 
@@ -38,5 +39,7 @@ extern const float ValveFitPressureRatios[4][11];
 extern const int encoderSigns[4];
 extern platformController platform_controller;
 extern const float nozzle_gain[4];
+extern AltitudeEstimator::Params p;
+extern AltitudeEstimator g_altEst;
 
 #endif /* GLOBALS_HPP_ */

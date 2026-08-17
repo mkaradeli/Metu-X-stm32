@@ -5,6 +5,7 @@
  *      Author: karadeli
  */
 
+#include "globals.hpp"
 #include "Actuator.hpp"
 #include "actuatorController.h"
 extern controller_modes controller_mode;
@@ -59,7 +60,11 @@ void Actuator::updateHallEffect() {
 	this->hallEffect.update_subBuffer();
 }
 void Actuator::setDuty(float normalValue) {
+#if ENABLE_MOTORS
 	this->motor->setDuty(normalValue);
+#else
+	this->motor->setDuty(0);
+#endif
 }
 float Actuator::getDutyCycle(){
 	return motor->getDutyCycle();

@@ -4,6 +4,8 @@
  *  Created on: May 25, 2026
  *      Author: karadeli
  */
+
+
 #include "globals.hpp"
 #include "main.h"
 #include "PressureSensor.hpp"
@@ -52,11 +54,14 @@ static_assert(sensorDataLength == 317,"aaaaaaa");
 
 Lidar lidar = Lidar(&huart6);
 
-const float ValveFitPressureRatios[4][11] = {{0, 0.08017, 0.18849, 0.27854, 0.37946, 0.48270, 0.52072, 0.58562, 0.61721, 0.61721, 0.63468},
+const float ValveFitPressureRatios[4][11] = {{0, 0.08017, 0.18849, 0.27854, 0.37946, 0.48270, 0.52072, 0.58562, 0.61721, 0.61722, 0.63468},
 		{0, 0.13364, 0.23557, 0.32940, 0.42822, 0.48331, 0.53583, 0.59307, 0.61894, 0.61990, 0.63189},
 		{0, 0.10398, 0.24696, 0.32830, 0.44219, 0.48934, 0.55767, 0.60733, 0.63947, 0.64537, 0.65634},
 		{0, 0.07359, 0.21091, 0.29041, 0.37703, 0.49174, 0.51417, 0.55939, 0.61397, 0.61397, 0.62187}};
-gnc::AltitudeEstimator altEstimator;
+//gnc::AltitudeEstimator altEstimator;
+AltitudeEstimator::Params p;
+AltitudeEstimator g_altEst;
+
 
 
 static_assert(encoderSigns[0]==1 or encoderSigns[0]==-1,"degerler sadece +1 ve -1 olabilir.");
