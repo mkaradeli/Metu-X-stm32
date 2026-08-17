@@ -39,6 +39,7 @@ BNO085 imu;
 
 // TODO: PS sensor 3 encodere yakin olan
 // TODO: PS sensor 0 alttaki
+void LED_Counter_Tick(void);
 
 
 // TODO: islemci acilma sirasinda akim sensorlerini sifirlayacak.
@@ -58,6 +59,7 @@ task_timer_t button_task = {1,0};
 task_timer_t IMU_task = {1,0};
 task_timer_t sd_card_task = {500,0};
 task_timer_t printf_task = {1000, 0};
+task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
 
 task_timer_t uart_logging = { 2, 0};
 
@@ -153,6 +155,7 @@ void app_init() {
 	//  HAL_TIM_Base_Start(&htim3);
 	  __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 6);    // ~15 µs to first fire
 	  __HAL_TIM_SET_COUNTER(&htim3, htim3.Instance->ARR - 36);   // ~45 µs
+//	  actuator[0].actuatorController
 
 #if CHECK_TIMER_FREQUENCIES
 	  HAL_TIM_Base_Start_IT(&htim2);  /* pressure */
@@ -220,7 +223,7 @@ void app_init() {
 	    for (int i=0; i<4; i++)
 	    	actuator[i].calibrate();
 //	    currentController.initialize();
-	    Actuator::manifold->calibrate();
+//	    Actuator::manifold->calibrate();
 	    platform_controller.initialize();
 
 //	    if (mount_ok and file_creation_ok)
@@ -271,6 +274,8 @@ void app_loop() {
 	if (altitudeEstimatorCounter_ms>1500 and !altitudeEstimatorDone) {
 		g_altEst.finishCalibration();
 		altitudeEstimatorDone = true;
+
+
 	}
 //	if (task_ready(&button_task)) { // 1ms
 //		Button.update();
@@ -497,6 +502,9 @@ void tim7_trigger() { // 1 khz low priority
 //        aw[i] = R[i][0]*a_b[0] + R[i][1]*a_b[1] + R[i][2]*a_b[2];
     kf_profiler.end();
 
+
+    if (task_ready(&heartbeat_task))
+    	  		LED_Counter_Tick();
 //    missionControl.HandleCommand(rx_line, reply, sizeof(reply))
     // TODO: recive handling
 
@@ -700,6 +708,30 @@ void onLidarFrame(uint16_t distMm, uint16_t strength) {
 	static float q[4] = {imu.quaternion.real, imu.quaternion.i, imu.quaternion.j, imu.quaternion.k};
     g_altEst.pushLidarFrame(distMm, strength, q);
 }
+void LED_Counter_Tick(void)
+{
+	static const uint8_t timing[] = {1, 0, 1, 0, 0, 0, 0};
+	static const uint8_t timing_logging[]= {1, 0, 1, 0, 1, 0, 0};
+	static uint8_t index = 0;
+	if (logData.record){
+		if (timing_logging[index])
+			BSP_LED_On(LED_GREEN);
+		else
+			BSP_LED_Off(LED_GREEN);
+		}
+	else {
+		if (timing[index])
+			BSP_LED_On(LED_GREEN);
+		else
+			BSP_LED_Off(LED_GREEN);
+	}
+
+
+
+	index ++;
+	index %= 7;
+}
+
 uint16_t crc16_calc(const uint8_t *p, size_t n)
 {
 #ifdef DISABLE_CRC

@@ -37,7 +37,7 @@ static inline void setAllValves(float angle_deg) {
 static void valveShutdown(uint32_t time_ms) {   // current control mode
 	if (time_ms < 3000)
 		for (int i = 0; i < 4; i++)
-			actuator[i].actuatorController.rtY.currentDemand = -0.0f;
+			actuator[i].actuatorController.rtY.currentDemand = -0.5f;
 	else
 		for (int i = 0; i < 4; i++)
 			actuator[i].actuatorController.rtY.currentDemand = 0.0f;
@@ -109,10 +109,19 @@ static void dropTask(uint32_t time_ms) {
 
 // MISSION 6
 
-static void ThrustDemand_const(uint32_t){
-	for (int i=0; i<4; i++) {
-		actuator[i].actuatorController.rtU.F_demand = 50;
+static void ThrustDemand_const(uint32_t time_ms){
+	if (time_ms < 5500 ) {
+		for (int i=0; i<4; i++) {
+			actuator[i].actuatorController.rtU.F_demand = 50;
+		}
 	}
+	else
+	{
+		for (int i=0; i<4; i++) {
+					actuator[i].actuatorController.rtU.F_demand = 5;
+				}
+	}
+
 }
 
 
@@ -167,9 +176,9 @@ extern const MissionDef missionTable[] = {
 
 	{ "CONST_THRUST",  system_modes::TESTFIRE,  controller_modes::FORCE,
 			ThrustDemand_const,  valveShutdown,
-	 15000, 3000, 2000,
-	 190000, false,  false,  0,
-	 "Mission = constant force demand 50 N, bismillah. 16.agustos" },
+	6000, 1000, 0,
+	300000, true,  false,  0,
+	 "Mission = constant force demand 50 N, bismillah. 17.agustos" },
 };
 
 extern const uint8_t missionTableCount =

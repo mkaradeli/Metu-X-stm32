@@ -32,6 +32,7 @@ private:
 	float bar;
 	float bar_filtered;
 	float psi;
+	float shift_bar = 0;
 };
 
 

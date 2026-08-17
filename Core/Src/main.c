@@ -48,7 +48,7 @@
 /* USER CODE BEGIN PD */
 #define ENABLE_PRINT false
 
-void LED_Counter_Tick(void);
+//void LED_Counter_Tick(void);
 void sd_mount_check (void);
 #define CLR_SCREEN      "\033[2J\033[H"
 /* USER CODE END PD */
@@ -76,7 +76,7 @@ static void MPU_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
+
 task_timer_t sd_mount_check_task = {1000, 5000};
 //task_timer_t common_heartbeat_task = {2000,1000};
 
@@ -182,8 +182,8 @@ int main(void)
 	        pc8_active = HAL_GPIO_ReadPin(test_point_GPIO_Port, test_point_Pin);
 	      }
 
-	      if (task_ready(&heartbeat_task))
-	  		LED_Counter_Tick();
+//	      if (task_ready(&heartbeat_task))
+//	  		LED_Counter_Tick();
 	  //    if (task_ready(&common_heartbeat_task)) {
 	  ////    	if ((uwTick/1000)%2)
 	  //		BSP_LED_On(LED_RED);
@@ -283,29 +283,6 @@ void PeriphCommonClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 extern SensorData_Buffer_t logData;
-void LED_Counter_Tick(void)
-{
-	static const uint8_t timing[] = {1, 0, 1, 0, 0, 0, 0};
-	static const uint8_t timing_logging[]= {1, 0, 1, 0, 1, 0, 0};
-	static uint8_t index = 0;
-	if (logData.record){
-		if (timing_logging[index])
-			BSP_LED_On(LED_GREEN);
-		else
-			BSP_LED_Off(LED_GREEN);
-		}
-	else {
-		if (timing[index])
-			BSP_LED_On(LED_GREEN);
-		else
-			BSP_LED_Off(LED_GREEN);
-	}
-
-
-
-	index ++;
-	index %= 7;
-}
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
