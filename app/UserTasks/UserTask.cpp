@@ -37,7 +37,7 @@ static inline void setAllValves(float angle_deg) {
 static void valveShutdown(uint32_t time_ms) {   // current control mode
 	if (time_ms < 3000)
 		for (int i = 0; i < 4; i++)
-			actuator[i].actuatorController.rtY.currentDemand = -2.0f;
+			actuator[i].actuatorController.rtY.currentDemand = -0.0f;
 	else
 		for (int i = 0; i < 4; i++)
 			actuator[i].actuatorController.rtY.currentDemand = 0.0f;
@@ -180,7 +180,7 @@ extern const uint8_t missionTableCount =
 
 // HOVER 4
 // DROP 5
-extern const uint8_t defaultMissionIndex = 0;   // TF_OPEN
+extern const uint8_t defaultMissionIndex = 6;   // TF_OPEN
 
 /* The old global logHeader[] / logHeaderSize are gone: sd_task now takes the
  * header text from the selected mission row above. Delete their extern

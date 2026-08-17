@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'actuatorController'.
 //
-// Model version                  : 1.62
+// Model version                  : 1.63
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Mon Aug 17 00:36:39 2026
+// C/C++ source code generated on : Mon Aug 17 17:30:41 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -117,15 +117,16 @@ struct struct_In9luHMHiNdKBncTZV4w1E
 
 extern struct_In9luHMHiNdKBncTZV4w1E currentControllerGains;// Variable: controllerGains
                                                                //  Referenced by:
-                                                               //    '<S11>/Gain'
-                                                               //    '<S11>/Gain1'
-                                                               //    '<S11>/Saturation'
-                                                               //    '<S12>/Discrete-Time Integrator'
+                                                               //    '<S2>/Gain1'
                                                                //    '<S12>/Gain'
                                                                //    '<S12>/Gain1'
-                                                               //    '<S12>/Gain2'
-                                                               //    '<S12>/Rate Limiter'
                                                                //    '<S12>/Saturation'
+                                                               //    '<S13>/Discrete-Time Integrator'
+                                                               //    '<S13>/Gain'
+                                                               //    '<S13>/Gain1'
+                                                               //    '<S13>/Gain2'
+                                                               //    '<S13>/Rate Limiter'
+                                                               //    '<S13>/Saturation'
 
 extern controller_modes controller_mode;// Variable: controller_mode
                                            //  Referenced by: '<S1>/controller_mode'
@@ -140,27 +141,22 @@ namespace controller
    public:
     // Block signals and states (default storage) for system '<Root>'
     struct DW {
-      real32_T Probe[2];               // '<S37>/Probe'
-      real32_T Probe_e[2];             // '<S23>/Probe'
-      real32_T Probe_k[2];             // '<S30>/Probe'
-      real32_T Product_n;              // '<S13>/Product'
-      real32_T Saturation_m;           // '<S11>/Saturation'
-      real32_T DiscreteTimeIntegrator_DSTATE;// '<S45>/Discrete-Time Integrator' 
-      real32_T Integrator_DSTATE;      // '<S43>/Integrator'
-      real32_T Integrator_DSTATE_l;    // '<S29>/Integrator'
-      real32_T Integrator_DSTATE_k;    // '<S36>/Integrator'
-      real32_T DiscreteTimeIntegrator_DSTATE_b;// '<S12>/Discrete-Time Integrator' 
-      real32_T UD_DSTATE;              // '<S16>/UD'
-      real32_T PrevY;                  // '<S12>/Rate Limiter'
-      int8_T Integrator_PrevResetState;// '<S43>/Integrator'
-      int8_T Integrator_PrevResetState_o;// '<S29>/Integrator'
-      int8_T Integrator_PrevResetState_h;// '<S36>/Integrator'
-      uint8_T Integrator_IC_LOADING;   // '<S43>/Integrator'
-      uint8_T Integrator_IC_LOADING_b; // '<S29>/Integrator'
-      uint8_T Integrator_IC_LOADING_bm;// '<S36>/Integrator'
-      boolean_T Subsystem_MODE;        // '<S1>/Subsystem'
+      real_T Saturation3;              // '<S2>/Saturation3'
+      real32_T Saturation_m;           // '<S12>/Saturation'
+      real32_T DiscreteTimeIntegrator_DSTATE;// '<S19>/Discrete-Time Integrator' 
+      real32_T DiscreteTimeIntegrator_DSTATE_b;// '<S13>/Discrete-Time Integrator' 
+      real32_T UD_DSTATE;              // '<S18>/UD'
+      real32_T PrevY;                  // '<S13>/Rate Limiter'
       boolean_T SpeedController_MODE;  // '<S1>/Speed Controller'
       boolean_T PositionController_MODE;// '<S1>/Position Controller'
+    };
+
+    // Constant parameters (default storage)
+    struct ConstP {
+      // Computed Parameter: uDLookupTable_tableData
+      //  Referenced by: '<S2>/1-D Lookup Table'
+
+      real32_T uDLookupTable_tableData[11];
     };
 
     // External inputs (root inport signals with default storage)
@@ -172,7 +168,7 @@ namespace controller
       real32_T pos_ref_ext;            // '<Root>/pos_ref_ext'
       real32_T pos_feedback;           // '<Root>/pos_feedback'
       real32_T speedDemand_ext;        // '<Root>/speedDemand_ext'
-      real32_T ValveFitPressureRatios; // '<Root>/ValveFitPressureRatios'
+      real32_T ValveFitPressureRatios[11];// '<Root>/ValveFitPressureRatios'
       real32_T F_demand;               // '<Root>/F_demand'
       real32_T nozzle_gain;            // '<Root>/nozzle_gain'
     };
@@ -217,7 +213,7 @@ namespace controller
     ExtY rtY;
 
     // model initialize function
-    void initialize();
+    static void initialize();
 
     // model step function
     void step();
@@ -238,6 +234,8 @@ namespace controller
   };
 }
 
+// Constant parameters (default storage)
+extern const controller::actuatorController::ConstP rtConstP;
 extern "C"
 {
   extern real_T rtInf;
@@ -255,31 +253,13 @@ extern "C"
 //-
 //  These blocks were eliminated from the model due to optimizations:
 //
-//  Block '<S16>/Data Type Duplicate' : Unused code path elimination
-//  Block '<S11>/Scope' : Unused code path elimination
+//  Block '<S17>/Data Type Duplicate' : Unused code path elimination
+//  Block '<S17>/Data Type Propagation' : Unused code path elimination
+//  Block '<S18>/Data Type Duplicate' : Unused code path elimination
+//  Block '<S12>/Scope' : Unused code path elimination
 //  Block '<S1>/Scope' : Unused code path elimination
-//  Block '<S13>/Gain1' : Unused code path elimination
-//  Block '<S13>/Scope' : Unused code path elimination
-//  Block '<S13>/Scope1' : Unused code path elimination
-//  Block '<S13>/Scope2' : Unused code path elimination
-//  Block '<S13>/Scope3' : Unused code path elimination
-//  Block '<S13>/Scope4' : Unused code path elimination
-//  Block '<S13>/Scope5' : Unused code path elimination
-//  Block '<S13>/Scope6' : Unused code path elimination
-//  Block '<S13>/Scope7' : Unused code path elimination
-//  Block '<S13>/Scope8' : Unused code path elimination
-//  Block '<S13>/Sum2' : Unused code path elimination
-//  Block '<S44>/Data Type Duplicate' : Unused code path elimination
-//  Block '<S44>/Data Type Propagation' : Unused code path elimination
 //  Block '<S15>/Scope' : Unused code path elimination
-//  Block '<S13>/Gain3' : Eliminated nontunable gain of 1
-//  Block '<S29>/Saturation' : Eliminated Saturate block
-//  Block '<S18>/K' : Eliminated nontunable gain of 1
-//  Block '<S36>/Saturation' : Eliminated Saturate block
 //  Block '<S19>/K' : Eliminated nontunable gain of 1
-//  Block '<S43>/Saturation' : Eliminated Saturate block
-//  Block '<S20>/K' : Eliminated nontunable gain of 1
-//  Block '<S45>/K' : Eliminated nontunable gain of 1
 
 
 //-
@@ -298,50 +278,24 @@ extern "C"
 //
 //  '<Root>' : 'actuatorController'
 //  '<S1>'   : 'actuatorController/Subsystem1'
-//  '<S2>'   : 'actuatorController/Subsystem1/Compare To Constant'
-//  '<S3>'   : 'actuatorController/Subsystem1/Compare To Constant1'
-//  '<S4>'   : 'actuatorController/Subsystem1/Compare To Constant2'
-//  '<S5>'   : 'actuatorController/Subsystem1/Compare To Constant3'
-//  '<S6>'   : 'actuatorController/Subsystem1/Compare To Constant4'
-//  '<S7>'   : 'actuatorController/Subsystem1/Compare To Constant5'
-//  '<S8>'   : 'actuatorController/Subsystem1/Compare To Constant6'
-//  '<S9>'   : 'actuatorController/Subsystem1/Degrees to Radians'
-//  '<S10>'  : 'actuatorController/Subsystem1/Degrees to Radians1'
-//  '<S11>'  : 'actuatorController/Subsystem1/Position Controller'
-//  '<S12>'  : 'actuatorController/Subsystem1/Speed Controller'
-//  '<S13>'  : 'actuatorController/Subsystem1/Subsystem'
+//  '<S2>'   : 'actuatorController/Subsystem1/1D Valve Lookup Controller External Table'
+//  '<S3>'   : 'actuatorController/Subsystem1/Compare To Constant'
+//  '<S4>'   : 'actuatorController/Subsystem1/Compare To Constant1'
+//  '<S5>'   : 'actuatorController/Subsystem1/Compare To Constant2'
+//  '<S6>'   : 'actuatorController/Subsystem1/Compare To Constant3'
+//  '<S7>'   : 'actuatorController/Subsystem1/Compare To Constant4'
+//  '<S8>'   : 'actuatorController/Subsystem1/Compare To Constant5'
+//  '<S9>'   : 'actuatorController/Subsystem1/Compare To Constant6'
+//  '<S10>'  : 'actuatorController/Subsystem1/Degrees to Radians'
+//  '<S11>'  : 'actuatorController/Subsystem1/Degrees to Radians1'
+//  '<S12>'  : 'actuatorController/Subsystem1/Position Controller'
+//  '<S13>'  : 'actuatorController/Subsystem1/Speed Controller'
 //  '<S14>'  : 'actuatorController/Subsystem1/Thrust Controller'
 //  '<S15>'  : 'actuatorController/Subsystem1/reference conditioning'
-//  '<S16>'  : 'actuatorController/Subsystem1/Position Controller/Discrete Derivative'
-//  '<S17>'  : 'actuatorController/Subsystem1/Subsystem/Compare To Constant'
-//  '<S18>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)1'
-//  '<S19>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)2'
-//  '<S20>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)3'
-//  '<S21>'  : 'actuatorController/Subsystem1/Subsystem/ValveModelForController'
-//  '<S22>'  : 'actuatorController/Subsystem1/Subsystem/ValveModelForPlant'
-//  '<S23>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)1/Enable//disable time constant'
-//  '<S24>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)1/Initialization'
-//  '<S25>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)1/Integrator (Discrete or Continuous)'
-//  '<S26>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)1/Enable//disable time constant/Compare To Constant'
-//  '<S27>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)1/Enable//disable time constant/Compare To Zero'
-//  '<S28>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)1/Initialization/Init_u'
-//  '<S29>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)1/Integrator (Discrete or Continuous)/Discrete'
-//  '<S30>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)2/Enable//disable time constant'
-//  '<S31>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)2/Initialization'
-//  '<S32>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)2/Integrator (Discrete or Continuous)'
-//  '<S33>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)2/Enable//disable time constant/Compare To Constant'
-//  '<S34>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)2/Enable//disable time constant/Compare To Zero'
-//  '<S35>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)2/Initialization/Init_u'
-//  '<S36>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)2/Integrator (Discrete or Continuous)/Discrete'
-//  '<S37>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)3/Enable//disable time constant'
-//  '<S38>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)3/Initialization'
-//  '<S39>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)3/Integrator (Discrete or Continuous)'
-//  '<S40>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)3/Enable//disable time constant/Compare To Constant'
-//  '<S41>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)3/Enable//disable time constant/Compare To Zero'
-//  '<S42>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)3/Initialization/Init_u'
-//  '<S43>'  : 'actuatorController/Subsystem1/Subsystem/Low-Pass Filter (Discrete or Continuous)3/Integrator (Discrete or Continuous)/Discrete'
-//  '<S44>'  : 'actuatorController/Subsystem1/Subsystem/ValveModelForController/Saturation Dynamic'
-//  '<S45>'  : 'actuatorController/Subsystem1/reference conditioning/first order hiz limitli filtre'
+//  '<S16>'  : 'actuatorController/Subsystem1/1D Valve Lookup Controller External Table/Compare To Constant'
+//  '<S17>'  : 'actuatorController/Subsystem1/1D Valve Lookup Controller External Table/Saturation Dynamic'
+//  '<S18>'  : 'actuatorController/Subsystem1/Position Controller/Discrete Derivative'
+//  '<S19>'  : 'actuatorController/Subsystem1/reference conditioning/first order hiz limitli filtre'
 
 #endif                                 // actuatorController_h_
 
