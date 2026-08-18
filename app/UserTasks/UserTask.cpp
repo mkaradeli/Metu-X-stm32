@@ -168,8 +168,8 @@ extern const MissionDef missionTable[] = {
   * past it costs a bit of latency but does not stop the log.              */
  { "HOVER", system_modes::HOVER, controller_modes::POSITION,
    hoverTask, valveShutdown,
-   180000, 5000, 2000,
-   120000, true,  true,  0,
+   8000, 1000, 2000,
+   300000, true,  true,  0,
    "Mission = HOVER" },
 
  { "DROP",  system_modes::DROP,  controller_modes::POSITION,
