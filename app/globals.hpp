@@ -43,4 +43,11 @@ extern const float nozzle_gain[4];
 extern AltitudeEstimator::Params p;
 extern AltitudeEstimator g_altEst;
 
+/*
+1 x- left
+2 y+ front
+3 y- back
+4 x+ right
+*/
+
 #endif /* GLOBALS_HPP_ */

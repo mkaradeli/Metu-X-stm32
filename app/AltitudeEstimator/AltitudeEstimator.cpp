@@ -1,12 +1,3 @@
-/*
- * AltitudeEstimator.cpp
- *
- *  Created on: Aug 17, 2026
- *      Author: karadeli
- */
-
-
-
 #include "AltitudeEstimator.hpp"
 
 #include <cmath>
@@ -85,6 +76,9 @@ void AltitudeEstimator::reset()
 
     gStatic_ = 9.80665f;
 
+    anchorH_ = anchorV_ = anchorTau_ = 0.0f;
+    anchorValid_ = false;
+
     blockSum_ = 0; blockValid_ = 0; blockSeen_ = 0;
     calSumAz_ = 0.0; calSumH_ = 0.0; calNAz_ = 0; calNH_ = 0;
 }
@@ -115,6 +109,7 @@ bool AltitudeEstimator::finishCalibration()
     P_[2][2] = 0.10f*0.10f;
 
     status_.consecutiveRejects = 0;
+    anchorH_ = x_[0]; anchorV_ = 0.0f; anchorTau_ = 0.0f; anchorValid_ = true;
     phase_ = Phase::Running;
     return true;
 }
@@ -178,6 +173,8 @@ bool AltitudeEstimator::projectLidar(float range, const float q[4],
 
 void AltitudeEstimator::predict(float u, float dt)
 {
+    anchorTau_ += dt;
+
     x_[0] += x_[1]*dt + 0.5f*u*dt*dt;
     x_[1] += u*dt;
     /* x_[2] constant over the step */
@@ -252,6 +249,36 @@ bool AltitudeEstimator::update(float range, const float q[4])
     const float Rm  = srv*srv
                     + s2 * range * range * params_.sigmaTilt * params_.sigmaTilt;
 
+    /* ---- free-fall plausibility gate -------------------------------
+     * Project the last ACCEPTED state forward under the hardest physically
+     * possible descent (free fall) and refuse anything below that floor.
+     * A cable, a bird, or a ground crew member crossing the beam produces
+     * an instantaneous metre-scale drop, which no ballistic trajectory can
+     * match. Deliberately does NOT feed consecutiveRejects: an impossible
+     * measurement must never be able to trigger the covariance-opening
+     * recovery path, or a long enough obstruction would be let through.
+     *
+     * Self-releasing by construction: the floor falls as 0.5*g*tau^2 while
+     * the anchor goes unrefreshed, so a genuine descent the filter did not
+     * predict is admitted after a few hundred milliseconds. */
+    if (params_.freefallEnable && anchorValid_) {
+        if (anchorTau_ > params_.freefallMaxTau) {
+            anchorValid_ = false;      /* too stale to bound anything */
+        } else {
+            const float tau = anchorTau_;
+            const float sh  = (P_[0][0] > 0.0f) ? std::sqrt(P_[0][0]) : 0.0f;
+            const float sv  = (P_[1][1] > 0.0f) ? std::sqrt(P_[1][1]) : 0.0f;
+            const float margin = params_.freefallMargin
+                               + params_.freefallSigmaK * (sh + sv*tau);
+            const float hFloor = anchorH_ + anchorV_*tau
+                               - 0.5f*params_.freefallG*tau*tau - margin;
+            if (z < hFloor) {
+                ++status_.lidarImplausible;
+                return false;
+            }
+        }
+    }
+
     const float y = z - x_[0];
     const float S = P_[0][0] + Rm;
     if (S <= 0.0f)
@@ -299,6 +326,8 @@ bool AltitudeEstimator::update(float range, const float q[4])
     status_.consecutiveRejects = 0;
     ++status_.lidarAccepted;
     status_.lastUpdateAccepted = true;
+
+    anchorH_ = x_[0]; anchorV_ = x_[1]; anchorTau_ = 0.0f; anchorValid_ = true;
     return true;
 }
 
@@ -347,4 +376,3 @@ bool AltitudeEstimator::pushLidarFrame(uint16_t distMm, uint16_t strength,
 
     return update(range, q);
 }
-

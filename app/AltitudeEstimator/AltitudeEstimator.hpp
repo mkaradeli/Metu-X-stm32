@@ -7,7 +7,6 @@
 
 #ifndef ALTITUDEESTIMATOR_HPP_
 #define ALTITUDEESTIMATOR_HPP_
-
 /*
  * AltitudeEstimator.hpp
  *
@@ -65,6 +64,15 @@ public:
         float nisGate     = 9.0f;     /* 3s chi-square on 1-D innovation    */
         uint32_t rejectsBeforeInflate = 40;
 
+        /* free-fall plausibility gate: the vehicle cannot lose altitude
+         * faster than gravity, so anything below that floor is a foreign
+         * object in the beam rather than the ground. */
+        bool  freefallEnable = true;
+        float freefallG      = 9.81f;  /* downward accel bound   [m/s^2]    */
+        float freefallMargin = 0.05f;  /* fixed slack            [m]        */
+        float freefallSigmaK = 3.0f;   /* sigma multiplier on the margin    */
+        float freefallMaxTau = 2.0f;   /* stale anchor -> disarm  [s]       */
+
         /* geometry, from your mount survey */
         float beam[3]  = { 0.0f, 0.0f, -1.0f }; /* beam unit vec, body frame */
         float lever[3] = { 0.0f, 0.0f,  0.0f }; /* p_face - p_ref, body [m]  */
@@ -77,6 +85,7 @@ public:
         float    cosTilt             = 1.0f;  /* vertical fraction     [-] */
         uint32_t lidarAccepted       = 0;
         uint32_t lidarRejected       = 0;     /* gate or tilt failures     */
+        uint32_t lidarImplausible    = 0;     /* free-fall gate rejections */
         uint32_t lidarBlocksDropped  = 0;     /* too few valid raw frames  */
         uint32_t consecutiveRejects  = 0;
         bool     lastUpdateAccepted  = false;
@@ -145,6 +154,12 @@ private:
     float   P_[3][3];
     float   gStatic_;
 
+    /* free-fall gate anchor: last accepted state and its age */
+    float    anchorH_;
+    float    anchorV_;
+    float    anchorTau_;
+    bool     anchorValid_;
+
     /* decimator */
     uint32_t blockSum_;
     uint8_t  blockValid_;
@@ -156,6 +171,4 @@ private:
     uint32_t calNAz_;
     uint32_t calNH_;
 };
-
-
 #endif /* ALTITUDEESTIMATOR_HPP_ */

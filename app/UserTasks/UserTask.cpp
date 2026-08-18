@@ -16,7 +16,7 @@
 #include "UserTask.hpp"
 #include "globals.hpp"
 #include "main.h"            // SAFETY_CONNECTOR_GPIO_Port / _Pin
-
+#include "platformController.h"
 /* ======================================================================== */
 /*  Safety connector: reads 0 when connected, 1 when pulled out             */
 /* ======================================================================== */
@@ -35,6 +35,8 @@ static inline void setAllValves(float angle_deg) {
 
 /* Standard shutdown: drive the valves shut on current for 3 s, then relax. */
 static void valveShutdown(uint32_t time_ms) {   // current control mode
+	platform_controller.rtU.Dropped = false;
+
 	if (time_ms < 3000)
 		for (int i = 0; i < 4; i++)
 			actuator[i].actuatorController.rtY.currentDemand = -0.5f;
@@ -87,24 +89,26 @@ static void safeDischargeTask(uint32_t time_ms) {  // position control mode
 /* ======================================================================== */
 uint32_t last_time_ms=10000;
 static void hoverTask(uint32_t time_ms) {
-	(void)time_ms;
-	if (last_time_ms == time_ms){
-		printf("a");
+	mission_mode = mission_modes::HOVER;
+	platform_controller.rtU.Dropped = true;
+
+	{
+		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.LeftThrustCmd;
+		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.FrontThrustCmd;
+		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.RightThrustCmd;
+		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.BackThrustCmd;
 	}
-	else
-		last_time_ms = time_ms;
-
-	/* TODO: GNC outer loop -> thrust demand -> valve position demand.
-	 * Placeholder keeps the valves closed so an untuned build is inert.   */
-	setAllValves(0.0f);
-
-	/* Early, graceful stop from inside the mission, e.g. touchdown:
-	 *   if (landed) missionControl.RequestShutdown();                     */
 }
 
 static void dropTask(uint32_t time_ms) {
-	(void)time_ms;
-	setAllValves(0.0f);
+	mission_mode = mission_modes::DROP;
+	platform_controller.rtU.Dropped = true;
+	{
+		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.LeftThrustCmd;
+		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.FrontThrustCmd;
+		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.RightThrustCmd;
+		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.BackThrustCmd;
+	}
 }
 
 // MISSION 6
