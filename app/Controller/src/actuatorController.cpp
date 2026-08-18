@@ -57,7 +57,7 @@ struct_IJnI4imAtcq7GOnq1yNUdE currentControllerGains{
 
   {
     0.25F,
-    10.0F
+    8.0F
   }
 } ;                                    // Variable: controllerGains
                                           //  Referenced by:

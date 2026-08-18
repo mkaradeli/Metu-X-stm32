@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'platformController'.
 //
-// Model version                  : 1.31
+// Model version                  : 1.37
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sat Aug 15 19:01:51 2026
+// C/C++ source code generated on : Wed Aug 19 00:05:13 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -23,13 +23,58 @@
 #include "rtwtypes.h"
 
 // Exported block parameters
+struct_Efcp0d0Dwp641rcB9apAuB platform_targets{
+  0.5,
+  0.2,
+  1.0,
+  15.0,
+  15.0,
+  5.0,
+  12.0,
+  0.02,
+  50.0,
+  5.0,
+  2.8722813232690143,
+
+  {
+    9.8, // Kp
+    12.005000000000003 // Ki
+  },
+
+  {
+    5.0, // h_target
+    2.5, // Kh // velocity feedforward gain
+
+    { -1.0, 2.2 } // velocity demand saturation.
+  }
+} ;                                    // Variable: platform_targets
+                                          //  Referenced by:
+                                          //    '<S2>/Bias1'
+                                          //    '<S2>/Bias2'
+                                          //    '<S2>/Constant3'
+                                          //    '<S2>/Constant4'
+                                          //    '<S2>/Gain1'
+                                          //    '<S2>/Gain2'
+                                          //    '<S2>/Saturation2'
+                                          //    '<S2>/Saturation3'
+                                          //    '<S3>/Bias1'
+                                          //    '<S3>/Constant3'
+                                          //    '<S3>/Constant4'
+                                          //    '<S3>/Gain1'
+                                          //    '<S3>/Gain5'
+                                          //    '<S3>/Saturation1'
+                                          //    '<S3>/Saturation3'
+                                          //    '<S5>/Constant'
+
+
 mission_modes mission_mode{ mission_modes::DISABLE };// Variable: mission_mode
                                                         //  Referenced by: '<S1>/Constant'
 
 
 // Model step function
-void platformController::step()
+void PlatformController::step()
 {
+  real_T rtb_Bias;
   real_T rtb_Diff_n;
   real_T rtb_MathFunction;
   real_T rtb_MathFunction_b;
@@ -40,72 +85,15 @@ void platformController::step()
   real_T rtb_Sum_o;
   real_T rtb_Switch2;
   real_T rtb_Switch2_n;
-  real_T rtb_UnaryMinus;
   int8_T tmp;
   int8_T tmp_0;
   boolean_T rtb_NOT;
-
-  // Sqrt: '<S2>/Sqrt' incorporates:
-  //   Bias: '<S2>/Bias1'
-  //   Bias: '<S2>/Bias2'
-  //   Gain: '<S2>/Gain2'
-  //   Inport: '<Root>/Height'
-  //   Saturate: '<S2>/Saturation1'
-
-  rtb_Sqrt = std::sqrt(std::fmax(rtU.Height - 0.2, 0.0) * 30.0 + 0.25);
-
-  // Switch: '<S2>/Switch' incorporates:
-  //   Abs: '<S2>/Abs1'
-  //   Constant: '<S2>/Constant'
-  //   Constant: '<S5>/Constant'
-  //   Gain: '<S2>/Gain1'
-  //   Inport: '<Root>/Velocity'
-  //   Product: '<S2>/Divide'
-  //   RelationalOperator: '<S5>/Compare'
-
-  if (rtb_Sqrt < 12.0) {
-    rtb_Sum_bx = std::abs(rtU.Velocity) / rtb_Sqrt * 15.0;
-  } else {
-    rtb_Sum_bx = -9.8;
-  }
-
-  // End of Switch: '<S2>/Switch'
-
-  // UnaryMinus: '<S42>/Unary Minus' incorporates:
-  //   Saturate: '<S2>/Saturation3'
-
-  rtb_UnaryMinus = -std::fmin(rtb_Sum_bx, 15.0);
-
-  // Sum: '<S2>/Sum' incorporates:
-  //   Inport: '<Root>/Velocity'
-  //   Saturate: '<S2>/Saturation2'
-  //   UnaryMinus: '<S2>/Unary Minus'
-
-  rtb_Sum_bx = -std::fmin(rtb_Sqrt, 12.0) - rtU.Velocity;
-
-  // Logic: '<S2>/NOT' incorporates:
-  //   Inport: '<Root>/Dropped'
-
-  rtb_NOT = !rtU.Dropped;
-
-  // DiscreteIntegrator: '<S48>/Integrator'
-  if (rtb_NOT && (rtDW.Integrator_PrevResetState <= 0)) {
-    rtDW.Integrator_DSTATE = 0.0;
-  }
-
-  // Sum: '<S58>/Sum' incorporates:
-  //   Constant: '<S2>/Constant3'
-  //   DiscreteIntegrator: '<S48>/Integrator'
-  //   Product: '<S41>/DProd Out'
-  //   Product: '<S53>/PProd Out'
-
-  rtb_Sqrt = (rtb_Sum_bx * 9.8 + rtDW.Integrator_DSTATE) - rtb_UnaryMinus;
 
   // Bias: '<S2>/Bias' incorporates:
   //   Gain: '<S2>/Gain'
   //   Inport: '<Root>/ManifoldPressure'
 
-  rtb_UnaryMinus = 0.0095 * rtU.ManifoldPressure + 34.0;
+  rtb_Bias = 0.0095 * rtU.ManifoldPressure + 34.0;
 
   // Bias: '<S2>/Bias5' incorporates:
   //   Gain: '<S2>/Gain3'
@@ -135,8 +123,60 @@ void platformController::step()
   //   Inport: '<Root>/T_max_allowed'
   //   Product: '<S2>/Product2'
 
-  rtb_MathFunction_b = rtU.T_max_allowed / rtb_UnaryMinus / rtb_MathFunction -
-    9.81;
+  rtb_MathFunction_b = rtU.T_max_allowed / rtb_Bias / rtb_MathFunction - 9.81;
+
+  // Sqrt: '<S2>/Sqrt' incorporates:
+  //   Bias: '<S2>/Bias1'
+  //   Bias: '<S2>/Bias2'
+  //   Gain: '<S2>/Gain2'
+  //   Inport: '<Root>/Height'
+  //   Saturate: '<S2>/Saturation1'
+
+  rtb_Sqrt = std::sqrt(2.0 * platform_targets.a_dec * std::fmax(rtU.Height -
+    platform_targets.h_cut, 0.0) + platform_targets.V_td * platform_targets.V_td);
+
+  // Sum: '<S2>/Sum' incorporates:
+  //   Inport: '<Root>/Velocity'
+  //   Saturate: '<S2>/Saturation2'
+  //   UnaryMinus: '<S2>/Unary Minus'
+
+  rtb_Sum_bx = -std::fmin(rtb_Sqrt, platform_targets.V_max) - rtU.Velocity;
+
+  // Logic: '<S2>/NOT' incorporates:
+  //   Inport: '<Root>/Dropped'
+
+  rtb_NOT = !rtU.Dropped;
+
+  // DiscreteIntegrator: '<S48>/Integrator'
+  if (rtb_NOT && (rtDW.Integrator_PrevResetState <= 0)) {
+    rtDW.Integrator_DSTATE = 0.0;
+  }
+
+  // Switch: '<S2>/Switch' incorporates:
+  //   Abs: '<S2>/Abs1'
+  //   Constant: '<S2>/Constant'
+  //   Constant: '<S5>/Constant'
+  //   Gain: '<S2>/Gain1'
+  //   Inport: '<Root>/Velocity'
+  //   Product: '<S2>/Divide'
+  //   RelationalOperator: '<S5>/Compare'
+
+  if (rtb_Sqrt < platform_targets.V_max) {
+    rtb_Sum_e = std::abs(rtU.Velocity) / rtb_Sqrt * platform_targets.a_dec;
+  } else {
+    rtb_Sum_e = -9.8;
+  }
+
+  // End of Switch: '<S2>/Switch'
+
+  // Sum: '<S58>/Sum' incorporates:
+  //   Constant: '<S2>/Constant3'
+  //   DiscreteIntegrator: '<S48>/Integrator'
+  //   Product: '<S53>/PProd Out'
+  //   Saturate: '<S2>/Saturation3'
+
+  rtb_Sqrt = (rtb_Sum_bx * platform_targets.altitude.kP + rtDW.Integrator_DSTATE)
+    + std::fmin(rtb_Sum_e, platform_targets.a_dec);
 
   // Switch: '<S56>/Switch2' incorporates:
   //   Constant: '<S2>/Constant1'
@@ -165,20 +205,21 @@ void platformController::step()
   //   Inport: '<Root>/Height'
   //   UnaryMinus: '<S3>/Unary Minus1'
 
-  rtb_SumI1 = (-rtU.Height + 5.0) * 2.5;
+  rtb_Sum_o = (-rtU.Height + platform_targets.hover.h_ref) *
+    platform_targets.hover.Kh;
 
   // Saturate: '<S3>/Saturation1'
-  if (rtb_SumI1 > 2.2) {
-    rtb_SumI1 = 2.2;
-  } else if (rtb_SumI1 < -1.0) {
-    rtb_SumI1 = -1.0;
+  if (rtb_Sum_o > platform_targets.hover.v_sat[1]) {
+    rtb_Sum_o = platform_targets.hover.v_sat[1];
+  } else if (rtb_Sum_o < platform_targets.hover.v_sat[0]) {
+    rtb_Sum_o = platform_targets.hover.v_sat[0];
   }
 
   // Sum: '<S3>/Sum' incorporates:
   //   Inport: '<Root>/Velocity'
   //   Saturate: '<S3>/Saturation1'
 
-  rtb_Sum_e = rtb_SumI1 - rtU.Velocity;
+  rtb_Sum_e = rtb_Sum_o - rtU.Velocity;
 
   // DiscreteIntegrator: '<S107>/Integrator' incorporates:
   //   Logic: '<S3>/NOT'
@@ -191,13 +232,13 @@ void platformController::step()
   //   Inport: '<Root>/Velocity'
   //   UnaryMinus: '<S3>/Unary Minus'
 
-  rtb_SumI1 = 2.5 * -rtU.Velocity;
+  rtb_Sum_o = platform_targets.hover.Kh * -rtU.Velocity;
 
   // Saturate: '<S3>/Saturation3'
-  if (rtb_SumI1 > 5.0) {
-    rtb_SumI1 = 5.0;
-  } else if (rtb_SumI1 < -9.81) {
-    rtb_SumI1 = -9.81;
+  if (rtb_Sum_o > platform_targets.a_dec_low) {
+    rtb_Sum_o = platform_targets.a_dec_low;
+  } else if (rtb_Sum_o < -9.81) {
+    rtb_Sum_o = -9.81;
   }
 
   // Sum: '<S117>/Sum' incorporates:
@@ -206,7 +247,8 @@ void platformController::step()
   //   Product: '<S112>/PProd Out'
   //   Saturate: '<S3>/Saturation3'
 
-  rtb_Sum_o = (rtb_Sum_e * 9.8 + rtDW.Integrator_DSTATE_a) + rtb_SumI1;
+  rtb_Sum_o += rtb_Sum_e * platform_targets.altitude.kP +
+    rtDW.Integrator_DSTATE_a;
 
   // Switch: '<S115>/Switch2' incorporates:
   //   Bias: '<S3>/Bias4'
@@ -242,7 +284,7 @@ void platformController::step()
     //  About '<S3>/Math Function':
     //   Operator: reciprocal
 
-    rtb_SumI1 = (rtb_Switch2_n + 9.81) * rtb_UnaryMinus * rtb_MathFunction;
+    rtb_SumI1 = (rtb_Switch2_n + 9.81) * rtb_Bias * rtb_MathFunction;
 
     // Switch: '<S69>/Switch2' incorporates:
     //   Constant: '<S3>/Constant5'
@@ -276,7 +318,7 @@ void platformController::step()
       // Product: '<S2>/Product1' incorporates:
       //   Bias: '<S2>/Bias3'
 
-      rtb_SumI1 = (rtb_Switch2 + 9.81) * rtb_UnaryMinus * rtb_MathFunction;
+      rtb_SumI1 = (rtb_Switch2 + 9.81) * rtb_Bias * rtb_MathFunction;
 
       // Switch: '<S10>/Switch2' incorporates:
       //   Constant: '<S2>/Constant5'
@@ -332,7 +374,7 @@ void platformController::step()
   //  About '<S3>/Math Function':
   //   Operator: reciprocal
 
-  rtb_UnaryMinus = rtU.T_alloc_total / rtb_UnaryMinus / rtb_MathFunction - 9.81;
+  rtb_Bias = rtU.T_alloc_total / rtb_Bias / rtb_MathFunction - 9.81;
 
   // Sum: '<S120>/SumI1' incorporates:
   //   Bias: '<S3>/Bias6'
@@ -340,7 +382,8 @@ void platformController::step()
   //   Product: '<S104>/IProd Out'
   //   Sum: '<S119>/SumI3'
 
-  rtb_SumI1 = (rtb_UnaryMinus - rtb_Switch2_n) + rtb_Sum_e * 24.010000000000005;
+  rtb_SumI1 = platform_targets.altitude.kI * 2.0 * rtb_Sum_e + (rtb_Bias -
+    rtb_Switch2_n);
 
   // Switch: '<S99>/Switch' incorporates:
   //   Bias: '<S3>/Bias4'
@@ -399,9 +442,9 @@ void platformController::step()
   //   Switch: '<S96>/Switch2'
 
   if ((rtb_Diff_n != 0.0) && (tmp == tmp_0)) {
-    rtb_Diff_n = 0.0;
+    rtb_Sum_e = 0.0;
   } else {
-    rtb_Diff_n = rtb_SumI1;
+    rtb_Sum_e = rtb_SumI1;
   }
 
   // End of Switch: '<S96>/Switch'
@@ -411,7 +454,8 @@ void platformController::step()
   //   Product: '<S45>/IProd Out'
   //   Sum: '<S60>/SumI3'
 
-  rtb_SumI1 = (rtb_UnaryMinus - rtb_Switch2) + rtb_Sum_bx * 12.005000000000003;
+  rtb_SumI1 = (rtb_Bias - rtb_Switch2) + rtb_Sum_bx *
+    platform_targets.altitude.kI;
 
   // Switch: '<S40>/Switch' incorporates:
   //   RelationalOperator: '<S40>/u_GTE_up'
@@ -487,7 +531,7 @@ void platformController::step()
   // Update for DiscreteIntegrator: '<S107>/Integrator' incorporates:
   //   DiscreteIntegrator: '<S48>/Integrator'
 
-  rtDW.Integrator_DSTATE_a += 0.02 * rtb_Diff_n;
+  rtDW.Integrator_DSTATE_a += 0.02 * rtb_Sum_e;
   if (rtDW.Integrator_DSTATE_a > 3.0) {
     rtDW.Integrator_DSTATE_a = 3.0;
   } else if (rtDW.Integrator_DSTATE_a < -10.0) {
@@ -500,7 +544,7 @@ void platformController::step()
 }
 
 // Model initialize function
-void platformController::initialize()
+void PlatformController::initialize()
 {
   // InitializeConditions for DiscreteIntegrator: '<S48>/Integrator'
   rtDW.Integrator_PrevResetState = 2;
@@ -510,19 +554,19 @@ void platformController::initialize()
   rtDW.Integrator_PrevResetState_b = 2;
 }
 
-const char_T* platformController::RT_MODEL::getErrorStatus() const
+const char_T* PlatformController::RT_MODEL::getErrorStatus() const
 {
   return (errorStatus);
 }
 
-void platformController::RT_MODEL::setErrorStatus(const char_T* const volatile
+void PlatformController::RT_MODEL::setErrorStatus(const char_T* const volatile
   aErrorStatus)
 {
   (errorStatus = aErrorStatus);
 }
 
 // Constructor
-platformController::platformController() :
+PlatformController::PlatformController() :
   rtU(),
   rtY(),
   rtDW(),
@@ -533,10 +577,10 @@ platformController::platformController() :
 
 // Destructor
 // Currently there is no destructor body generated.
-platformController::~platformController() = default;
+PlatformController::~PlatformController() = default;
 
 // Real-Time Model get method
-platformController::RT_MODEL * platformController::getRTM()
+PlatformController::RT_MODEL * PlatformController::getRTM()
 {
   return (&rtM);
 }

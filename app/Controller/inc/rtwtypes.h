@@ -5,11 +5,11 @@
 //
 // File: rtwtypes.h
 //
-// Code generated for Simulink model 'actuatorController'.
+// Code generated for Simulink model 'platformController'.
 //
-// Model version                  : 1.73
+// Model version                  : 1.37
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Mon Aug 17 23:22:53 2026
+// C/C++ source code generated on : Wed Aug 19 00:05:13 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M

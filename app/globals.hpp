@@ -38,7 +38,7 @@ extern Lidar lidar;
 
 extern const float ValveFitPressureRatios[4][11];
 extern const int encoderSigns[4];
-extern platformController platform_controller;
+extern PlatformController platform_controller;
 extern const float nozzle_gain[4];
 extern AltitudeEstimator::Params p;
 extern AltitudeEstimator g_altEst;
