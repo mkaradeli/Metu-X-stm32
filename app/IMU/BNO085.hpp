@@ -77,17 +77,20 @@ public:
 
     // --- Latest data (updated inside service()) ---------------------------
 
-    sh2_RotationVector_t quaternion  {};   // SH2_GAME_ROTATION_VECTOR
-    sh2_Accelerometer_t  linearAccel {};   // SH2_LINEAR_ACCELERATION
-    sh2_Accelerometer_t  accel {};
+    sh2_RotationVector_t     quaternion       {};   // SH2_GAME_ROTATION_VECTOR
+    sh2_Accelerometer_t      linearAccel      {};   // SH2_LINEAR_ACCELERATION
+    sh2_Accelerometer_t      accel            {};   // SH2_ACCELEROMETER
+    sh2_GyroIntegratedRV_t   gyroIntegratedRV {};   // SH2_GYRO_INTEGRATED_RV
 
     // Measured interval between consecutive reports (us), for diagnostics.
-    uint32_t quaternionInterval_us = 0;
-    uint32_t accelInterval_us      = 0;
+    uint32_t quaternionInterval_us    = 0;
+    uint32_t accelInterval_us         = 0;
+    uint32_t gyroIntegratedRVInterval_us = 0;
 
     // True once since the last time it was checked (read-and-clear).
     bool hasNewQuaternion();
     bool hasNewAccel();
+    bool hasNewGyroIntegratedRV();
 
     // Any other enabled sensor: latest decoded value + read-and-clear flag.
     // Check hasNewValue() first, then read lastValue.
@@ -126,14 +129,16 @@ private:
     };
     ReportCfg reports_[kMaxReports] {};
 
-    volatile bool resetOccurred_   = false;
-    volatile bool userResetFlag_   = false;
-    volatile bool newQuaternion_   = false;
-    volatile bool newAccel_        = false;
-    volatile bool newValue_        = false;
+    volatile bool resetOccurred_       = false;
+    volatile bool userResetFlag_       = false;
+    volatile bool newQuaternion_       = false;
+    volatile bool newAccel_            = false;
+    volatile bool newGyroIntegratedRV_ = false;
+    volatile bool newValue_            = false;
 
-    uint32_t lastQuatStamp_us_  = 0;
-    uint32_t lastAccelStamp_us_ = 0;
+    uint32_t lastQuatStamp_us_   = 0;
+    uint32_t lastAccelStamp_us_  = 0;
+    uint32_t lastGiRvStamp_us_   = 0;
 };
 
 #endif /* BNO085_HPP_ */

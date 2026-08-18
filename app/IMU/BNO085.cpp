@@ -389,6 +389,13 @@ bool BNO085::hasNewAccel()
     return v;
 }
 
+bool BNO085::hasNewGyroIntegratedRV()
+{
+    const bool v = newGyroIntegratedRV_;
+    newGyroIntegratedRV_ = false;
+    return v;
+}
+
 bool BNO085::hasNewValue()
 {
     const bool v = newValue_;
@@ -448,6 +455,17 @@ void BNO085::handleSensorEvent(const sh2_SensorEvent_t* event)
         quaternionInterval_us = now - lastQuatStamp_us_;
         lastQuatStamp_us_ = now;
         newQuaternion_ = true;
+        break;
+
+    case SH2_GYRO_INTEGRATED_RV:
+        // Quaternion (real,i,j,k) + integrated angular velocity
+        // (angVelX/Y/Z, rad/s) in one report. Produced by the hub's
+        // gyro-integrator, so it can run much faster than the fused
+        // game-rotation-vector (up to ~1 kHz).
+        gyroIntegratedRV = value.un.gyroIntegratedRV;
+        gyroIntegratedRVInterval_us = now - lastGiRvStamp_us_;
+        lastGiRvStamp_us_ = now;
+        newGyroIntegratedRV_ = true;
         break;
 
     default:

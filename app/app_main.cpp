@@ -89,7 +89,8 @@ void onImuReport(const BNO085& r);
 void onLidarFrame(uint16_t distMm, uint16_t strength);
 
 LowPass load_lpf{1.0f, 1000,1};  // 30 Hz cutoff @ 1 kHz sample rate
-//LowPass quat_interval{1.0f, 1000,1};  // 30 Hz cutoff @ 1 kHz sample rate
+LowPass accel_interval{1.0f, 1000,1};  // 30 Hz cutoff @ 1 kHz sample rate
+LowPass quatIntRV_interval{1.0f,1000,1};
 
 Profiler free_profiler;
 Profiler load_cell_profiler;
@@ -186,9 +187,9 @@ void app_init() {
 	  if (!imu.begin(&hi2c1)) {          // 0x4A default, pass 0x4B if SA0 high
 //	          Error_Handler();
 	      }
-	  imu.enableReport(SH2_GYRO_INTEGRATED_RV, 2500);   // 400 Hz
 	  imu.enableReport(SH2_ACCELEROMETER,  2500);
-//	  imu.enableReport
+	  imu.enableReport(SH2_GYRO_INTEGRATED_RV, 2500);   // 400 Hz
+//	  imu.enableReport(SH2_GAME_ROTATION_VECTOR,2500);
 
 		lidar.Reset();
 //		altEstimator.begin();
@@ -474,7 +475,8 @@ void tim7_trigger() { // 1 khz low priority
 		imu.service();                 // poll at least every ~1 ms
 		IMU_profiler.end();
 	}
-//	quat_interval.update(imu.quaternionInterval_us);
+	accel_interval.update(imu.accelInterval_us);
+	quatIntRV_interval.update(imu.gyroIntegratedRVInterval_us);
 
     kf_profiler.start();
     {
@@ -520,10 +522,10 @@ void tim12_trigger(){ // mid priority 50hz platform control task
 //	platform_controller.rtU.Height = altEstimator.altitude(); // m
 //	platform_controller.rtU.Velocity = altEstimator.velocity(); // m/s
 	platform_controller.rtU.ManifoldPressure = Actuator::manifold->getBar(); // bar
-	platform_controller.rtU.quaternion[0] = imu.quaternion.i;
-	platform_controller.rtU.quaternion[1] = imu.quaternion.j;
-	platform_controller.rtU.quaternion[2] = imu.quaternion.k;
-	platform_controller.rtU.quaternion[3] = imu.quaternion.real;
+	platform_controller.rtU.quaternion[0] = imu.gyroIntegratedRV.i;
+	platform_controller.rtU.quaternion[1] = imu.gyroIntegratedRV.j;
+	platform_controller.rtU.quaternion[2] = imu.gyroIntegratedRV.k;
+	platform_controller.rtU.quaternion[3] = imu.gyroIntegratedRV.real;
 	platform_controller.rtU.Height = g_altEst.height();
 	platform_controller.rtU.Velocity = g_altEst.velocity();
 //	platform_controller.rtU.T_alloc_total = T_alloc_total;
@@ -696,7 +698,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 
 static uint32_t lastUs = 0;
 void onImuReport(const BNO085& r) {
-    const uint32_t now = imu.quaternionInterval_us;
+    const uint32_t now = imu.accelInterval_us;
     const float dt = (lastUs == 0) ? 0.0f : (now - lastUs) * 1e-6f;
     lastUs = now;
 
