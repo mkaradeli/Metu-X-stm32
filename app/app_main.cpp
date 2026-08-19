@@ -623,7 +623,10 @@ void pressure_adc_complete(){
 		local_sensor_data.manifold_pressure = Actuator::manifold->getPsi();
 		local_sensor_data.manifold_raw = *Actuator::manifold->raw_value;
 		local_sensor_data.linearAccel = imu.accel;
-		local_sensor_data.quaternion = imu.quaternion;
+		local_sensor_data.quaternion.i = imu.gyroIntegratedRV.i;
+		local_sensor_data.quaternion.j = imu.gyroIntegratedRV.j;
+		local_sensor_data.quaternion.k = imu.gyroIntegratedRV.k;
+		local_sensor_data.quaternion.real = imu.gyroIntegratedRV.real;
 		local_sensor_data.lidarDistance = lidar.getDistance();
 		local_sensor_data.lidarStrength = lidar.getStrength();
 
@@ -702,15 +705,15 @@ void onImuReport(const BNO085& r) {
     const float dt = (lastUs == 0) ? 0.0f : (now - lastUs) * 1e-6f;
     lastUs = now;
 
-    const float q[4] = { r.quaternion.real, r.quaternion.i, r.quaternion.j, r.quaternion.k };
+    const float q[4] = { r.gyroIntegratedRV.real, r.gyroIntegratedRV.i, r.gyroIntegratedRV.j, r.gyroIntegratedRV.k };
     const float a[3] = { r.accel.x, r.accel.y, r.accel.z };
 //    const float dt   = ( - lastTs_) * 1e-6f;
 //    lastTs_ = r.quaternionInterval_us;
     g_altEst.pushImu(a, q, dt);
 }
 void onLidarFrame(uint16_t distMm, uint16_t strength) {
-    const float q[4] = { imu.quaternion.real, imu.quaternion.i,
-                         imu.quaternion.j,    imu.quaternion.k };
+    const float q[4] = { imu.gyroIntegratedRV.real, imu.gyroIntegratedRV.i,
+                         imu.gyroIntegratedRV.j,    imu.gyroIntegratedRV.k };
 //    g_altEst.pushLidarFrame(distMm, strength, q);
     g_altEst.pushLidarFrame(distMm, strength, q);
 }

@@ -39,7 +39,7 @@ static void valveShutdown(uint32_t time_ms) {   // current control mode
 
 	if (time_ms < 3000)
 		for (int i = 0; i < 4; i++)
-			actuator[i].actuatorController.rtY.currentDemand = -0.5f;
+			actuator[i].actuatorController.rtY.currentDemand = -1.4f;
 	else
 		for (int i = 0; i < 4; i++)
 			actuator[i].actuatorController.rtY.currentDemand = 0.0f;
@@ -78,7 +78,7 @@ static void testfireHoldTask(uint32_t time_ms) {   // position control mode
 /* ======================================================================== */
 static void safeDischargeTask(uint32_t time_ms) {  // position control mode
 	(void)time_ms;
-	setAllValves(20.0f);
+	setAllValves(60.0f);
 }
 
 /* ======================================================================== */
@@ -166,13 +166,13 @@ extern const MissionDef missionTable[] = {
   * ops_duration_ms is a hard cut-off, keep it above the expected flight
   * time. log_estimate_ms is only used to pre-allocate the SD file, going
   * past it costs a bit of latency but does not stop the log.              */
- { "HOVER", system_modes::HOVER, controller_modes::POSITION,
+ { "HOVER", system_modes::HOVER, controller_modes::FORCE,
    hoverTask, valveShutdown,
    8000, 1000, 2000,
    300000, true,  true,  0,
    "Mission = HOVER" },
 
- { "DROP",  system_modes::DROP,  controller_modes::POSITION,
+ { "DROP",  system_modes::DROP,  controller_modes::FORCE,
    dropTask,  valveShutdown,
    180000, 5000, 2000,
    120000, true,  true,  0,
