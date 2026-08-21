@@ -53,8 +53,8 @@ typedef struct __attribute__((packed)) {
     float thrust_measured;
 	uint16_t thrust_raw;
 
-	sh2_RotationVector_t quaternion;
-	sh2_Accelerometer_t  linearAccel;
+	sh2_RotationVector_t quaternion; // float i j k real
+	sh2_Accelerometer_t  linearAccel; // float x y z
 
 	uint16_t lidarDistance;
 	uint16_t lidarStrength;
@@ -68,6 +68,13 @@ typedef struct __attribute__((packed)) {
 	uint32_t kf_rejects;
 	uint8_t kf_flags;
 
+
+	uint32_t actuator_mode; // DISABLED, DUTY, CURRENT, ... FORCE
+	uint32_t mission_modes; // DISABLED,  TESTFIRE, DROP, HOVER
+	uint32_t system_modes;
+
+
+
 	uint16_t crc;
 } SensorData_t;
 
@@ -80,7 +87,7 @@ typedef struct __attribute__((packed)) {
 //#endif
 
 //typedef struct __attribute
-#define LOG_HALF_RECORDS   768u // 128 * 6
+#define LOG_HALF_RECORDS   640u // 128 * 6
 #define LOG_TOTAL_RECORDS  (2u * LOG_HALF_RECORDS)
 #define LOG_HALF_BYTES     (LOG_HALF_RECORDS * PACKET_SIZE)
 

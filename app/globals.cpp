@@ -6,10 +6,10 @@
  */
 
 
+#include <shared_memory.h>
 #include "globals.hpp"
 #include "main.h"
 #include "PressureSensor.hpp"
-#include "shared_memory.h"
 
 constexpr int encoderSigns[4] = {1,1,1,1};
 
@@ -44,12 +44,12 @@ PressureSensor* Actuator::manifold = &psSensors[4];
 LoadCell loadCell(&adc_dma_buf_pressure[3]);
 
 
-const uint16_t logFormatId = 16;
+const uint16_t logFormatId = 17;
 
 
 const uint16_t sensorDataLength = sizeof(SensorData_t);
 
-static_assert(sensorDataLength == 317,"aaaaaaa");
+static_assert(sensorDataLength == 329,"aaaaaaa");
 
 
 Lidar lidar = Lidar(&huart6);

@@ -17,6 +17,7 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <shared_memory.h>
 #include "main.h"
 #include "adc.h"
 #include "crc.h"
@@ -34,7 +35,6 @@
 //#include "shared_log.h"
 #include "ring_buffer.h"
 #include "task_timer.h"
-#include "shared_memory.h"
 #include <stdio.h>
 
 /* USER CODE END Includes */

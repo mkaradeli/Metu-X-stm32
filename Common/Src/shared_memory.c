@@ -4,7 +4,7 @@
  *  Created on: May 25, 2026
  *      Author: karadeli
  */
-#include "shared_memory.h"
+#include <shared_memory.h>
 #include "cmsis_compiler.h"   /* __DMB() */
 #include <string.h>
 

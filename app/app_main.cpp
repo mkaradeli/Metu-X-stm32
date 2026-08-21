@@ -10,7 +10,7 @@
 #define CHECK_TIMER_FREQUENCIES false
 
 
-#include "shared_memory.h"
+#include <shared_memory.h>
 #include "app_main.hpp"
 #include "main.h"
 #include "i2c.h"

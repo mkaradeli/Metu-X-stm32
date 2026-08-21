@@ -35,10 +35,10 @@
  *     the last written record instead (see find_resume_offset).
  */
 
+#include <shared_memory.h>
 #include "sd_task.hpp"
 #include "fatfs.h"
 #include "ff_gen_drv.h"
-#include "shared_memory.h"
 #include "globals.hpp"
 #include <string.h>
 #include <stdio.h>
