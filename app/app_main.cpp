@@ -188,8 +188,10 @@ void app_init() {
 	  if (!imu.begin(&hspi1)) {
 //	          Error_Handler();
 	      }
-	  imu.enableReport(SH2_ACCELEROMETER,  2500);
-	  imu.enableReport(SH2_GYRO_INTEGRATED_RV, 2500);   // 400 Hz
+//	  imu.enableReport(SH2_RAW_ACCELEROMETER,  2500);
+	  imu.enableReport(SH2_GYRO_INTEGRATED_RV, 5000);   // 400 Hz
+	  imu.enableReport(SH2_ACCELEROMETER, 5000);   // 400 Hz
+
 //	  imu.enableReport(SH2_GAME_ROTATION_VECTOR,2500);
 
 		lidar.Reset();
