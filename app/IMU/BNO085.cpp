@@ -5,12 +5,11 @@
  *      Author: karadeli
  *
  * Implementation. The CEVA sh2_Hal_t transport is implemented here as
- * file-local static functions on top of SPI1 + DMA, so sh2_hal_init.h /
- * the old CEVA spi_hal.c are not needed at all.
- *
- * State machine (spiActivate/spiCompleted) ported from CEVA's reference
- * SPI HAL (sh2-demo-nucleo/app/spi_hal.c), swapping HAL_SPI_TransmitReceive_IT
- * for the DMA-based transfer already wired up for hspi1 in spi.c.
+ * file-local static functions, purely polled and blocking: hal_read()
+ * checks the INTN pin's level directly and, if asserted, performs the
+ * whole SPI transfer synchronously with HAL_SPI_TransmitReceive(). No
+ * EXTI interrupt, no DMA, no background state machine -- so there is
+ * nothing async that can get wedged between service() calls.
  */
 
 #include "app_main.hpp"         // micros()
@@ -31,65 +30,31 @@ extern "C" {
 // typical per the datasheet; generous margin for cold starts).
 static constexpr uint32_t kResetTimeoutMs = 500;
 
-// DMA buffer placement/alignment: RAM_D2 is configured non-cacheable by the
-// MPU (see MPU_Config() in main.c, region 0x30000000/512K), so no cache
-// maintenance is needed for buffers placed here -- they just need to be in
-// memory DMA2 can reach (DTCM is not DMA-accessible at all).
-#ifndef BNO085_DMA_BUF_ATTR
-#define BNO085_DMA_BUF_ATTR __attribute__((section(".RAM_D2_Section")))
-#endif
+// How long to wait for INTN after asserting WAKE for a write (twk is
+// ~150 us typical per the datasheet; generous margin).
+static constexpr uint32_t kWakeTimeoutMs = 10;
+
+// Timeout for a single blocking SPI transfer.
+static constexpr uint32_t kSpiTimeoutMs = 20;
+
+// How many bytes to read when reading the SHTP length header.
+static constexpr unsigned kReadLen = 4;
 
 // ---------------------------------------------------------------------------
 // File-local transport state
 // ---------------------------------------------------------------------------
 
-enum class SpiState : uint8_t { Idle, RdHdr, RdBody, Write };
-
-// How many bytes to read when reading the SHTP length header
-static constexpr unsigned kReadLen = 4;
-
-static BNO085* s_active = nullptr;
 static SPI_HandleTypeDef* s_hspi = nullptr;
 
-static volatile SpiState s_state = SpiState::Idle;
+static uint32_t s_rxPacketCount = 0;
+static uint32_t s_spiErrCount   = 0;
 
-// true from the time INTN is observed until a transfer is started for it
-static volatile bool s_rxReady = false;
+static constexpr size_t kRxBufSize = SH2_HAL_MAX_TRANSFER_IN;
+static constexpr size_t kTxBufSize = SH2_HAL_MAX_TRANSFER_OUT;
 
-// true from the time the hub is put in reset until the first INTN
-static volatile bool s_inReset = false;
-
-static volatile uint32_t s_rxTimestamp_us = 0;
-
-// >0 once a full SHTP transfer is sitting in s_rxBuf, ready for hal_read()
-static volatile uint32_t s_rxBufLen = 0;
-
-// >0 while a write is queued, waiting for the hub to wake up
-static volatile uint32_t s_txBufLen = 0;
-
-static volatile uint32_t s_rxPacketCount = 0;
-static volatile uint32_t s_spiErrCount   = 0;
-
-// Tick (ms) at which the current non-Idle transfer was started, and how
-// long to wait before assuming it's wedged. A full 1024-byte transfer at
-// 3 MHz takes ~2.7 ms; this leaves a wide margin for scheduling jitter.
-static volatile uint32_t s_transferStartTick = 0;
-static constexpr uint32_t kTransferTimeoutMs = 20;
-
-// 32-byte aligned AND padded to a multiple of 32, matching the original I2C
-// buffer sizing (cosmetic here since RAM_D2 isn't cached, but keeps DMA
-// transfers on tidy boundaries).
-static constexpr size_t kRxBufSize =
-    ((SH2_HAL_MAX_TRANSFER_IN + 31u) / 32u) * 32u;
-static constexpr size_t kTxBufSize =
-    ((SH2_HAL_MAX_TRANSFER_OUT + 31u) / 32u) * 32u;
-
-BNO085_DMA_BUF_ATTR static uint8_t s_rxBuf[kRxBufSize];
-BNO085_DMA_BUF_ATTR static uint8_t s_txBuf[kTxBufSize];
+static uint8_t s_rxBuf[kRxBufSize];
 // Dummy all-zero MOSI data clocked out while reading (header or body).
-// Not const: a const array placed in the same named section as the
-// writable buffers above causes a section-type conflict at link time.
-BNO085_DMA_BUF_ATTR static uint8_t s_txZeros[kRxBufSize] = {0};
+static uint8_t s_txZeros[kRxBufSize] = {0};
 
 static uint32_t timeNowUs()
 {
@@ -119,195 +84,10 @@ static inline void wakeIdle(bool idle)
                        idle ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
-// Scoped critical section around the shared state machine: only the
-// transport's own IRQ sources are masked, so the rest of the system's
-// real-time interrupts (ADC/timer ISRs etc.) are never touched.
-static inline void criticalEnter()
+// H_INTN is active low.
+static inline bool intnAsserted()
 {
-    HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
-    HAL_NVIC_DisableIRQ(DMA2_Stream0_IRQn);
-    HAL_NVIC_DisableIRQ(DMA2_Stream1_IRQn);
-}
-
-static inline void criticalExit()
-{
-    HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
-    HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
-}
-
-// ---------------------------------------------------------------------------
-// SPI bus state machine (ISR/DMA-callback context, mirrors CEVA's
-// reference spi_hal.c spiActivate()/spiCompleted())
-// ---------------------------------------------------------------------------
-
-// Starts a DMA transfer and records when it started (for the watchdog in
-// service()). Returns false if the HAL call itself failed to start a
-// transfer -- in that case no completion callback will ever arrive, so the
-// caller must not leave s_state pointing at a phase with nothing in flight.
-static bool spiStart(const uint8_t* tx, uint8_t* rx, uint16_t len)
-{
-    if (HAL_SPI_TransmitReceive_DMA(s_hspi, tx, rx, len) != HAL_OK) {
-        ++s_spiErrCount;
-        csAssert(false);
-        s_state = SpiState::Idle;
-        return false;
-    }
-    s_transferStartTick = HAL_GetTick();
-    return true;
-}
-
-// Attempt to start a SPI operation. Called from EXTI (INTN) context, from
-// DMA-completion context (to chain the next phase or start a queued op),
-// and from hal_read()/hal_write() (inside a critical section) once the bus
-// is free.
-static void spiActivate()
-{
-    if ((s_state == SpiState::Idle) && (s_rxBufLen == 0)) {
-        if (s_rxReady) {
-            s_rxReady = false;
-
-            csAssert(true);
-
-            if (s_txBufLen > 0) {
-                s_state = SpiState::Write;
-                if (spiStart(s_txBuf, s_rxBuf, (uint16_t)s_txBufLen)) {
-                    wakeIdle(true);   // release WAKE now that CS has it covered
-                }
-            } else {
-                s_state = SpiState::RdHdr;
-                spiStart(s_txZeros, s_rxBuf, kReadLen);
-            }
-        }
-    }
-}
-
-// Handle the end of a SPI DMA operation. May start a follow-up operation
-// (header -> body) or return to idle, in which case it tries to start the
-// next queued operation via spiActivate().
-static void spiCompleted()
-{
-    uint16_t rxLen = (uint16_t)(s_rxBuf[0] | (s_rxBuf[1] << 8)) & (uint16_t)~0x8000;
-    if (rxLen > kRxBufSize) {
-        rxLen = (uint16_t)kRxBufSize;
-    }
-
-    switch (s_state) {
-    case SpiState::RdHdr:
-        if (rxLen > kReadLen) {
-            // More to read: continue clocking within the same CS window
-            // (SPI has no restart condition, so the body follows directly).
-            s_state = SpiState::RdBody;
-            if (!spiStart(s_txZeros, s_rxBuf + kReadLen,
-                           (uint16_t)(rxLen - kReadLen))) {
-                spiActivate();   // nothing in flight now; try the next op
-            }
-        } else {
-            // No SHTP payload beyond the header; done.
-            csAssert(false);
-            s_rxBufLen = 0;
-            s_state = SpiState::Idle;
-            spiActivate();
-        }
-        break;
-
-    case SpiState::RdBody:
-        csAssert(false);
-        s_rxBufLen = rxLen;
-        s_state = SpiState::Idle;
-        ++s_rxPacketCount;
-        spiActivate();
-        break;
-
-    case SpiState::Write:
-        csAssert(false);
-        // Transaction only covered txBufLen bytes, so at most that many
-        // bytes of whatever the hub sent back are valid.
-        s_rxBufLen = (s_txBufLen < rxLen) ? s_txBufLen : rxLen;
-        s_txBufLen = 0;
-        s_state = SpiState::Idle;
-        if (s_rxBufLen > 0) {
-            ++s_rxPacketCount;
-        }
-        spiActivate();
-        break;
-
-    case SpiState::Idle:
-    default:
-        break;
-    }
-}
-
-// Safety net for whatever spiStart()'s HAL_OK check doesn't catch (e.g. a
-// DMA transfer that HAL reports as started but whose completion callback
-// never arrives). Called every service() tick from application context;
-// if a transfer has been in flight too long, force the bus back to a known
-// state so the driver keeps running instead of staying wedged for the rest
-// of the flight.
-static void spiWatchdog()
-{
-    if (s_state == SpiState::Idle) {
-        return;
-    }
-    if ((HAL_GetTick() - s_transferStartTick) <= kTransferTimeoutMs) {
-        return;
-    }
-
-    criticalEnter();
-    if (s_state != SpiState::Idle) {
-        (void)HAL_SPI_Abort(s_hspi);
-        csAssert(false);
-        ++s_spiErrCount;
-        s_state    = SpiState::Idle;
-        s_rxBufLen = 0;
-        s_txBufLen = 0;
-        spiActivate();   // in case rxReady is already pending
-    }
-    criticalExit();
-}
-
-// ---------------------------------------------------------------------------
-// HAL callbacks (ISR context)
-// ---------------------------------------------------------------------------
-
-extern "C" void HAL_GPIO_EXTI_Callback(uint16_t pin)
-{
-    if (pin != IMU_INT_Pin) {
-        return;
-    }
-    if (s_active == nullptr) {
-        return;
-    }
-
-    s_rxTimestamp_us = timeNowUs();
-    s_inReset = false;
-    s_rxReady = true;
-
-    spiActivate();
-}
-
-extern "C" void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi)
-{
-    if ((s_hspi == nullptr) || (hspi->Instance != s_hspi->Instance)) {
-        return;
-    }
-    if (s_active == nullptr) {
-        return;
-    }
-    spiCompleted();
-}
-
-extern "C" void HAL_SPI_ErrorCallback(SPI_HandleTypeDef* hspi)
-{
-    if ((s_hspi == nullptr) || (hspi->Instance != s_hspi->Instance)) {
-        return;
-    }
-    ++s_spiErrCount;
-    csAssert(false);
-    s_state = SpiState::Idle;
-    s_txBufLen = 0;
-    // Leave s_rxReady/rxBufLen alone: the next INTN edge (or a still-set
-    // rxReady) will retry.
+    return HAL_GPIO_ReadPin(IMU_INT_GPIO_Port, IMU_INT_Pin) == GPIO_PIN_RESET;
 }
 
 // ---------------------------------------------------------------------------
@@ -316,27 +96,22 @@ extern "C" void HAL_SPI_ErrorCallback(SPI_HandleTypeDef* hspi)
 
 static int hal_open(sh2_Hal_t* /*self*/)
 {
-    s_state       = SpiState::Idle;
-    s_rxBufLen    = 0;
-    s_txBufLen    = 0;
-    s_rxReady     = false;
-
     // Hold the hub in reset while lines settle.
     rstRelease(false);
     csAssert(false);
 
     // PS0/WAKE (and PS1, tied high on the PCB) must be high from before
-    // reset until the first INTN assertion to select SPI mode.
+    // reset until the first INTN assertion to select SPI mode. PS0 has no
+    // external pull-up, so driving it here (rather than relying on any
+    // power-up default) is what makes SPI mode selection reliable.
     wakeIdle(true);
-
-    s_inReset = true;   // cleared by HAL_GPIO_EXTI_Callback on first INTN
 
     HAL_Delay(1);        // >> tnrst (10 ns min)
 
     rstRelease(true);    // release reset, hub begins booting
 
     const uint32_t start = HAL_GetTick();
-    while (s_inReset) {
+    while (!intnAsserted()) {
         if ((HAL_GetTick() - start) > kResetTimeoutMs) {
             return SH2_ERR_IO;   // no INTN: wiring / power?
         }
@@ -347,45 +122,69 @@ static int hal_open(sh2_Hal_t* /*self*/)
 
 static void hal_close(sh2_Hal_t* /*self*/)
 {
-    criticalEnter();
-    (void)HAL_SPI_Abort(s_hspi);
     csAssert(false);
     rstRelease(false);   // hold hub in reset
-    s_state    = SpiState::Idle;
-    s_rxBufLen = 0;
-    s_txBufLen = 0;
-    s_rxReady  = false;
-    criticalExit();
 }
 
-// Non-blocking read: returns a completed packet if one is ready, and frees
-// the receive buffer so any write that was waiting for it can proceed.
+// Polled, blocking read: if INTN isn't asserted, there's nothing pending.
+// If it is, read the 4-byte header, then (if there's more) the body, all
+// within one CS-low window, and hand the whole packet back.
 static int hal_read(sh2_Hal_t* /*self*/, uint8_t* pBuffer, unsigned len,
                     uint32_t* t)
 {
-    int retval = 0;
-
-    if (s_rxBufLen > 0) {
-        if (len >= s_rxBufLen) {
-            std::memcpy(pBuffer, s_rxBuf, s_rxBufLen);
-            retval = (int)s_rxBufLen;
-            *t = s_rxTimestamp_us;
-        } else {
-            retval = SH2_ERR_BAD_PARAM;   // shouldn't happen: sh2 passes MAX_TRANSFER_IN
-        }
-        s_rxBufLen = 0;
-
-        criticalEnter();
-        spiActivate();
-        criticalExit();
+    if (!intnAsserted()) {
+        return 0;
     }
 
-    return retval;
+    const uint32_t rxStamp = timeNowUs();
+
+    csAssert(true);
+
+    if (HAL_SPI_TransmitReceive(s_hspi, s_txZeros, s_rxBuf, kReadLen,
+                                 kSpiTimeoutMs) != HAL_OK) {
+        ++s_spiErrCount;
+        csAssert(false);
+        return 0;
+    }
+
+    uint16_t pktLen = (uint16_t)(s_rxBuf[0] | (s_rxBuf[1] << 8)) & (uint16_t)~0x8000;
+    if (pktLen > kRxBufSize) {
+        pktLen = (uint16_t)kRxBufSize;
+    }
+
+    if (pktLen > kReadLen) {
+        // More to read: continue clocking within the same CS window
+        // (SPI has no restart condition, so the body follows directly).
+        const uint16_t bodyLen = pktLen - kReadLen;
+        if (HAL_SPI_TransmitReceive(s_hspi, s_txZeros, s_rxBuf + kReadLen,
+                                     bodyLen, kSpiTimeoutMs) != HAL_OK) {
+            ++s_spiErrCount;
+            csAssert(false);
+            return 0;
+        }
+    }
+
+    csAssert(false);
+
+    if (pktLen <= kReadLen) {
+        return 0;   // header only; nothing pending
+    }
+
+    ++s_rxPacketCount;
+
+    uint16_t n = pktLen;
+    if (n > len) {
+        n = (uint16_t)len;   // shouldn't happen: sh2 passes MAX_TRANSFER_IN
+    }
+    std::memcpy(pBuffer, s_rxBuf, n);
+    *t = rxStamp;
+    return n;
 }
 
-// Queues a write and requests the hub wake up. Non-blocking: the transfer
-// itself happens once INTN asserts (immediately, if the hub is already
-// awake and idle).
+// Blocking write: wake the hub if it isn't already signaling INTN, then
+// transmit within a CS-low window. Whatever comes back on MISO during the
+// write is discarded -- the next hal_read() call will pick up anything
+// real the hub still has pending.
 static int hal_write(sh2_Hal_t* /*self*/, uint8_t* pBuffer, unsigned len)
 {
     if ((len > 0) && (pBuffer == nullptr)) {
@@ -394,21 +193,34 @@ static int hal_write(sh2_Hal_t* /*self*/, uint8_t* pBuffer, unsigned len)
     if (len == 0) {
         return 0;
     }
-    if (len > sizeof(s_txBuf)) {
+    if (len > kTxBufSize) {
         return SH2_ERR_BAD_PARAM;
     }
 
-    if (s_txBufLen != 0) {
-        return 0;   // previous write still pending; sh2 lib retries
+    if (!intnAsserted()) {
+        wakeIdle(false);   // assert WAKE
+
+        const uint32_t start = HAL_GetTick();
+        while (!intnAsserted()) {
+            if ((HAL_GetTick() - start) > kWakeTimeoutMs) {
+                wakeIdle(true);
+                return 0;   // hub didn't respond; sh2 lib retries
+            }
+        }
+        wakeIdle(true);
     }
 
-    std::memcpy(s_txBuf, pBuffer, len);
-    s_txBufLen = len;
+    csAssert(true);
 
-    criticalEnter();
-    wakeIdle(false);   // assert WAKE
-    criticalExit();
+    uint8_t discard[kTxBufSize];
+    if (HAL_SPI_TransmitReceive(s_hspi, pBuffer, discard, (uint16_t)len,
+                                 kSpiTimeoutMs) != HAL_OK) {
+        ++s_spiErrCount;
+        csAssert(false);
+        return 0;
+    }
 
+    csAssert(false);
     return (int)len;
 }
 
@@ -432,24 +244,22 @@ static sh2_Hal_t s_hal = {
 
 bool BNO085::begin(SPI_HandleTypeDef* hspi)
 {
-    if (s_active != nullptr && s_active != this) {
-        // sh2 library state is global: one instance only.
+    if ((s_hspi != nullptr) && !open_) {
+        // Another instance has the sh2 library open: it keeps global state
+        // internally, so only one open at a time.
         return false;
     }
     if (hspi == nullptr) {
         return false;
     }
 
-    hspi_ = hspi;
-
-    s_active = this;
-    s_hspi   = hspi_;
+    hspi_  = hspi;
+    s_hspi = hspi_;
 
     // Opens the transport (hardware reset inside hal_open) and processes
     // the hub's startup traffic. Blocks internally until done.
     if (sh2_open(&s_hal, asyncCallback, this) != SH2_OK) {
-        s_active = nullptr;
-        s_hspi   = nullptr;
+        s_hspi = nullptr;
         return false;
     }
 
@@ -473,10 +283,7 @@ void BNO085::end()
         sh2_close();
         open_ = false;
     }
-    if (s_active == this) {
-        s_active = nullptr;
-        s_hspi   = nullptr;
-    }
+    s_hspi = nullptr;
 }
 
 void BNO085::service()
@@ -485,7 +292,6 @@ void BNO085::service()
         return;
     }
 
-    spiWatchdog();
     sh2_service();
 
     // Hub reset (brown-out, watchdog, firmware fault): all report configs
@@ -567,6 +373,13 @@ bool BNO085::hasNewAccel()
     return v;
 }
 
+bool BNO085::hasNewRawAccel()
+{
+    const bool v = newRawAccel_;
+    newRawAccel_ = false;
+    return v;
+}
+
 bool BNO085::hasNewGyroIntegratedRV()
 {
     const bool v = newGyroIntegratedRV_;
@@ -634,6 +447,14 @@ void BNO085::handleSensorEvent(const sh2_SensorEvent_t* event)
 		lastAccelStamp_us_ = stamp;
 		newAccel_ = true;
 		break;
+    case SH2_RAW_ACCELEROMETER:
+        // ADC counts, straight from the sensor -- bypasses the hub's
+        // fusion/calibration engine entirely, unlike SH2_ACCELEROMETER.
+        rawAccel = value.un.rawAccelerometer;
+        rawAccelInterval_us = stamp - lastRawAccelStamp_us_;
+        lastRawAccelStamp_us_ = stamp;
+        newRawAccel_ = true;
+        break;
     case SH2_GAME_ROTATION_VECTOR:
         quaternion = value.un.gameRotationVector;
         quaternionInterval_us = now - lastQuatStamp_us_;

@@ -7,11 +7,18 @@
  * Bare-metal C++ driver for the BNO08x on STM32H7xx over SPI, built on the
  * CEVA SH-2 library (sh2.c / shtp.c / sh2_SensorValue.c / sh2_util.c).
  *
- * Transport follows the wiring and state machine used by CEVA's reference
- * SPI HAL (sh2-demo-nucleo/app/spi_hal.c), adapted to use SPI1 + DMA
- * (already wired up in spi.c) instead of interrupt-driven byte transfers:
- *  - IMU_INT (H_INTN, active low, EXTI falling edge): the hub asserts this
- *    when it has data to send, or in response to a wake request.
+ * Purely polled, blocking transport -- no EXTI interrupt, no DMA, no
+ * background state machine. service() (via sh2_service() -> hal_read())
+ * just checks the INTN pin's level directly each time it's called, and if
+ * it's asserted, does the whole SPI transfer for that packet right there
+ * with HAL_SPI_TransmitReceive(). This mirrors how the earlier I2C driver
+ * worked (poll every service() tick, blocking HAL calls, no ISR-driven
+ * state to get wedged).
+ *
+ * Wiring/protocol (per the BNO08X datasheet):
+ *  - IMU_INT (H_INTN, active low): the hub asserts this when it has data
+ *    to send, or in response to a wake request. Polled as a plain GPIO
+ *    input -- not configured as an interrupt source by this driver.
  *  - IMU_CS  (H_CSN, active low, software-controlled): asserted for the
  *    duration of each SPI transaction; the hub de-asserts INTN as soon as
  *    CS is observed.
@@ -19,12 +26,18 @@
  *  - IMU_P0  (PS0/WAKE): must be high from before reset until the first
  *    INTN assertion to select SPI mode (together with PS1, tied high on
  *    the PCB). Afterwards it is the WAKE line: pulsed low by the host to
- *    ask a sleeping hub to assert INTN so a write can be sent.
- *  - SPI1, mode 3 (CPOL=1, CPHA=1), ~1.5 MHz (see spi.c / hspi1).
+ *    ask a sleeping hub to assert INTN so a write can be sent. Note: PS0
+ *    has no external pull-up on this board, so it floats low whenever the
+ *    STM32 isn't actively driving it (e.g. before MX_GPIO_Init() runs at
+ *    boot) -- begin()/hal_open() always drives it high before toggling
+ *    NRST, so SPI mode gets correctly re-selected on every begin() call
+ *    regardless of what happened at board power-up.
+ *  - SPI1, mode 3 (CPOL=1, CPHA=1), ~3 MHz (see spi.c / hspi1).
  *
- * service() must still be called from the main loop, but it no longer
- * polls the bus directly -- it just drains whatever the ISR/DMA-driven
- * state machine has already collected into the receive buffer.
+ * service() must be called from the main loop, at least as often as the
+ * shortest enabled report interval, and often enough that INTN doesn't sit
+ * asserted for more than ~10 ms (the hub gives up and retries if the host
+ * doesn't respond within that window, per the datasheet).
  *
  * The CEVA sh2 library keeps global state internally, so only ONE instance
  * of this class may exist. begin() enforces this.
@@ -38,7 +51,7 @@
  *    BNO085 imu;
  *    if (!imu.begin(&hspi1)) { ... }
  *    imu.enableReport(SH2_GAME_ROTATION_VECTOR, 2500);   // 400 Hz
- *    imu.enableReport(SH2_LINEAR_ACCELERATION,  2500);
+ *    imu.enableReport(SH2_RAW_ACCELEROMETER,  2500);
  *    while (1) {
  *        imu.service();
  *        if (imu.hasNewQuaternion()) { auto q = imu.quaternion; ... }
@@ -75,10 +88,10 @@ public:
 
     void end();
 
-    // Drains whatever the ISR/DMA-driven transport has already received
-    // and dispatches sensor callbacks. Call from the main loop, at least as
-    // often as the shortest enabled report interval. Also transparently
-    // re-enables all reports if the hub reset itself (brown-out, watchdog).
+    // Polls INTN and, if asserted, reads and dispatches one pending SHTP
+    // transfer. Call from the main loop, at least as often as the shortest
+    // enabled report interval. Also transparently re-enables all reports
+    // if the hub reset itself (brown-out, watchdog).
     void service();
 
     // Enable a sensor report at the given interval (microseconds).
@@ -93,16 +106,19 @@ public:
     sh2_RotationVector_t     quaternion       {};   // SH2_GAME_ROTATION_VECTOR
     sh2_Accelerometer_t      linearAccel      {};   // SH2_LINEAR_ACCELERATION
     sh2_Accelerometer_t      accel            {};   // SH2_ACCELEROMETER
+    sh2_RawAccelerometer_t   rawAccel         {};   // SH2_RAW_ACCELEROMETER (ADC counts, bypasses fusion engine)
     sh2_GyroIntegratedRV_t   gyroIntegratedRV {};   // SH2_GYRO_INTEGRATED_RV
 
     // Measured interval between consecutive reports (us), for diagnostics.
     uint32_t quaternionInterval_us    = 0;
     uint32_t accelInterval_us         = 0;
+    uint32_t rawAccelInterval_us      = 0;
     uint32_t gyroIntegratedRVInterval_us = 0;
 
     // True once since the last time it was checked (read-and-clear).
     bool hasNewQuaternion();
     bool hasNewAccel();
+    bool hasNewRawAccel();
     bool hasNewGyroIntegratedRV();
 
     // Any other enabled sensor: latest decoded value + read-and-clear flag.
@@ -125,7 +141,7 @@ public:
     // begin(), for watching in a live debugger view. Unlike wasReset(),
     // this never self-clears, so it shows whether the hub is
     // reset-looping rather than just "did it reset since I last asked."
-    volatile uint32_t resetCount = 0;
+    uint32_t resetCount = 0;
 
 private:
     // sh2 C-callback trampolines
@@ -147,16 +163,18 @@ private:
     };
     ReportCfg reports_[kMaxReports] {};
 
-    volatile bool resetOccurred_       = false;
-    volatile bool userResetFlag_       = false;
-    volatile bool newQuaternion_       = false;
-    volatile bool newAccel_            = false;
-    volatile bool newGyroIntegratedRV_ = false;
-    volatile bool newValue_            = false;
+    bool resetOccurred_       = false;
+    bool userResetFlag_       = false;
+    bool newQuaternion_       = false;
+    bool newAccel_            = false;
+    bool newRawAccel_         = false;
+    bool newGyroIntegratedRV_ = false;
+    bool newValue_            = false;
 
-    uint32_t lastQuatStamp_us_   = 0;
-    uint32_t lastAccelStamp_us_  = 0;
-    uint32_t lastGiRvStamp_us_   = 0;
+    uint32_t lastQuatStamp_us_     = 0;
+    uint32_t lastAccelStamp_us_    = 0;
+    uint32_t lastRawAccelStamp_us_ = 0;
+    uint32_t lastGiRvStamp_us_     = 0;
 };
 
 #endif /* BNO085_HPP_ */
