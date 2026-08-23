@@ -121,6 +121,12 @@ public:
     uint32_t rxPacketCount() const;
     uint32_t spiErrorCount() const;
 
+    // Total number of hub resets (SH2_RESET async events) seen since
+    // begin(), for watching in a live debugger view. Unlike wasReset(),
+    // this never self-clears, so it shows whether the hub is
+    // reset-looping rather than just "did it reset since I last asked."
+    volatile uint32_t resetCount = 0;
+
 private:
     // sh2 C-callback trampolines
     static void sensorCallback(void* cookie, sh2_SensorEvent_t* event);

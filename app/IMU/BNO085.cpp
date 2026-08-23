@@ -603,6 +603,7 @@ void BNO085::asyncCallback(void* cookie, sh2_AsyncEvent_t* event)
     auto* self = static_cast<BNO085*>(cookie);
     if (event->eventId == SH2_RESET) {
         self->resetOccurred_ = true;
+        ++self->resetCount;
     }
 }
 
