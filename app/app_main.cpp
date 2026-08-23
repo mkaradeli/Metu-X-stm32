@@ -14,6 +14,7 @@
 #include "app_main.hpp"
 #include "main.h"
 #include "i2c.h"
+#include "spi.h"
 #include "ring_buffer.h"
 #include <string.h>
 #include "task_timer.h"
@@ -184,9 +185,9 @@ void app_init() {
       p.lever[2]   = 0.06f;
       p.sigmaAccel = 0.30f;
       g_altEst.configure(p);
-//	  if (!imu.begin(&hi2c1)) {          // 0x4A default, pass 0x4B if SA0 high
-////	          Error_Handler();
-//	      }
+	  if (!imu.begin(&hspi1)) {
+//	          Error_Handler();
+	      }
 	  imu.enableReport(SH2_ACCELEROMETER,  2500);
 	  imu.enableReport(SH2_GYRO_INTEGRATED_RV, 2500);   // 400 Hz
 //	  imu.enableReport(SH2_GAME_ROTATION_VECTOR,2500);

@@ -5,32 +5,36 @@
  *      Author: karadeli
  *
  * Implementation. The CEVA sh2_Hal_t transport is implemented here as
- * file-local static functions (polled, blocking I2C), so sh2_hal_init.h /
- * spi_hal.c are not needed at all.
+ * file-local static functions on top of SPI1 + DMA, so sh2_hal_init.h /
+ * the old CEVA spi_hal.c are not needed at all.
+ *
+ * State machine (spiActivate/spiCompleted) ported from CEVA's reference
+ * SPI HAL (sh2-demo-nucleo/app/spi_hal.c), swapping HAL_SPI_TransmitReceive_IT
+ * for the DMA-based transfer already wired up for hspi1 in spi.c.
  */
 
 #include "app_main.hpp"         // micros()
+#include "main.h"                // IMU_CS_Pin, IMU_RST_Pin, IMU_INT_Pin, IMU_P0_Pin
 #include "BNO085.hpp"
 
 #include <cstring>
 
 extern "C" {
 #include "sh2_hal.h"     // sh2_Hal_t, SH2_HAL_MAX_TRANSFER_*
-
 }
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-// Blocking-transfer timeout (writes + soft reset only).
-static constexpr uint32_t kI2cTimeoutMs = 100;
+// How long to wait for the hub to assert INTN after reset (t1+t2 ~= 94 ms
+// typical per the datasheet; generous margin for cold starts).
+static constexpr uint32_t kResetTimeoutMs = 500;
 
-// How long hal_write may wait for an in-flight DMA read to finish.
-// Worst-case packet (~384 B) at 400 kHz is ~9 ms on the wire.
-static constexpr uint32_t kWriteBusyTimeoutMs = 50;
-
-// DMA buffer placement/alignment. See header comment #1 above.
+// DMA buffer placement/alignment: RAM_D2 is configured non-cacheable by the
+// MPU (see MPU_Config() in main.c, region 0x30000000/512K), so no cache
+// maintenance is needed for buffers placed here -- they just need to be in
+// memory DMA2 can reach (DTCM is not DMA-accessible at all).
 #ifndef BNO085_DMA_BUF_ATTR
 #define BNO085_DMA_BUF_ATTR __attribute__((section(".RAM_D2_Section")))
 #endif
@@ -39,36 +43,218 @@ static constexpr uint32_t kWriteBusyTimeoutMs = 50;
 // File-local transport state
 // ---------------------------------------------------------------------------
 
-enum class DmaState : uint8_t { Idle, RdHdr, RdBody };
+enum class SpiState : uint8_t { Idle, RdHdr, RdBody, Write };
+
+// How many bytes to read when reading the SHTP length header
+static constexpr unsigned kReadLen = 4;
 
 static BNO085* s_active = nullptr;
-static I2C_HandleTypeDef* s_hi2c = nullptr;
-static uint16_t s_addr8 = 0;
+static SPI_HandleTypeDef* s_hspi = nullptr;
 
-static volatile DmaState s_state       = DmaState::Idle;
-static volatile bool     s_packetReady = false;   // completed packet in s_rxBuf
-static volatile uint16_t s_packetLen   = 0;
-static volatile uint32_t s_rxStamp_us  = 0;
+static volatile SpiState s_state = SpiState::Idle;
+
+// true from the time INTN is observed until a transfer is started for it
+static volatile bool s_rxReady = false;
+
+// true from the time the hub is put in reset until the first INTN
+static volatile bool s_inReset = false;
+
+static volatile uint32_t s_rxTimestamp_us = 0;
+
+// >0 once a full SHTP transfer is sitting in s_rxBuf, ready for hal_read()
+static volatile uint32_t s_rxBufLen = 0;
+
+// >0 while a write is queued, waiting for the hub to wake up
+static volatile uint32_t s_txBufLen = 0;
 
 static volatile uint32_t s_rxPacketCount = 0;
-static volatile uint32_t s_i2cErrCount   = 0;
+static volatile uint32_t s_spiErrCount   = 0;
 
-// 32-byte aligned AND padded to a multiple of 32 so cache invalidation
-// never touches neighboring data.
+// 32-byte aligned AND padded to a multiple of 32, matching the original I2C
+// buffer sizing (cosmetic here since RAM_D2 isn't cached, but keeps DMA
+// transfers on tidy boundaries).
 static constexpr size_t kRxBufSize =
     ((SH2_HAL_MAX_TRANSFER_IN + 31u) / 32u) * 32u;
+static constexpr size_t kTxBufSize =
+    ((SH2_HAL_MAX_TRANSFER_OUT + 31u) / 32u) * 32u;
+
 BNO085_DMA_BUF_ATTR static uint8_t s_rxBuf[kRxBufSize];
+BNO085_DMA_BUF_ATTR static uint8_t s_txBuf[kTxBufSize];
+// Dummy all-zero MOSI data clocked out while reading (header or body).
+BNO085_DMA_BUF_ATTR static const uint8_t s_txZeros[kRxBufSize] = {0};
 
 static uint32_t timeNowUs()
 {
     return micros();
 }
 
-static inline void invalidateRxBuf(size_t bytes)
+// ---------------------------------------------------------------------------
+// GPIO helpers
+// ---------------------------------------------------------------------------
+
+static inline void csAssert(bool asserted)
 {
-//    SCB_InvalidateDCache_by_Addr(
-//        reinterpret_cast<uint32_t*>(s_rxBuf),
-//        static_cast<int32_t>(((bytes + 31u) / 32u) * 32u));
+    HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin,
+                       asserted ? GPIO_PIN_RESET : GPIO_PIN_SET);
+}
+
+static inline void rstRelease(bool released)
+{
+    HAL_GPIO_WritePin(IMU_RST_GPIO_Port, IMU_RST_Pin,
+                       released ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+// PS0/WAKE: idle high, driven low to request the hub wake up / assert INTN.
+static inline void wakeIdle(bool idle)
+{
+    HAL_GPIO_WritePin(IMU_P0_GPIO_Port, IMU_P0_Pin,
+                       idle ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+// Scoped critical section around the shared state machine: only the
+// transport's own IRQ sources are masked, so the rest of the system's
+// real-time interrupts (ADC/timer ISRs etc.) are never touched.
+static inline void criticalEnter()
+{
+    HAL_NVIC_DisableIRQ(EXTI15_10_IRQn);
+    HAL_NVIC_DisableIRQ(DMA2_Stream0_IRQn);
+    HAL_NVIC_DisableIRQ(DMA2_Stream1_IRQn);
+}
+
+static inline void criticalExit()
+{
+    HAL_NVIC_EnableIRQ(DMA2_Stream1_IRQn);
+    HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+    HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+}
+
+// ---------------------------------------------------------------------------
+// SPI bus state machine (ISR/DMA-callback context, mirrors CEVA's
+// reference spi_hal.c spiActivate()/spiCompleted())
+// ---------------------------------------------------------------------------
+
+// Attempt to start a SPI operation. Called from EXTI (INTN) context, from
+// DMA-completion context (to chain the next phase or start a queued op),
+// and from hal_read()/hal_write() (inside a critical section) once the bus
+// is free.
+static void spiActivate()
+{
+    if ((s_state == SpiState::Idle) && (s_rxBufLen == 0)) {
+        if (s_rxReady) {
+            s_rxReady = false;
+
+            csAssert(true);
+
+            if (s_txBufLen > 0) {
+                s_state = SpiState::Write;
+                HAL_SPI_TransmitReceive_DMA(s_hspi, s_txBuf, s_rxBuf,
+                                             (uint16_t)s_txBufLen);
+                wakeIdle(true);   // release WAKE now that CS has it covered
+            } else {
+                s_state = SpiState::RdHdr;
+                HAL_SPI_TransmitReceive_DMA(s_hspi, s_txZeros, s_rxBuf,
+                                             kReadLen);
+            }
+        }
+    }
+}
+
+// Handle the end of a SPI DMA operation. May start a follow-up operation
+// (header -> body) or return to idle, in which case it tries to start the
+// next queued operation via spiActivate().
+static void spiCompleted()
+{
+    uint16_t rxLen = (uint16_t)(s_rxBuf[0] | (s_rxBuf[1] << 8)) & (uint16_t)~0x8000;
+    if (rxLen > kRxBufSize) {
+        rxLen = (uint16_t)kRxBufSize;
+    }
+
+    switch (s_state) {
+    case SpiState::RdHdr:
+        if (rxLen > kReadLen) {
+            // More to read: continue clocking within the same CS window
+            // (SPI has no restart condition, so the body follows directly).
+            s_state = SpiState::RdBody;
+            HAL_SPI_TransmitReceive_DMA(s_hspi, s_txZeros,
+                                         s_rxBuf + kReadLen,
+                                         (uint16_t)(rxLen - kReadLen));
+        } else {
+            // No SHTP payload beyond the header; done.
+            csAssert(false);
+            s_rxBufLen = 0;
+            s_state = SpiState::Idle;
+            spiActivate();
+        }
+        break;
+
+    case SpiState::RdBody:
+        csAssert(false);
+        s_rxBufLen = rxLen;
+        s_state = SpiState::Idle;
+        ++s_rxPacketCount;
+        spiActivate();
+        break;
+
+    case SpiState::Write:
+        csAssert(false);
+        // Transaction only covered txBufLen bytes, so at most that many
+        // bytes of whatever the hub sent back are valid.
+        s_rxBufLen = (s_txBufLen < rxLen) ? s_txBufLen : rxLen;
+        s_txBufLen = 0;
+        s_state = SpiState::Idle;
+        if (s_rxBufLen > 0) {
+            ++s_rxPacketCount;
+        }
+        spiActivate();
+        break;
+
+    default:
+        break;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// HAL callbacks (ISR context)
+// ---------------------------------------------------------------------------
+
+extern "C" void HAL_GPIO_EXTI_Callback(uint16_t pin)
+{
+    if (pin != IMU_INT_Pin) {
+        return;
+    }
+    if (s_active == nullptr) {
+        return;
+    }
+
+    s_rxTimestamp_us = timeNowUs();
+    s_inReset = false;
+    s_rxReady = true;
+
+    spiActivate();
+}
+
+extern "C" void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef* hspi)
+{
+    if ((s_hspi == nullptr) || (hspi->Instance != s_hspi->Instance)) {
+        return;
+    }
+    if (s_active == nullptr) {
+        return;
+    }
+    spiCompleted();
+}
+
+extern "C" void HAL_SPI_ErrorCallback(SPI_HandleTypeDef* hspi)
+{
+    if ((s_hspi == nullptr) || (hspi->Instance != s_hspi->Instance)) {
+        return;
+    }
+    ++s_spiErrCount;
+    csAssert(false);
+    s_state = SpiState::Idle;
+    s_txBufLen = 0;
+    // Leave s_rxReady/rxBufLen alone: the next INTN edge (or a still-set
+    // rxReady) will retry.
 }
 
 // ---------------------------------------------------------------------------
@@ -77,79 +263,76 @@ static inline void invalidateRxBuf(size_t bytes)
 
 static int hal_open(sh2_Hal_t* /*self*/)
 {
-    // SHTP soft-reset packet: len=5 (LSB,MSB), channel 1 (executable),
-    // seq 0, command 1 = reset.
-    static const uint8_t softreset_pkt[] = {5, 0, 1, 0, 1};
+    s_state       = SpiState::Idle;
+    s_rxBufLen    = 0;
+    s_txBufLen    = 0;
+    s_rxReady     = false;
 
-    s_state       = DmaState::Idle;
-    s_packetReady = false;
-    s_packetLen   = 0;
+    // Hold the hub in reset while lines settle.
+    rstRelease(false);
+    csAssert(false);
 
-    // The hub NACKs while booting; retry a few times.
-    bool ok = false;
-    for (int attempt = 0; attempt < 5; ++attempt) {
-        if (HAL_I2C_Master_Transmit(s_hi2c, s_addr8,
-                                    const_cast<uint8_t*>(softreset_pkt),
-                                    sizeof(softreset_pkt),
-                                    kI2cTimeoutMs) == HAL_OK) {
-            ok = true;
-            break;
+    // PS0/WAKE (and PS1, tied high on the PCB) must be high from before
+    // reset until the first INTN assertion to select SPI mode.
+    wakeIdle(true);
+
+    s_inReset = true;   // cleared by HAL_GPIO_EXTI_Callback on first INTN
+
+    HAL_Delay(1);        // >> tnrst (10 ns min)
+
+    rstRelease(true);    // release reset, hub begins booting
+
+    const uint32_t start = HAL_GetTick();
+    while (s_inReset) {
+        if ((HAL_GetTick() - start) > kResetTimeoutMs) {
+            return SH2_ERR_IO;   // no INTN: wiring / power?
         }
-        HAL_Delay(30);
     }
-    if (!ok) {
-        return SH2_ERR_IO;   // no ACK: wiring / address (0x4A vs 0x4B)?
-    }
-
-    // Let the hub reboot. Advertisement + reset-complete packets will then
-    // be pending; sh2_open() collects them through hal_read().
-    HAL_Delay(300);
 
     return SH2_OK;
 }
 
 static void hal_close(sh2_Hal_t* /*self*/)
 {
-    // Abort any in-flight DMA so callbacks stop firing.
-    (void)HAL_I2C_Master_Abort_IT(s_hi2c, s_addr8);
-    s_state       = DmaState::Idle;
-    s_packetReady = false;
+    criticalEnter();
+    (void)HAL_SPI_Abort(s_hspi);
+    csAssert(false);
+    rstRelease(false);   // hold hub in reset
+    s_state    = SpiState::Idle;
+    s_rxBufLen = 0;
+    s_txBufLen = 0;
+    s_rxReady  = false;
+    criticalExit();
 }
 
-// Non-blocking read:
-//  - a completed packet is returned immediately
-//  - otherwise, if idle, a DMA header read is started and 0 is returned
+// Non-blocking read: returns a completed packet if one is ready, and frees
+// the receive buffer so any write that was waiting for it can proceed.
 static int hal_read(sh2_Hal_t* /*self*/, uint8_t* pBuffer, unsigned len,
                     uint32_t* t)
 {
-    if (s_packetReady) {
-        uint16_t n = s_packetLen;
-        if (n > len) {
-            n = (uint16_t)len;   // shouldn't happen: sh2 passes MAX_TRANSFER_IN
+    int retval = 0;
+
+    if (s_rxBufLen > 0) {
+        if (len >= s_rxBufLen) {
+            std::memcpy(pBuffer, s_rxBuf, s_rxBufLen);
+            retval = (int)s_rxBufLen;
+            *t = s_rxTimestamp_us;
+        } else {
+            retval = SH2_ERR_BAD_PARAM;   // shouldn't happen: sh2 passes MAX_TRANSFER_IN
         }
-        std::memcpy(pBuffer, s_rxBuf, n);
-        *t = s_rxStamp_us;
-        s_packetReady = false;   // frees the buffer; next read re-arms DMA
-        return n;
+        s_rxBufLen = 0;
+
+        criticalEnter();
+        spiActivate();
+        criticalExit();
     }
 
-    if (s_state == DmaState::Idle) {
-        // No dirty lines exist (CPU never writes s_rxBuf), but invalidate
-        // before starting so no stale lines survive into the transfer.
-        invalidateRxBuf(4);
-        s_state = DmaState::RdHdr;
-        if (HAL_I2C_Master_Receive_DMA(s_hi2c, s_addr8, s_rxBuf, 4)
-            != HAL_OK) {
-            ++s_i2cErrCount;
-            s_state = DmaState::Idle;
-        }
-    }
-
-    return 0;
+    return retval;
 }
 
-// Blocking write. Writes are rare (config traffic), so we simply wait for
-// any in-flight DMA read to drain, then transmit synchronously.
+// Queues a write and requests the hub wake up. Non-blocking: the transfer
+// itself happens once INTN asserts (immediately, if the hub is already
+// awake and idle).
 static int hal_write(sh2_Hal_t* /*self*/, uint8_t* pBuffer, unsigned len)
 {
     if ((len > 0) && (pBuffer == nullptr)) {
@@ -158,21 +341,21 @@ static int hal_write(sh2_Hal_t* /*self*/, uint8_t* pBuffer, unsigned len)
     if (len == 0) {
         return 0;
     }
-
-    const uint32_t start = HAL_GetTick();
-    while (s_state != DmaState::Idle) {
-        if ((HAL_GetTick() - start) > kWriteBusyTimeoutMs) {
-            ++s_i2cErrCount;
-            return 0;   // sh2 lib retries
-        }
-        // DMA/I2C ISRs advance the state machine while we spin.
+    if (len > sizeof(s_txBuf)) {
+        return SH2_ERR_BAD_PARAM;
     }
 
-    if (HAL_I2C_Master_Transmit(s_hi2c, s_addr8, pBuffer, (uint16_t)len,
-                                kI2cTimeoutMs) != HAL_OK) {
-        ++s_i2cErrCount;
-        return 0;
+    if (s_txBufLen != 0) {
+        return 0;   // previous write still pending; sh2 lib retries
     }
+
+    std::memcpy(s_txBuf, pBuffer, len);
+    s_txBufLen = len;
+
+    criticalEnter();
+    wakeIdle(false);   // assert WAKE
+    criticalExit();
+
     return (int)len;
 }
 
@@ -191,89 +374,29 @@ static sh2_Hal_t s_hal = {
 };
 
 // ---------------------------------------------------------------------------
-// HAL callbacks (ISR context)
-// ---------------------------------------------------------------------------
-
-extern "C" void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef* hi2c)
-{
-    if ((s_hi2c == nullptr) || (hi2c->Instance != s_hi2c->Instance)) {
-        return;
-    }
-
-    if (s_state == DmaState::RdHdr) {
-        // DMA wrote behind the cache: invalidate before parsing.
-        invalidateRxBuf(4);
-
-        uint16_t len =
-            (uint16_t)(s_rxBuf[0] | (s_rxBuf[1] << 8)) & (uint16_t)~0x8000;
-
-        // 0x0000: nothing pending. 0x7FFF (0xFFFF masked): bus garbage.
-        if ((len == 0) || (len == 0x7FFF)) {
-            s_state = DmaState::Idle;
-            return;
-        }
-        if (len > SH2_HAL_MAX_TRANSFER_IN) {
-            // Remainder arrives as a continuation transfer; shtp reassembles.
-            len = SH2_HAL_MAX_TRANSFER_IN;
-        }
-
-        s_rxStamp_us = timeNowUs();
-        s_packetLen  = len;
-
-        // Chain the body read. The device re-sends the header (continuation
-        // bit set) followed by the payload; shtp masks the bit itself.
-        invalidateRxBuf(len);
-        s_state = DmaState::RdBody;
-        if (HAL_I2C_Master_Receive_DMA(s_hi2c, s_addr8, s_rxBuf, len)
-            != HAL_OK) {
-            ++s_i2cErrCount;
-            s_state = DmaState::Idle;
-        }
-    }
-    else if (s_state == DmaState::RdBody) {
-        invalidateRxBuf(s_packetLen);
-        ++s_rxPacketCount;
-        s_packetReady = true;    // consumed by hal_read in main context
-        s_state = DmaState::Idle;
-    }
-}
-
-extern "C" void HAL_I2C_ErrorCallback(I2C_HandleTypeDef* hi2c)
-{
-    if ((s_hi2c == nullptr) || (hi2c->Instance != s_hi2c->Instance)) {
-        return;
-    }
-    // Typically a NACK (device momentarily busy). Drop the transfer and
-    // return to idle; the next hal_read re-polls.
-    ++s_i2cErrCount;
-    s_state = DmaState::Idle;
-}
-
-// ---------------------------------------------------------------------------
 // BNO085 class
 // ---------------------------------------------------------------------------
 
-bool BNO085::begin(I2C_HandleTypeDef* hi2c, uint8_t addr7)
+bool BNO085::begin(SPI_HandleTypeDef* hspi)
 {
     if (s_active != nullptr && s_active != this) {
         // sh2 library state is global: one instance only.
         return false;
     }
-    if (hi2c == nullptr) {
+    if (hspi == nullptr) {
         return false;
     }
 
-    hi2c_  = hi2c;
-    addr8_ = (uint16_t)(addr7 << 1);
+    hspi_ = hspi;
 
     s_active = this;
-    s_hi2c   = hi2c_;
-    s_addr8  = addr8_;
+    s_hspi   = hspi_;
 
-    // Opens the transport (soft reset inside hal_open) and processes the
-    // hub's startup traffic. Blocks internally until done.
+    // Opens the transport (hardware reset inside hal_open) and processes
+    // the hub's startup traffic. Blocks internally until done.
     if (sh2_open(&s_hal, asyncCallback, this) != SH2_OK) {
         s_active = nullptr;
+        s_hspi   = nullptr;
         return false;
     }
 
@@ -299,6 +422,7 @@ void BNO085::end()
     }
     if (s_active == this) {
         s_active = nullptr;
+        s_hspi   = nullptr;
     }
 }
 
@@ -411,7 +535,7 @@ bool BNO085::wasReset()
 }
 
 uint32_t BNO085::rxPacketCount() const { return s_rxPacketCount; }
-uint32_t BNO085::i2cErrorCount() const { return s_i2cErrCount; }
+uint32_t BNO085::spiErrorCount() const { return s_spiErrCount; }
 
 // --- sh2 callback plumbing -------------------------------------------------
 
