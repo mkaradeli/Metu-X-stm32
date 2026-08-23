@@ -563,18 +563,23 @@ void BNO085::handleSensorEvent(const sh2_SensorEvent_t* event)
     }
 
     const uint32_t now = timeNowUs();
+    // Hub-reported, delay-compensated sample time (sh2_decodeSensorEvent()
+    // sets this from the SHTP receive timestamp minus the report's own
+    // internal delay), truncated to 32 bits -- intervals are microseconds
+    // apart, far below the 32-bit wraparound period.
+    const uint32_t stamp = (uint32_t)value.timestamp;
 
     switch (value.sensorId) {
     case SH2_LINEAR_ACCELERATION:
         linearAccel = value.un.linearAcceleration;
-        accelInterval_us = now - lastAccelStamp_us_;
-        lastAccelStamp_us_ = now;
+        accelInterval_us = stamp - lastAccelStamp_us_;
+        lastAccelStamp_us_ = stamp;
         newAccel_ = true;
         break;
     case SH2_ACCELEROMETER:
     	accel = value.un.accelerometer;
-    	accelInterval_us = now - lastAccelStamp_us_;
-		lastAccelStamp_us_ = now;
+    	accelInterval_us = stamp - lastAccelStamp_us_;
+		lastAccelStamp_us_ = stamp;
 		newAccel_ = true;
 		break;
     case SH2_GAME_ROTATION_VECTOR:
@@ -590,8 +595,8 @@ void BNO085::handleSensorEvent(const sh2_SensorEvent_t* event)
         // gyro-integrator, so it can run much faster than the fused
         // game-rotation-vector (up to ~1 kHz).
         gyroIntegratedRV = value.un.gyroIntegratedRV;
-        gyroIntegratedRVInterval_us = now - lastGiRvStamp_us_;
-        lastGiRvStamp_us_ = now;
+        gyroIntegratedRVInterval_us = stamp - lastGiRvStamp_us_;
+        lastGiRvStamp_us_ = stamp;
         newGyroIntegratedRV_ = true;
         break;
 
