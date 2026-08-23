@@ -70,6 +70,12 @@ static volatile uint32_t s_txBufLen = 0;
 static volatile uint32_t s_rxPacketCount = 0;
 static volatile uint32_t s_spiErrCount   = 0;
 
+// Tick (ms) at which the current non-Idle transfer was started, and how
+// long to wait before assuming it's wedged. A full 1024-byte transfer at
+// 3 MHz takes ~2.7 ms; this leaves a wide margin for scheduling jitter.
+static volatile uint32_t s_transferStartTick = 0;
+static constexpr uint32_t kTransferTimeoutMs = 20;
+
 // 32-byte aligned AND padded to a multiple of 32, matching the original I2C
 // buffer sizing (cosmetic here since RAM_D2 isn't cached, but keeps DMA
 // transfers on tidy boundaries).
@@ -135,6 +141,22 @@ static inline void criticalExit()
 // reference spi_hal.c spiActivate()/spiCompleted())
 // ---------------------------------------------------------------------------
 
+// Starts a DMA transfer and records when it started (for the watchdog in
+// service()). Returns false if the HAL call itself failed to start a
+// transfer -- in that case no completion callback will ever arrive, so the
+// caller must not leave s_state pointing at a phase with nothing in flight.
+static bool spiStart(const uint8_t* tx, uint8_t* rx, uint16_t len)
+{
+    if (HAL_SPI_TransmitReceive_DMA(s_hspi, tx, rx, len) != HAL_OK) {
+        ++s_spiErrCount;
+        csAssert(false);
+        s_state = SpiState::Idle;
+        return false;
+    }
+    s_transferStartTick = HAL_GetTick();
+    return true;
+}
+
 // Attempt to start a SPI operation. Called from EXTI (INTN) context, from
 // DMA-completion context (to chain the next phase or start a queued op),
 // and from hal_read()/hal_write() (inside a critical section) once the bus
@@ -149,13 +171,12 @@ static void spiActivate()
 
             if (s_txBufLen > 0) {
                 s_state = SpiState::Write;
-                HAL_SPI_TransmitReceive_DMA(s_hspi, s_txBuf, s_rxBuf,
-                                             (uint16_t)s_txBufLen);
-                wakeIdle(true);   // release WAKE now that CS has it covered
+                if (spiStart(s_txBuf, s_rxBuf, (uint16_t)s_txBufLen)) {
+                    wakeIdle(true);   // release WAKE now that CS has it covered
+                }
             } else {
                 s_state = SpiState::RdHdr;
-                HAL_SPI_TransmitReceive_DMA(s_hspi, s_txZeros, s_rxBuf,
-                                             kReadLen);
+                spiStart(s_txZeros, s_rxBuf, kReadLen);
             }
         }
     }
@@ -177,9 +198,10 @@ static void spiCompleted()
             // More to read: continue clocking within the same CS window
             // (SPI has no restart condition, so the body follows directly).
             s_state = SpiState::RdBody;
-            HAL_SPI_TransmitReceive_DMA(s_hspi, s_txZeros,
-                                         s_rxBuf + kReadLen,
-                                         (uint16_t)(rxLen - kReadLen));
+            if (!spiStart(s_txZeros, s_rxBuf + kReadLen,
+                           (uint16_t)(rxLen - kReadLen))) {
+                spiActivate();   // nothing in flight now; try the next op
+            }
         } else {
             // No SHTP payload beyond the header; done.
             csAssert(false);
@@ -214,6 +236,34 @@ static void spiCompleted()
     default:
         break;
     }
+}
+
+// Safety net for whatever spiStart()'s HAL_OK check doesn't catch (e.g. a
+// DMA transfer that HAL reports as started but whose completion callback
+// never arrives). Called every service() tick from application context;
+// if a transfer has been in flight too long, force the bus back to a known
+// state so the driver keeps running instead of staying wedged for the rest
+// of the flight.
+static void spiWatchdog()
+{
+    if (s_state == SpiState::Idle) {
+        return;
+    }
+    if ((HAL_GetTick() - s_transferStartTick) <= kTransferTimeoutMs) {
+        return;
+    }
+
+    criticalEnter();
+    if (s_state != SpiState::Idle) {
+        (void)HAL_SPI_Abort(s_hspi);
+        csAssert(false);
+        ++s_spiErrCount;
+        s_state    = SpiState::Idle;
+        s_rxBufLen = 0;
+        s_txBufLen = 0;
+        spiActivate();   // in case rxReady is already pending
+    }
+    criticalExit();
 }
 
 // ---------------------------------------------------------------------------
@@ -435,6 +485,7 @@ void BNO085::service()
         return;
     }
 
+    spiWatchdog();
     sh2_service();
 
     // Hub reset (brown-out, watchdog, firmware fault): all report configs
