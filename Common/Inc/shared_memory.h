@@ -69,9 +69,9 @@ typedef struct __attribute__((packed)) {
 	uint8_t kf_flags;
 
 
-	uint32_t actuator_mode; // DISABLED, DUTY, CURRENT, ... FORCE
-	uint32_t mission_modes; // DISABLED,  TESTFIRE, DROP, HOVER
-	uint32_t system_modes;
+//	uint32_t actuator_mode; // DISABLED, DUTY, CURRENT, ... FORCE
+//	uint32_t mission_modes; // DISABLED,  TESTFIRE, DROP, HOVER
+//	uint32_t system_modes;
 
 
 

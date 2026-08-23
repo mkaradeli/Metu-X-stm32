@@ -28,7 +28,7 @@
 //#include "platformController.h"
 
 #include "BNO085.hpp"
-#include "sd_task.hpp"
+//#include "sd_task.hpp"
 BNO085 imu;
 
 
@@ -184,9 +184,9 @@ void app_init() {
       p.lever[2]   = 0.06f;
       p.sigmaAccel = 0.30f;
       g_altEst.configure(p);
-	  if (!imu.begin(&hi2c1)) {          // 0x4A default, pass 0x4B if SA0 high
-//	          Error_Handler();
-	      }
+//	  if (!imu.begin(&hi2c1)) {          // 0x4A default, pass 0x4B if SA0 high
+////	          Error_Handler();
+//	      }
 	  imu.enableReport(SH2_ACCELEROMETER,  2500);
 	  imu.enableReport(SH2_GYRO_INTEGRATED_RV, 2500);   // 400 Hz
 //	  imu.enableReport(SH2_GAME_ROTATION_VECTOR,2500);
@@ -258,6 +258,10 @@ void app_init() {
     mission_uart_init(&huart3);       // whichever UART your ground link is on
     g_altEst.beginCalibration();
     calStartTick = uwTick;
+    HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, GPIO_PIN_SET);
 
 //	const uint8_t tv[] = "123456789";
 //		uint16_t crc = crc16_calc(tv, 9);
@@ -414,10 +418,10 @@ void app_loop() {
 //		imu.service();                 // poll at least every ~1 ms
 //		IMU_profiler.end();
 //	}
-	if (task_ready(&sd_card_task)) { // 500 ms
-			sd_card_prep();
-		}
-	sd_card_task_function(); // every iter
+//	if (task_ready(&sd_card_task)) { // 500 ms
+//			sd_card_prep();
+//		}
+//	sd_card_task_function(); // every iter
 }
 
 

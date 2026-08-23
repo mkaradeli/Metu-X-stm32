@@ -17,12 +17,10 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include <shared_memory.h>
 #include "main.h"
 #include "adc.h"
 #include "crc.h"
 #include "dma.h"
-#include "fatfs.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
@@ -32,6 +30,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app_main.hpp"
+#include <shared_memory.h>
+
 //#include "shared_log.h"
 #include "ring_buffer.h"
 #include "task_timer.h"
@@ -68,7 +68,6 @@ __IO uint32_t BspButtonState = BUTTON_RELEASED;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void PeriphCommonClock_Config(void);
 static void MPU_Config(void);
 /* USER CODE BEGIN PFP */
 
@@ -110,10 +109,7 @@ int main(void)
   /* USER CODE END 1 */
 
   /* MPU Configuration--------------------------------------------------------*/
-
-
-
-	MPU_Config();
+  MPU_Config();
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -126,9 +122,6 @@ int main(void)
 
   /* Configure the system clock */
   SystemClock_Config();
-
-  /* Configure the peripherals common clocks */
-  PeriphCommonClock_Config();
 
   /* USER CODE BEGIN SysInit */
 
@@ -144,18 +137,17 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_TIM4_Init();
-  MX_I2C1_Init();
   MX_SPI1_Init();
-  MX_SPI2_Init();
   MX_USART2_UART_Init();
   MX_CRC_Init();
   MX_TIM6_Init();
   MX_USART6_UART_Init();
   MX_TIM5_Init();
-  MX_FATFS_Init();
   MX_USART3_UART_Init();
   MX_TIM7_Init();
   MX_TIM12_Init();
+  MX_I2C4_Init();
+  MX_SPI4_Init();
   /* USER CODE BEGIN 2 */
   rb_init(&common_print_buffer);
   rb_tx_init(&common_print_buffer, &huart3);
@@ -164,6 +156,7 @@ int main(void)
 
   /* Initialize leds */
   BSP_LED_Init(LED_GREEN);
+  BSP_LED_Init(LED_BLUE);
   BSP_LED_Init(LED_RED);
 
   /* Initialize User push-button without interrupt mode. */
@@ -226,7 +219,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLM = 4;
   RCC_OscInitStruct.PLL.PLLN = 50;
   RCC_OscInitStruct.PLL.PLLP = 2;
-  RCC_OscInitStruct.PLL.PLLQ = 5;
+  RCC_OscInitStruct.PLL.PLLQ = 16;
   RCC_OscInitStruct.PLL.PLLR = 2;
   RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
@@ -250,32 +243,6 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-}
-
-/**
-  * @brief Peripherals Common Clock Configuration
-  * @retval None
-  */
-void PeriphCommonClock_Config(void)
-{
-  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
-
-  /** Initializes the peripherals clock
-  */
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_SPI2|RCC_PERIPHCLK_SPI1;
-  PeriphClkInitStruct.PLL2.PLL2M = 4;
-  PeriphClkInitStruct.PLL2.PLL2N = 25;
-  PeriphClkInitStruct.PLL2.PLL2P = 8;
-  PeriphClkInitStruct.PLL2.PLL2Q = 2;
-  PeriphClkInitStruct.PLL2.PLL2R = 2;
-  PeriphClkInitStruct.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_3;
-  PeriphClkInitStruct.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
-  PeriphClkInitStruct.PLL2.PLL2FRACN = 0;
-  PeriphClkInitStruct.Spi123ClockSelection = RCC_SPI123CLKSOURCE_PLL2;
-  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
     Error_Handler();
   }

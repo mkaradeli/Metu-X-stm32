@@ -49,8 +49,8 @@ MEMORY
 /* Start MX regions */
   DTCMRAM	(xrw)	: ORIGIN = 0x20000000, LENGTH = 128K
   FLASH	(rx)	: ORIGIN = 0x08000000, LENGTH = 2048K
-  RAM_D3	(xrw)	: ORIGIN = 0x38000000, LENGTH = 64K
   ITCMRAM	(xrw)	: ORIGIN = 0x00000000, LENGTH = 64K
+  RAM_D3	(xrw)	: ORIGIN = 0x38000000, LENGTH = 64K
   RAM_D2	(xrw)	: ORIGIN = 0x30000000, LENGTH = 288K
   RAM	(xrw)	: ORIGIN = 0x24000000, LENGTH = 512K
 /* End MX regions */
@@ -189,14 +189,6 @@ SECTIONS
     . = ALIGN(4);
   } >DTCMRAM
 
- /*  Unitialized RAM_D3 section into "RAM_D3" RAM_D3 type memory [MMT section] */
- .RAM_D3_Section :
-  {
-    . = ALIGN(4);
-    KEEP (*(.RAM_D3_Section))
-    . = ALIGN(4);
-  } >RAM_D3
-
  /*  Unitialized ITCMRAM section into "ITCMRAM" ITCMRAM type memory [MMT section] */
  .ITCMRAM_Section :
   {
@@ -204,6 +196,14 @@ SECTIONS
     KEEP (*(.ITCMRAM_Section))
     . = ALIGN(4);
   } >ITCMRAM
+
+ /*  Unitialized RAM_D3 section into "RAM_D3" RAM_D3 type memory [MMT section] */
+ .RAM_D3_Section :
+  {
+    . = ALIGN(4);
+    KEEP (*(.RAM_D3_Section))
+    . = ALIGN(4);
+  } >RAM_D3
 
  /*  Unitialized RAM_D2 section into "RAM_D2" RAM_D2 type memory [MMT section] */
  .RAM_D2_Section :

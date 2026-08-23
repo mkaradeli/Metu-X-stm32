@@ -18,10 +18,10 @@ extern uint16_t adc_dma_buf_encoder[8*4];
 extern uint16_t adc_dma_buf_pressure[5];
 
 static Motor motors[4] = {
-		Motor(LEFT_EN_1_GPIO_Port, LEFT_EN_1_Pin, RIGHT_EN_1_GPIO_Port, RIGHT_EN_1_Pin, &htim1, TIM_CHANNEL_2),
-		Motor(LEFT_EN_2_GPIO_Port, LEFT_EN_2_Pin, RIGHT_EN_2_GPIO_Port, RIGHT_EN_2_Pin, &htim1, TIM_CHANNEL_1),
-		Motor(LEFT_EN_3_GPIO_Port, LEFT_EN_3_Pin, RIGHT_EN_3_GPIO_Port, RIGHT_EN_3_Pin, &htim1, TIM_CHANNEL_4),
-		Motor(LEFT_EN_4_GPIO_Port, LEFT_EN_4_Pin, RIGHT_EN_4_GPIO_Port, RIGHT_EN_4_Pin, &htim1, TIM_CHANNEL_3),
+		Motor(LEFT_EN_0_GPIO_Port, LEFT_EN_0_Pin, RIGHT_EN_0_GPIO_Port, RIGHT_EN_0_Pin, &htim1, TIM_CHANNEL_2),
+		Motor(LEFT_EN_1_GPIO_Port, LEFT_EN_1_Pin, RIGHT_EN_1_GPIO_Port, RIGHT_EN_1_Pin, &htim1, TIM_CHANNEL_1),
+		Motor(LEFT_EN_2_GPIO_Port, LEFT_EN_2_Pin, RIGHT_EN_2_GPIO_Port, RIGHT_EN_2_Pin, &htim1, TIM_CHANNEL_4),
+		Motor(LEFT_EN_3_GPIO_Port, LEFT_EN_3_Pin, RIGHT_EN_3_GPIO_Port, RIGHT_EN_3_Pin, &htim1, TIM_CHANNEL_3),
 };
 
 static PressureSensor psSensors[5] = {
@@ -49,7 +49,7 @@ const uint16_t logFormatId = 17;
 
 const uint16_t sensorDataLength = sizeof(SensorData_t);
 
-static_assert(sensorDataLength == 329,"aaaaaaa");
+static_assert(sensorDataLength == 317,"aaaaaaa");
 
 
 Lidar lidar = Lidar(&huart6);
