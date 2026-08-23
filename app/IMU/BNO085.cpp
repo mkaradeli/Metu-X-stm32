@@ -81,7 +81,9 @@ static constexpr size_t kTxBufSize =
 BNO085_DMA_BUF_ATTR static uint8_t s_rxBuf[kRxBufSize];
 BNO085_DMA_BUF_ATTR static uint8_t s_txBuf[kTxBufSize];
 // Dummy all-zero MOSI data clocked out while reading (header or body).
-BNO085_DMA_BUF_ATTR static const uint8_t s_txZeros[kRxBufSize] = {0};
+// Not const: a const array placed in the same named section as the
+// writable buffers above causes a section-type conflict at link time.
+BNO085_DMA_BUF_ATTR static uint8_t s_txZeros[kRxBufSize] = {0};
 
 static uint32_t timeNowUs()
 {
@@ -208,6 +210,7 @@ static void spiCompleted()
         spiActivate();
         break;
 
+    case SpiState::Idle:
     default:
         break;
     }
