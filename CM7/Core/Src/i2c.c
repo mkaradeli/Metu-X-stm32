@@ -90,17 +90,25 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
       Error_Handler();
     }
 
+    __HAL_RCC_GPIOF_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
     /**I2C4 GPIO Configuration
+    PF15     ------> I2C4_SDA
     PD12     ------> I2C4_SCL
-    PD13     ------> I2C4_SDA
     */
-    GPIO_InitStruct.Pin = BARO_I2C4_SCL_Pin|BARO_I2C4_SDA_Pin;
+    GPIO_InitStruct.Pin = BARO_I2C4_SDA_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF4_I2C4;
-    HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+    HAL_GPIO_Init(BARO_I2C4_SDA_GPIO_Port, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = BARO_I2C4_SCL_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Alternate = GPIO_AF4_I2C4;
+    HAL_GPIO_Init(BARO_I2C4_SCL_GPIO_Port, &GPIO_InitStruct);
 
     /* I2C4 clock enable */
     __HAL_RCC_I2C4_CLK_ENABLE();
@@ -122,12 +130,12 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
     __HAL_RCC_I2C4_CLK_DISABLE();
 
     /**I2C4 GPIO Configuration
+    PF15     ------> I2C4_SDA
     PD12     ------> I2C4_SCL
-    PD13     ------> I2C4_SDA
     */
-    HAL_GPIO_DeInit(BARO_I2C4_SCL_GPIO_Port, BARO_I2C4_SCL_Pin);
-
     HAL_GPIO_DeInit(BARO_I2C4_SDA_GPIO_Port, BARO_I2C4_SDA_Pin);
+
+    HAL_GPIO_DeInit(BARO_I2C4_SCL_GPIO_Port, BARO_I2C4_SCL_Pin);
 
   /* USER CODE BEGIN I2C4_MspDeInit 1 */
 

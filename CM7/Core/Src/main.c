@@ -21,9 +21,12 @@
 #include "adc.h"
 #include "crc.h"
 #include "dma.h"
+#include "fatfs.h"
 #include "i2c.h"
+#include "sdmmc.h"
 #include "spi.h"
 #include "tim.h"
+#include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -34,6 +37,8 @@
 #include "ring_buffer.h"
 #include "task_timer.h"
 #include "shared_memory.h"
+#include <stdio.h>
+
 
 
 
@@ -78,7 +83,6 @@ void sd_mount_check (void);
 
 /* Private variables ---------------------------------------------------------*/
 
-COM_InitTypeDef BspCOMInit;
 __IO uint32_t BspButtonState = BUTTON_RELEASED;
 
 /* USER CODE BEGIN PV */
@@ -101,8 +105,8 @@ static void MPU_Config(void);
 //FATFS FatFs;
 //FRESULT FR_Status;
 
-task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
-task_timer_t sd_mount_check_task = {1000, 5000};
+//task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
+//task_timer_t sd_mount_check_task = {1000, 5000};
 //task_timer_t common_heartbeat_task = {2000,1000};
 
 
@@ -111,9 +115,11 @@ int _write(int file, char *ptr, int len)
 #if ENABLE_PRINT
 //	SCB_InvalidateDCache_by_Addr((uint32_t *)&common_print_buffer, sizeof(common_print_buffer));
     (void)file;
-    return (int)rb_push_n(&common_print_buffer, ptr, (size_t)len);
+    return (int)rb_write(&common_print_buffer, ptr, (size_t)len);
+//
+//    return (int)rb_push_n(&common_print_buffer, ptr, (size_t)len);
 #else
-	return;
+	return 1;
 #endif
 
 }
@@ -214,8 +220,17 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
   MX_CRC_Init();
   MX_I2C4_Init();
   MX_SPI1_Init();
+  MX_SDMMC1_SD_Init();
+  MX_SPI4_Init();
+  MX_USART6_UART_Init();
+  MX_FATFS_Init();
+  MX_TIM7_Init();
+  MX_TIM12_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  rb_init(&common_print_buffer);
+  rb_tx_init(&common_print_buffer, &huart3);
+  setvbuf(stdout, NULL, _IONBF, 0);
 
 
   /* USER CODE END 2 */
@@ -227,17 +242,6 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
 
   /* Initialize User push-button without interrupt mode. */
   BSP_PB_Init(BUTTON_USER, BUTTON_MODE_GPIO);
-
-  /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity */
-  BspCOMInit.BaudRate   = 115200;
-  BspCOMInit.WordLength = COM_WORDLENGTH_8B;
-  BspCOMInit.StopBits   = COM_STOPBITS_1;
-  BspCOMInit.Parity     = COM_PARITY_NONE;
-  BspCOMInit.HwFlowCtl  = COM_HWCONTROL_NONE;
-  if (BSP_COM_Init(COM1, &BspCOMInit) != BSP_ERROR_NONE)
-  {
-    Error_Handler();
-  }
 
   /* USER CODE BEGIN BSP */
   /* -- Sample board code to send message over COM1 port ---- */
@@ -260,13 +264,13 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
     if (BspButtonState == BUTTON_PRESSED)
     {
       BspButtonState = BUTTON_RELEASED;
-      BSP_LED_Toggle(LED_YELLOW);
-      HAL_GPIO_TogglePin(test_point_GPIO_Port, test_point_Pin);
-      pc8_active = HAL_GPIO_ReadPin(test_point_GPIO_Port, test_point_Pin);
+      BSP_LED_Toggle(LED_GREEN);
+//      HAL_GPIO_TogglePin(test_point_GPIO_Port, test_point_Pin);
+//      pc8_active = HAL_GPIO_ReadPin(test_point_GPIO_Port, test_point_Pin);
     }
 
-    if (task_ready(&heartbeat_task))
-		LED_Counter_Tick();
+//    if (task_ready(&heartbeat_task))
+//		LED_Counter_Tick();
 //    if (task_ready(&common_heartbeat_task)) {
 ////    	if ((uwTick/1000)%2)
 //		BSP_LED_On(LED_RED);
@@ -312,7 +316,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLM = 4;
   RCC_OscInitStruct.PLL.PLLN = 50;
   RCC_OscInitStruct.PLL.PLLP = 2;
-  RCC_OscInitStruct.PLL.PLLQ = 5;
+  RCC_OscInitStruct.PLL.PLLQ = 100;
   RCC_OscInitStruct.PLL.PLLR = 2;
   RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
@@ -363,29 +367,29 @@ void SystemClock_Config(void)
 //
 //};
 extern SensorData_Buffer_t logData;
-void LED_Counter_Tick(void)
-{
-	const static uint8_t timing[] = {1, 0, 1, 0, 0, 0, 0};
-	const static uint8_t timing_logging[]= {1, 0, 1, 0, 1, 0, 0};
-	static uint8_t index = 0;
-	if (logData.record){
-		if (timing_logging[index])
-			BSP_LED_On(LED_YELLOW);
-		else
-			BSP_LED_Off(LED_YELLOW);
-		}
-	else {
-		if (timing[index])
-			BSP_LED_On(LED_YELLOW);
-		else
-			BSP_LED_Off(LED_YELLOW);
-	}
-
-
-
-	index ++;
-	index %= 7;
-}
+//void LED_Counter_Tick(void)
+//{
+//	const static uint8_t timing[] = {1, 0, 1, 0, 0, 0, 0};
+//	const static uint8_t timing_logging[]= {1, 0, 1, 0, 1, 0, 0};
+//	static uint8_t index = 0;
+//	if (logData.record){
+//		if (timing_logging[index])
+//			BSP_LED_On(LED_YELLOW);
+//		else
+//			BSP_LED_Off(LED_YELLOW);
+//		}
+//	else {
+//		if (timing[index])
+//			BSP_LED_On(LED_YELLOW);
+//		else
+//			BSP_LED_Off(LED_YELLOW);
+//	}
+//
+//
+//
+//	index ++;
+//	index %= 7;
+//}
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
@@ -415,6 +419,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
     else if (htim->Instance == TIM5) {
     	tim5_trigger();
+    }
+    else if (htim->Instance == TIM7) {
+    	tim7_trigger();
+    }
+    else if (htim->Instance == TIM12) {
+    	tim12_trigger();
     }
 
 }

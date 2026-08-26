@@ -14,8 +14,12 @@
 
 class DebouncedButton {
 public:
-    DebouncedButton(bool activeLow = false)
-        : activeLow_(activeLow) {}
+    DebouncedButton(bool activeLow, GPIO_TypeDef* port, uint16_t pin){
+    	activeLow_ = activeLow;
+    	port_ = port;
+    	pin_ = pin;
+    }
+//        : activeLow_(activeLow) {}
 
     // Call every 1 ms (SysTick callback, 1 kHz timer, or your control loop).
     void update() {
@@ -50,10 +54,10 @@ private:
         return e;
     }
 
-    GPIO_TypeDef* port_ = BUTTON_USER_GPIO_PORT;
-    uint16_t pin_ = BUTTON_USER_PIN;
+    GPIO_TypeDef* port_;
+    uint16_t pin_;
     bool activeLow_;
-    uint8_t history_ = 255;
+    uint8_t history_ = 0;
     volatile bool stable_ = true;
     volatile bool pressedEvent_ = false;
     volatile bool releasedEvent_ = false;

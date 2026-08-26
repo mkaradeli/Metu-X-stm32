@@ -30,7 +30,6 @@ extern "C" {
 #include "stm32h7xx_hal.h"
 
 #include "stm32h7xx_nucleo.h"
-#include <stdio.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -60,18 +59,6 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define TLMTR_SPI4_SCK_Pin GPIO_PIN_2
-#define TLMTR_SPI4_SCK_GPIO_Port GPIOE
-#define TLMTR_SPI4_MISO_Pin GPIO_PIN_5
-#define TLMTR_SPI4_MISO_GPIO_Port GPIOE
-#define TLMTR_SPI4_MOSI_Pin GPIO_PIN_6
-#define TLMTR_SPI4_MOSI_GPIO_Port GPIOE
-#define LIDAR_UART_TX_Pin GPIO_PIN_6
-#define LIDAR_UART_TX_GPIO_Port GPIOC
-#define LIDAR_UART_RX_Pin GPIO_PIN_7
-#define LIDAR_UART_RX_GPIO_Port GPIOC
-#define SD_CARD_DETECT_Pin GPIO_PIN_9
-#define SD_CARD_DETECT_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

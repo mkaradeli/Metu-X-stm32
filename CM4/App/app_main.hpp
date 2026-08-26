@@ -10,7 +10,7 @@
 //#pragma once
 
 #include "stm32h7xx_hal.h"
-#include "fatfs.h"
+//#include "fatfs.h"
 
 
 
@@ -28,7 +28,7 @@ extern "C" {
 	uint64_t cpuTicks();
 	uint64_t micros();
 //	extern TIM_HandleTypeDef htim5;
-    extern TIM_HandleTypeDef htim7;
+//    extern TIM_HandleTypeDef htim7;
 
 
 

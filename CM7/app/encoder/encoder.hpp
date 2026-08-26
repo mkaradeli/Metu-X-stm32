@@ -40,14 +40,14 @@ public:
 	uint32_t time_current;
 	uint16_t unstableCount;
 	uint16_t* adc_buffer;
-	void init(uint16_t* adc_buffer, Kalman* actuatorKalman);
+	void init(uint16_t* adc_buffer, Kalman* actuatorKalman, int sign);
 	void calibrate();
 //	void update();
 	void update_subBuffer();
 
 
 private:
-
+	int sign;
 	bool wasInMiddle;
 	bool wasInMiddle_subBuffer;
 	int32_t shifter;

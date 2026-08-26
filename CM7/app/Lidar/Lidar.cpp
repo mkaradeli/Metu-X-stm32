@@ -31,6 +31,7 @@ void Lidar::FrameHandler(uint16_t size){
         this->status = false;
         return; // Checksum mismatch
     }
+    status = true;
     this->checksum = 0;
 
     this->interval_us = micros() - this->flag_us;
@@ -39,6 +40,7 @@ void Lidar::FrameHandler(uint16_t size){
     this->distance = this->buffer[2] | (this->buffer[3] << 8);
     this->strength = this->buffer[4] | (this->buffer[5] << 8);
     this->temperature = this->buffer[6] | (this->buffer[7] << 8);
+    this->newReading = true;
 
 }
 
@@ -46,7 +48,9 @@ void Lidar::Reset(){
 	uint8_t command[] = {
 			0x5A, 0x04, 0x02, 0x60
 	};
-	uint8_t buffer[15] = {0};
+	// Sized to a multiple of 4 (only the first 5 bytes are used below) so the
+	// compiler's zero-init doesn't emit an unaligned tail word-store.
+	uint8_t buffer[16] = {0};
 	HAL_UART_Transmit(this->uart_handle, command, sizeof(command), 1000);
 	HAL_UART_Receive(this->uart_handle, buffer, 5, 100);
 }

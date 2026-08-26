@@ -29,6 +29,11 @@ class Lidar {
 		uint16_t getStrength(){
 			return this->strength;
 		}
+		bool hasNewReading() {
+			bool dummy_ = this->newReading;
+			this->newReading = false;
+			return dummy_;
+		}
 
 	private:
 		UART_HandleTypeDef* uart_handle;
@@ -40,6 +45,7 @@ class Lidar {
 		uint32_t interval_us = 0;
 		uint32_t flag_us = 0;
 		bool status = false;
+		bool newReading = false;
 };
 
 

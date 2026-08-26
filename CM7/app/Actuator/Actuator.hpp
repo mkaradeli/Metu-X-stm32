@@ -17,7 +17,7 @@
 
 class Actuator {
 public:
-	Actuator(PressureSensor *psSensor_ptr, uint16_t* encoder_adc_buffer, Motor* motor_ptr);
+	Actuator(PressureSensor *psSensor_ptr, uint16_t* encoder_adc_buffer, Motor* motor_ptr, int sign);
 	void updateCurrent(uint16_t raw_value);
 	float get_current();
 	void current_controller_step();
@@ -39,6 +39,7 @@ public:
 	HallEffect hallEffect;
 	static PressureSensor *manifold;
 	PressureSensor *psSensor;
+
 private:
 	float current_meas;
 	float current_bias;
@@ -47,6 +48,8 @@ private:
 	Kalman motorKalman;
 
 	Motor* motor;
+
+
 
 
 

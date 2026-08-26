@@ -19,11 +19,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "dma.h"
-#include "fatfs.h"
-#include "sdmmc.h"
-#include "spi.h"
-#include "tim.h"
-#include "usart.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -45,7 +40,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-common_print_buffer_t isolated_print_buffer;
+//common_print_buffer_t isolated_print_buffer;
 
 /* DUAL_CORE_BOOT_SYNC_SEQUENCE: Define for dual core boot synchronization    */
 /*                             demonstration code based on hardware semaphore */
@@ -71,9 +66,9 @@ common_print_buffer_t isolated_print_buffer;
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-COM_InitTypeDef BspCOMInit;
+//COM_InitTypeDef BspCOMInit;
 //timeOfLastToggleForGreen
-uint32_t timeOfLastToggleForGreen=false;
+//uint32_t timeOfLastToggleForGreen=false;
 
 
 
@@ -82,12 +77,12 @@ uint32_t timeOfLastToggleForGreen=false;
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
 //static void SD_Card_Test(void);
-void LED_Counter_Tick(void);
+//void LED_Counter_Tick(void);
 
 
 
 //static void SD_Card_Test(void);
-char TxBuffer[250];
+//char TxBuffer[250];
 
 
 
@@ -98,28 +93,28 @@ char TxBuffer[250];
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#define TX_RING_SZ 1024
-static volatile uint8_t  tx_ring[TX_RING_SZ];
-static volatile uint16_t tx_head = 0;   // written by _write
-static volatile uint16_t tx_tail = 0;   // advanced when DMA completes
-static volatile uint8_t  tx_busy = 0;
-
-task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
+//#define TX_RING_SZ 1024
+//static volatile uint8_t  tx_ring[TX_RING_SZ];
+//static volatile uint16_t tx_head = 0;   // written by _write
+//static volatile uint16_t tx_tail = 0;   // advanced when DMA completes
+//static volatile uint8_t  tx_busy = 0;
+//
+//task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
 
 //task_timer_t common_heartbeat_task = {2000,0};
 
 //task_timer_t sd_ = {100, 0}; // period ms, start ms
-extern char filename[32];
+//extern char filename[32];
 //static uint8_t  uart_tx_buf[256];
-static volatile bool uart_tx_busy = false;
+//static volatile bool uart_tx_busy = false;
 
 
-int _write(int file, char *ptr, int len)
-{
-//	SCB_InvalidateDCache_by_Addr((uint32_t *)tail, sizeof(tail));
-    (void)file;
-    return (int)rb_push_n(&isolated_print_buffer, ptr, (size_t)len);
-}
+//int _write(int file, char *ptr, int len)
+//{
+////	SCB_InvalidateDCache_by_Addr((uint32_t *)tail, sizeof(tail));
+//    (void)file;
+//    return (int)rb_push_n(&isolated_print_buffer, ptr, (size_t)len);
+//}
 
 /* USER CODE END 0 */
 
@@ -166,15 +161,9 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_DMA_Init();
-  MX_USART2_UART_Init();
-  MX_USART6_UART_Init();
-  MX_TIM7_Init();
-  MX_SDMMC1_SD_Init();
-  MX_FATFS_Init();
-  MX_SPI4_Init();
   /* USER CODE BEGIN 2 */
-  BSP_LED_Init(LED_RED);
-  BSP_LED_Init(LED_GREEN);
+//  BSP_LED_Init(LED_RED);
+//  BSP_LED_Init(LED_GREEN);
 //  MX_TIM5_Init();
   /* USER CODE END 2 */
 
@@ -182,15 +171,15 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 //  uint32_t local_timestep = 0;
 
-  BspCOMInit.BaudRate   = 921600;
-    BspCOMInit.WordLength = COM_WORDLENGTH_8B;
-    BspCOMInit.StopBits   = COM_STOPBITS_1;
-    BspCOMInit.Parity     = COM_PARITY_NONE;
-    BspCOMInit.HwFlowCtl  = COM_HWCONTROL_NONE;
-    if (BSP_COM_Init(COM1, &BspCOMInit) != BSP_ERROR_NONE)
-    {
-      Error_Handler();
-    }
+//  BspCOMInit.BaudRate   = 921600;
+//    BspCOMInit.WordLength = COM_WORDLENGTH_8B;
+//    BspCOMInit.StopBits   = COM_STOPBITS_1;
+//    BspCOMInit.Parity     = COM_PARITY_NONE;
+//    BspCOMInit.HwFlowCtl  = COM_HWCONTROL_NONE;
+//    if (BSP_COM_Init(COM1, &BspCOMInit) != BSP_ERROR_NONE)
+//    {
+//      Error_Handler();
+//    }
 
 
 
@@ -198,17 +187,17 @@ int main(void)
 
 //    while (1) {};
 //    sd_mount();
-    rb_init(&isolated_print_buffer);
-		printf(CLR_SCREEN);
+//    rb_init(&isolated_print_buffer);
+//		printf(CLR_SCREEN);
 
-		app_init();
+//		app_init();
   while (1)
   {
 //	  ready_to_write_b++;
-	if (task_ready(&heartbeat_task)){
-		LED_Counter_Tick();
-	}
-	app_loop();
+//	if (task_ready(&heartbeat_task)){
+//		LED_Counter_Tick();
+//	}
+//	app_loop();
 
 
 //			printf("time taken for sd = %d", uwTick- tick);
@@ -250,8 +239,8 @@ void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-	BSP_LED_On(LED_RED);
-	BSP_LED_On(LED_GREEN);
+//	BSP_LED_On(LED_RED);
+//	BSP_LED_On(LED_GREEN);
 	__disable_irq();
 //  BSP_LED_On(LED_YELLOW);
   while (1)

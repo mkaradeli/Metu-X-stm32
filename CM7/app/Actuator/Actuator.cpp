@@ -5,6 +5,7 @@
  *      Author: karadeli
  */
 
+#include "globals.hpp"
 #include "Actuator.hpp"
 #include "actuatorController.h"
 extern controller_modes controller_mode;
@@ -14,8 +15,9 @@ Actuator::Actuator(
 		PressureSensor *psSensor_ptr,
 //		PressureSensor *manifold_ptr,`
 		uint16_t* encoder_adc_buffer,
-		Motor* motor_ptr) {
-	this->hallEffect.init(encoder_adc_buffer, &motorKalman);
+		Motor* motor_ptr, int sign) {
+
+	this->hallEffect.init(encoder_adc_buffer, &motorKalman, sign);
 	this->motor = motor_ptr;
 	this->current.initialize();
 	this->psSensor = psSensor_ptr;
@@ -24,7 +26,7 @@ Actuator::Actuator(
 
 
 void Actuator::updateCurrent(uint16_t raw_value) {
-	this->current_meas = -((float) raw_value * 3.3f / ADC_16B_MAX - 2.5) / 0.066 - this->current_bias ;
+	this->current_meas = ((float) raw_value * 3.3f / ADC_16B_MAX - 2.5) / 0.066 - this->current_bias ;
 }
 float Actuator::get_current() {
 	return this->current_meas;
@@ -42,6 +44,9 @@ void Actuator::current_controller_step() {
 		this->setDuty(0);
 };
 
+
+
+
 void Actuator::actuator_controller_step() {
 	this->actuatorController.rtU.P_nozzle = this->getPressurePsi();
 	this->actuatorController.rtU.P_manifold = Actuator::manifold->getPsi();
@@ -55,7 +60,11 @@ void Actuator::updateHallEffect() {
 	this->hallEffect.update_subBuffer();
 }
 void Actuator::setDuty(float normalValue) {
+#if ENABLE_MOTORS
 	this->motor->setDuty(normalValue);
+#else
+	this->motor->setDuty(0);
+#endif
 }
 float Actuator::getDutyCycle(){
 	return motor->getDutyCycle();
