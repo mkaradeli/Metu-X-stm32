@@ -29,7 +29,7 @@
 //#include "platformController.h"
 
 #include "BNO085.hpp"
-//#include "sd_task.hpp"
+#include "SdCard/sd_task.hpp"
 //#include "SdCardRaw.hpp"
 BNO085 imu;
 
@@ -422,10 +422,10 @@ void app_loop() {
 //		imu.service();                 // poll at least every ~1 ms
 //		IMU_profiler.end();
 //	}
-//	if (task_ready(&sd_card_task)) { // 500 ms
-//			sd_card_prep();
-//		}
-//	sd_card_task_function(); // every iter
+	if (task_ready(&sd_card_task)) { // 500 ms
+		sd_card_prep();
+	}
+	sd_card_task_function(); // every iter
 }
 
 

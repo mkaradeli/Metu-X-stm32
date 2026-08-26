@@ -119,10 +119,19 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : SAFETY_CONNECTOR_Pin SD_CARD_DETECT_Pin */
-  GPIO_InitStruct.Pin = SAFETY_CONNECTOR_Pin|SD_CARD_DETECT_Pin;
+  /*Configure GPIO pin : SAFETY_CONNECTOR_Pin */
+  GPIO_InitStruct.Pin = SAFETY_CONNECTOR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SD_CARD_DETECT_Pin */
+  /* Pull-up required: BSP_PlatformIsDetected() (fatfs_platform.c) treats the
+   * pin as active-low (switch to GND on card insert). Without a pull, the
+   * "no card" state floats instead of reading a reliable high. */
+  GPIO_InitStruct.Pin = SD_CARD_DETECT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB13 */
