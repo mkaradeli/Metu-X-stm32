@@ -193,7 +193,7 @@ extern const uint8_t missionTableCount =
 
 // HOVER 4
 // DROP 5
-extern const uint8_t defaultMissionIndex = 4;   // TF_OPEN
+extern const uint8_t defaultMissionIndex = 0;   // TF_OPEN
 
 /* The old global logHeader[] / logHeaderSize are gone: sd_task now takes the
  * header text from the selected mission row above. Delete their extern

@@ -220,15 +220,7 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
   MX_CRC_Init();
   MX_I2C4_Init();
   MX_SPI1_Init();
-  /* Not called here on purpose: MX_SDMMC1_SD_Init() -> HAL_SD_Init() enumerates
-   * the card and calls Error_Handler() (infinite loop) if none responds, which
-   * would hang boot with no card inserted. sd_task.cpp's mount retry already
-   * calls the equivalent init (BSP_SD_Init(), gated on BSP_SD_IsDetected())
-   * from sd_diskio.c on every attempt, so nothing needs it done eagerly here.
-   * hsd1 defaults to HAL_SD_STATE_RESET, so that first real call still runs
-   * HAL_SD_MspInit() correctly. NOTE: CubeMX will regenerate this call on the
-   * next "Generate Code" -- remove it again afterward.
-   * MX_SDMMC1_SD_Init(); */
+  MX_SDMMC1_SD_Init();
   MX_SPI4_Init();
   MX_USART6_UART_Init();
   MX_FATFS_Init();

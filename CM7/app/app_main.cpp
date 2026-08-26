@@ -61,7 +61,7 @@ task_timer_t test_point_gpio = {5000,0};
 task_timer_t button_task = {1,0};
 task_timer_t IMU_task = {1,0};
 task_timer_t sd_card_task = {500,0};
-task_timer_t printf_task = {1000, 0};
+task_timer_t printf_task = {1, 0};
 task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
 
 task_timer_t uart_logging = { 2, 0};
@@ -307,8 +307,8 @@ void app_loop() {
 	if (uwTick - timeOfLastPrint >= 1000){
 
 		timeOfLastPrint+= 1000;
-		printf(CLR_SCREEN);
-		printf("timestamp = %ld \n\r", uwTick);
+//		printf(CLR_SCREEN);
+//		printf("timestamp = %ld \n\r", uwTick);
 
 #ifdef SHOW_INTERRUPT_TIMER_COUNTERS
 		printf("\n\rWelcome to STM32 world ! counter=%d\n\r", (int16_t)(uwTick/1e3));
@@ -346,20 +346,20 @@ void app_loop() {
 
 #endif
 #ifndef PROFILER_RESULTS
-		printf("free_profiler cpu usage = %%%d.%d\n\r",(int)free_profiler.cpu_usage,FRACTIONAL(free_profiler.cpu_usage));
-		printf("load_cell_profiler cpu usage = %%%d.%d\n\r",(int)load_cell_profiler.cpu_usage,FRACTIONAL(load_cell_profiler.cpu_usage));
-		printf("main_loop_profiler cpu usage = %%%d.%d\n\r",(int)main_loop_profiler.cpu_usage,FRACTIONAL(main_loop_profiler.cpu_usage));
-		printf("printf_profiler cpu usage = %%%d.%d\n\r",(int)printf_profiler.cpu_usage,FRACTIONAL(printf_profiler.cpu_usage));
-		printf("adc1_profiler cpu usage = %%%d.%d\n\r",(int)adc1_profiler.cpu_usage,FRACTIONAL(adc1_profiler.cpu_usage));
-		printf("adc2_profiler cpu usage = %%%d.%d\n\r",(int)adc2_profiler.cpu_usage,FRACTIONAL(adc2_profiler.cpu_usage));
-		printf("adc3_profiler cpu usage = %%%d.%d\n\r",(int)adc3_profiler.cpu_usage,FRACTIONAL(adc3_profiler.cpu_usage));
-		printf("tim2_profiler cpu usage = %%%d.%d\n\r",(int)tim2_profiler.cpu_usage,FRACTIONAL(tim2_profiler.cpu_usage));
-		printf("tim3_profiler cpu usage = %%%d.%d\n\r",(int)tim3_profiler.cpu_usage,FRACTIONAL(tim3_profiler.cpu_usage));
-		printf("tim4_profiler cpu usage = %%%d.%d\n\r",(int)tim4_profiler.cpu_usage,FRACTIONAL(tim4_profiler.cpu_usage));
-		printf("button_profiler cpu usage = %%%d.%d\n\r",(int)button_profiler.cpu_usage,FRACTIONAL(button_profiler.cpu_usage));
-		printf("crc_profiler cpu usage = %%%d.%d\n\r",(int)crc_profiler.cpu_usage,FRACTIONAL(crc_profiler.cpu_usage));
-		printf("sd_card_profiler cpu usage = %%%d.%d\n\r",(int)sd_card_profiler.cpu_usage,FRACTIONAL(sd_card_profiler.cpu_usage));
-		printf("IMU_profiler cpu usage = %%%d.%d\n\r",(int)IMU_profiler.cpu_usage,FRACTIONAL(IMU_profiler.cpu_usage));
+//		printf("free_profiler cpu usage = %%%d.%d\n\r",(int)free_profiler.cpu_usage,FRACTIONAL(free_profiler.cpu_usage));
+//		printf("load_cell_profiler cpu usage = %%%d.%d\n\r",(int)load_cell_profiler.cpu_usage,FRACTIONAL(load_cell_profiler.cpu_usage));
+//		printf("main_loop_profiler cpu usage = %%%d.%d\n\r",(int)main_loop_profiler.cpu_usage,FRACTIONAL(main_loop_profiler.cpu_usage));
+//		printf("printf_profiler cpu usage = %%%d.%d\n\r",(int)printf_profiler.cpu_usage,FRACTIONAL(printf_profiler.cpu_usage));
+//		printf("adc1_profiler cpu usage = %%%d.%d\n\r",(int)adc1_profiler.cpu_usage,FRACTIONAL(adc1_profiler.cpu_usage));
+//		printf("adc2_profiler cpu usage = %%%d.%d\n\r",(int)adc2_profiler.cpu_usage,FRACTIONAL(adc2_profiler.cpu_usage));
+//		printf("adc3_profiler cpu usage = %%%d.%d\n\r",(int)adc3_profiler.cpu_usage,FRACTIONAL(adc3_profiler.cpu_usage));
+//		printf("tim2_profiler cpu usage = %%%d.%d\n\r",(int)tim2_profiler.cpu_usage,FRACTIONAL(tim2_profiler.cpu_usage));
+//		printf("tim3_profiler cpu usage = %%%d.%d\n\r",(int)tim3_profiler.cpu_usage,FRACTIONAL(tim3_profiler.cpu_usage));
+//		printf("tim4_profiler cpu usage = %%%d.%d\n\r",(int)tim4_profiler.cpu_usage,FRACTIONAL(tim4_profiler.cpu_usage));
+//		printf("button_profiler cpu usage = %%%d.%d\n\r",(int)button_profiler.cpu_usage,FRACTIONAL(button_profiler.cpu_usage));
+//		printf("crc_profiler cpu usage = %%%d.%d\n\r",(int)crc_profiler.cpu_usage,FRACTIONAL(crc_profiler.cpu_usage));
+//		printf("sd_card_profiler cpu usage = %%%d.%d\n\r",(int)sd_card_profiler.cpu_usage,FRACTIONAL(sd_card_profiler.cpu_usage));
+////		printf("IMU_profiler cpu usage = %%%d.%d\n\r",(int)IMU_profiler.cpu_usage,FRACTIONAL(IMU_profiler.cpu_usage));
 
 		float total_usage = main_loop_profiler.cpu_usage
 		+ free_profiler.cpu_usage
@@ -374,19 +374,19 @@ void app_loop() {
 		+ load_cell_profiler.cpu_usage
 		+ crc_profiler.cpu_usage
 		+ IMU_profiler.cpu_usage +sd_card_profiler.cpu_usage;
-		printf("angle = %d, cur = %d\n\r", int(actuator[0].hallEffect.valveAngle), int(actuator[0].get_current()));
-		printf("total cpu usage accounted %%%d.%d \n\r", (int)total_usage, FRACTIONAL(total_usage));
+//		printf("angle = %d, cur = %d\n\r", int(actuator[0].hallEffect.valveAngle), int(actuator[0].get_current()));
+//		printf("total cpu usage accounted %%%d.%d \n\r", (int)total_usage, FRACTIONAL(total_usage));
 #endif
-		printf("ACTUATOR 1\n\r");
-		printf("current = %d.%d A\n\r",(int)actuator[0].get_current(), FRACTIONAL(actuator[0].get_current()));
-		printf("encoder = %d.%d deg\n\r",(int)actuator[0].hallEffect.valveAngleKalman, FRACTIONAL(actuator[0].hallEffect.valveAngleKalman));
-		printf("Nozzle Pressure = %d.%d\n\r", (int)actuator[0].psSensor->getBar(), FRACTIONAL(actuator[0].psSensor->getBar()));
-		printf("Manifold Pressure = %d.%d\n\r", (int)Actuator::manifold->getBar(), FRACTIONAL(Actuator::manifold->getBar()) );
-		printf("measured weight = %d.%d\n\r", (int)loadCell.weight_kg_filtered, FRACTIONAL(loadCell.weight_kg_filtered));
+//		printf("ACTUATOR 1\n\r");
+//		printf("current = %d.%d A\n\r",(int)actuator[0].get_current(), FRACTIONAL(actuator[0].get_current()));
+//		printf("encoder = %d.%d deg\n\r",(int)actuator[0].hallEffect.valveAngleKalman, FRACTIONAL(actuator[0].hallEffect.valveAngleKalman));
+//		printf("Nozzle Pressure = %d.%d\n\r", (int)actuator[0].psSensor->getBar(), FRACTIONAL(actuator[0].psSensor->getBar()));
+//		printf("Manifold Pressure = %d.%d\n\r", (int)Actuator::manifold->getBar(), FRACTIONAL(Actuator::manifold->getBar()) );
+//		printf("measured weight = %d.%d\n\r", (int)loadCell.weight_kg_filtered, FRACTIONAL(loadCell.weight_kg_filtered));
 
-		printf("logData wr=%lu half=[%u,%u] written=%lu dropped=%lu\n\r",
-		       logData.write_idx, logData.half_full[0], logData.half_full[1],
-		       logData.written, logData.dropped);		printf("\n\r\n\r");
+//		printf("logData wr=%lu half=[%u,%u] written=%lu dropped=%lu\n\r",
+//		       logData.write_idx, logData.half_full[0], logData.half_full[1],
+//		       logData.written, logData.dropped);		printf("\n\r\n\r");
 //		printf("%d, %d, %d, \n\r", imu.quaternion.i, imu.quaternion.j, imu.quaternion.k);
 
 		main_loop_profiler.metrics();
@@ -689,7 +689,7 @@ void pressure_adc_complete(){
 			crc_profiler.start();
 			slot->crc = crc16_calc((uint8_t*)slot, sizeof(SensorData_t) - 2);
 			crc_profiler.end();
-//			SensorData_Buffer_Commit(&logData);
+			SensorData_Buffer_Commit(&logData);
 		}
 	}
 

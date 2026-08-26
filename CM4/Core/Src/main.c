@@ -23,13 +23,13 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app_main.hpp"
-#include "shared_memory.h"
-#include "ring_buffer.h"
+//#include "shared_memory.h"
+//#include "ring_buffer.h"
 
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include "task_timer.h"
+//#include "task_timer.h"
 
 /* USER CODE END Includes */
 
