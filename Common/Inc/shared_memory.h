@@ -74,9 +74,6 @@ typedef struct __attribute__((packed)) {
 	uint8_t mission_modes; // DISABLED,  TESTFIRE, DROP, HOVER
 	uint8_t system_modes;
 
-
-
-//	uint8_t _pad[3]; // pads packed size to a multiple of 4 so rec[] stays word-aligned
 	uint16_t crc;
 } SensorData_t;
 

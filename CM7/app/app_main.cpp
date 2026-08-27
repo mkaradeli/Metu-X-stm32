@@ -32,8 +32,18 @@
 #include "SdCard/sd_task.hpp"
 //#include "SdCardRaw.hpp"
 #include "nrf24.h"
+#include "nrf24_link.h"
 #include "nrf24_port.h"
 BNO085 imu;
+
+/* Plain (non-static) mirrors of the driver's internal counters, refreshed
+ * every tick in tim7_trigger() - watch these in Live Expressions while
+ * running. nrf24.c and nrf24_link.c each keep their own stats in a static
+ * s_stats, same name in both files, which Live Expressions can't address
+ * unambiguously by name; these globals sidestep that. */
+nrf24_stats_t      nrf24_radio_stats;   /* per-fragment: tx_ok, tx_dropped, tx_timeout, rx_ok, retransmits, lost_packets */
+nrf24_link_stats_t nrf24_frame_stats;   /* per-frame: frames_sent, frames_dropped, frags_sent, frames_rx, crc_errors, reassembly_drops */
+uint32_t           nrf24_uplink_rx_count = 0u;   /* ACK-payload uplink packets drained, see tim7_trigger() */
 
 
 #define FRACTIONAL(x) int(floor(int((x)*100)))%100
@@ -67,6 +77,7 @@ task_timer_t printf_task = {1, 0};
 task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
 
 task_timer_t uart_logging = { 2, 0};
+task_timer_t nrf24_tx_task = {20, 0};   // 50 Hz downlink
 
 __attribute__((section(".sram3"), used))
 volatile uint16_t adc_dma_buf_current[5];
@@ -109,6 +120,7 @@ Profiler tim4_profiler;
 Profiler button_profiler;
 Profiler crc_profiler;
 Profiler IMU_profiler;
+Profiler nrf24_profiler;
 Profiler sd_card_profiler;
 Profiler tim7_profiler;
 Profiler kf_profiler;
@@ -174,7 +186,7 @@ void app_init() {
 #endif
 	  HAL_TIM_Base_Start_IT(&htim5);  /* _IT = interrupt ile */
 	  HAL_TIM_Base_Start_IT(&htim12);  /* _IT = interrupt ile */
-	  HAL_TIM_Base_Start_IT(&htim7);  /* micros() timebase -- must be running before imu.begin() so its internal sh2 timeouts can actually elapse */
+
 
 	  HAL_TIM_Base_Start(&htim1);  /* _IT = interrupt ile */
 
@@ -198,36 +210,24 @@ void app_init() {
 
 //	  imu.enableReport(SH2_GAME_ROTATION_VECTOR,2500);
 
-	  /* nRF24 bring-up check: does the radio answer over SPI4? Standby only,
-	   * no CE/RX/TX yet. */
+	  /* nRF24 telemetry: downlinks local_sensor_data at 50 Hz, see
+	   * nrf24_tx_task (app_loop) and nrf24_link_service() (tim7_trigger,
+	   * 1 kHz). Auto-ack stays on so ground -> rocket commands can ride
+	   * back on the ACK payload; ch/addr/data-rate must match the ground
+	   * station config (see conversation history on that sync). */
 	  {
 	      nrf24_cfg_t nrf24_cfg;
 	      nrf24_default_cfg(&nrf24_cfg);
+	      nrf24_cfg.data_rate = NRF24_DR_2M;
 	      nrf24_status_t nrf24_st = nrf24_init(&nrf24_cfg);
 	      printf("nRF24: %s (status=%d)\r\n",
 	             (nrf24_st == NRF24_OK) ? "OK, radio present" : "NOT FOUND",
 	             (int)nrf24_st);
-
-	      /* Bench test: broadcast a magic string at the lowest available TX
-	       * power. no_ack=true so this needs no listener on the other end -
-	       * TX_DS fires as soon as the packet is on air, no ARC retries.
-	       * Throwaway test code - remove once past bring-up. */
 	      if (nrf24_st == NRF24_OK) {
-	          static const char s_magic[] = "KARADELI";
-	          uint8_t sent = 0u;
-
-	          nrf24_set_power(NRF24_PWR_M18);   /* lowest chip setting - E01's PA still adds ~22 dB */
+	          nrf24_link_init(false);   /* auto-ack downlink */
 	          nrf24_start_tx();
-	          for (uint8_t i = 0u; i < 20u; i++) {
-	              if (nrf24_tx_blocking(s_magic, sizeof(s_magic) - 1u, true, 5000u) == NRF24_OK) {
-	                  sent++;
-	              }
-	              nrf24_port_delay_us(50000u);
-	          }
-	          printf("nRF24 TX 'KARADELI': %u/20 bursts sent, ch=%u (%u MHz)\r\n",
-	                 (unsigned)sent, (unsigned)nrf24_cfg.channel,
-	                 (unsigned)(2400u + nrf24_cfg.channel));
 	      }
+		  HAL_TIM_Base_Start_IT(&htim7);  /* micros() timebase -- must be running before imu.begin() so its internal sh2 timeouts can actually elapse */
 	  }
 
 		lidar.Reset();
@@ -252,6 +252,7 @@ void app_init() {
 	    button_profiler.reset();
 	    crc_profiler.reset();
 	    IMU_profiler.reset();
+	    nrf24_profiler.reset();
 	    sd_card_profiler.reset();
 	    tim7_profiler.reset();
 	    tim12_profiler.reset();
@@ -321,21 +322,6 @@ void app_loop() {
 	        calStartTick = uwTick;      // not enough samples yet, keep collecting
 	    }
 	}
-//	if (task_ready(&button_task)) { // 1ms
-//		Button.update();
-//
-//		if (Button.pressed()) {
-//			button_profiler.start();
-//			missionControl.Toggle();
-//		} else {
-//			if (selfTrigger and uwTick==10000) {
-//				selfTrigger = false;
-//				missionControl.Toggle();
-//			}
-//		button_profiler.end();
-//		}
-//	}
-
 		main_loop_profiler.start();
 
 	if (uwTick - timeOfLastPrint >= 1000){
@@ -354,6 +340,7 @@ void app_loop() {
 		button_profiler.metrics();
 		crc_profiler.metrics();
 		IMU_profiler.metrics();
+		nrf24_profiler.metrics();
 		sd_card_profiler.metrics();
 		kf_profiler.metrics();
 		tim7_profiler.metrics();
@@ -368,16 +355,16 @@ void app_loop() {
 		printf_profiler.end();
 	  }
 
-//	if (task_ready(&IMU_task)) { // 1 ms
-//		IMU_profiler.start();
-//		imu.service();                 // poll at least every ~1 ms
-//		IMU_profiler.end();
-//	}
 	if (task_ready(&sd_card_task)) { // 500 ms
-//		if (HAL_GPIO_ReadPin(SD_CARD_DETECT_GPIO_Port,SD_CARD_DETECT_Pin))
 			sd_card_prep();
 	}
 	sd_card_task_function(); // every iter
+
+	if (task_ready(&nrf24_tx_task)) { // 20 ms, 50 Hz downlink
+		if (nrf24_link_tx_idle()) {
+			(void)nrf24_link_send(&local_sensor_data, sizeof(local_sensor_data));
+		}
+	}
 }
 
 
@@ -425,6 +412,7 @@ void tim7_trigger() { // 1 khz low priority
             	    button_profiler.reset();
             	    crc_profiler.reset();
             	    IMU_profiler.reset();
+            	    nrf24_profiler.reset();
             	    sd_card_profiler.reset();
             	    tim7_profiler.reset();
             	    tim12_profiler.reset();
@@ -452,6 +440,29 @@ void tim7_trigger() { // 1 khz low priority
 		imu.service();                 // poll at least every ~1 ms
 		IMU_profiler.end();
 	}
+	nrf24_profiler.start();
+	(void)nrf24_link_service();        // pumps the TX fragment FIFO, never blocks longer than one SPI burst
+	nrf24_get_stats(&nrf24_radio_stats);
+	nrf24_link_get_stats(&nrf24_frame_stats);
+	{
+	    /* Ground-station commands ride in as raw ACK payloads (rf24_gateway.py's
+	     * write_ack_payload() / <BBIH>+crc16 - NOT our own nrf24_link fragment
+	     * format, so nrf24_rx_read() is the right API here, not nrf24_link_poll()).
+	     * This MUST run every tick: with nothing draining it, 3 queued repeats of
+	     * one command exactly fill the 3-deep RX FIFO, and once full it stays
+	     * full until the radio is re-initialized - that's what silently killed
+	     * the whole downlink the first time a command was sent. */
+	    uint8_t pipe;
+	    while (nrf24_rx_available(&pipe)) {
+	        uint8_t cmd_buf[NRF24_MAX_PAYLOAD];
+	        (void)nrf24_rx_read(cmd_buf, sizeof(cmd_buf));
+	        nrf24_uplink_rx_count++;
+	        (void)pipe;
+	        // TODO: parse <BBIH>+crc16 (see rf24_gateway.py build_cmd/CMD_STRUCT)
+	        // and route to MissionControl - drain-only for now.
+	    }
+	}
+	nrf24_profiler.end();
 	accel_interval.update(imu.accelInterval_us);
 	quatIntRV_interval.update(imu.gyroIntegratedRVInterval_us);
 
@@ -485,15 +496,7 @@ void tim7_trigger() { // 1 khz low priority
 
 	tim7_profiler.end();
 }
-struct ExtY {
-//  real32_T currentDemand;          // '<Root>/currentDemand'
-//  real32_T speedDemand;            // '<Root>/speedDemand'
-//  real32_T position_demand;        // '<Root>/position_demand'
-//  real32_T pos_ref_rate_limited;   // '<Root>/pos_ref_rate_limited'
-  real32_T P_nozzle_demand;        // '<Root>/P_nozzle_demand'
-  real32_T ThrustMax;              // '<Root>/ThrustMax'
-  real32_T ThrustEstimate;         // '<Root>/ThrustEstimate'
-};
+
 void tim12_trigger(){ // mid priority 50hz platform control task
 	tim12_profiler.start();
 //	platform_controller.rtU.Height = altEstimator.altitude(); // m

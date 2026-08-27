@@ -131,7 +131,7 @@ static void sd_try_mount()
 static bool find_free_log_index(uint16_t *out)
 {
     char name[32];
-    uint16_t lo = 1000, hi = 10000;
+    uint16_t lo = 2000, hi = 10000;
 
     while (lo < hi) {
         uint16_t mid = lo + ((hi - lo) >> 1);

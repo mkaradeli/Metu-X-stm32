@@ -70,8 +70,16 @@ bool nrf24_link_send(const void *frame, uint16_t len)
         return false;
     }
 
+    /* CRC must cover exactly what got copied, not re-read `frame` a second
+     * time: local_sensor_data is written from pressure_adc_complete() (an
+     * ADC ISR), which can preempt this function between the copy and the
+     * CRC and change bytes out from under a second read of `frame`. Hashing
+     * s_tx.buf instead means the CRC always matches whatever this call
+     * actually captured, torn or not - a torn snapshot across an ISR
+     * boundary is an acceptable telemetry trade-off, a self-inconsistent
+     * CRC on every send is not. */
     memcpy(s_tx.buf, frame, len);
-    crc = nrf24_crc16_ccitt_false((const uint8_t *)frame, len, 0xFFFFu);
+    crc = nrf24_crc16_ccitt_false(s_tx.buf, len, 0xFFFFu);
     s_tx.buf[len]      = (uint8_t)(crc >> 8);
     s_tx.buf[len + 1u] = (uint8_t)(crc & 0xFFu);
 
