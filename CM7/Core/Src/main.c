@@ -264,7 +264,7 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
     if (BspButtonState == BUTTON_PRESSED)
     {
       BspButtonState = BUTTON_RELEASED;
-      BSP_LED_Toggle(LED_GREEN);
+      BSP_LED_Toggle(LED_YELLOW);
 //      HAL_GPIO_TogglePin(test_point_GPIO_Port, test_point_Pin);
 //      pc8_active = HAL_GPIO_ReadPin(test_point_GPIO_Port, test_point_Pin);
     }
@@ -316,7 +316,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLM = 4;
   RCC_OscInitStruct.PLL.PLLN = 50;
   RCC_OscInitStruct.PLL.PLLP = 2;
-  RCC_OscInitStruct.PLL.PLLQ = 100;
+  RCC_OscInitStruct.PLL.PLLQ = 80;
   RCC_OscInitStruct.PLL.PLLR = 2;
   RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;

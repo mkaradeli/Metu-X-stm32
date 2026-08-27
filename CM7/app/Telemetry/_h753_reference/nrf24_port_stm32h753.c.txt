@@ -1,0 +1,188 @@
+/**
+ * @file    nrf24_port_stm32h753.c
+ * @brief   Bare-metal (CMSIS register-level, no HAL) port for NUCLEO-H753ZI.
+ *
+ * Default pinout - all of it is in the #define block below, change it for your
+ * carrier board:
+ *
+ *   SPI1_SCK   PA5   AF5   (ZIO D13)
+ *   SPI1_MISO  PA6   AF5   (ZIO D12)
+ *   SPI1_MOSI  PB5   AF5   (ZIO D11 on MB1137/H743ZI2-style boards)
+ *   CSN        PD14        (ZIO D10)
+ *   CE         PD15        (ZIO D9)
+ *   IRQ        PF12        (ZIO D8, EXTI12, falling edge) - optional
+ *
+ * NOTE: do NOT use PA7 for MOSI on this board. PA7 is D11 on MB1364 but is
+ * strapped to the LAN8742 as RMII_CRS_DV through SB31; the PHY drives it
+ * whenever the ETH RX clock is running and you will fight it on the bus.
+ *
+ * Transfers are polled PIO, not DMA, so there is no D-cache maintenance to do
+ * here (33 bytes @ 8 MHz = 33 us worst case, ~13000 CPU cycles at 400 MHz).
+ */
+
+#include "stm32h7xx.h"
+#include "nrf24_port.h"
+
+/* ------------------------------------------------------------------ config */
+#define NRF24_SPI                 SPI4
+#define NRF24_SPI_KERNEL_HZ       120000000UL   /* pll1_q_ck feeding SPI123SEL */
+#define NRF24_SPI_MAX_HZ          8000000UL     /* nRF24L01+ spec limit is 10 MHz */
+
+#define NRF24_SCK_PORT            GPIOA
+#define NRF24_SCK_PIN             5u
+#define NRF24_MISO_PORT           GPIOA
+#define NRF24_MISO_PIN            6u
+#define NRF24_MOSI_PORT           GPIOB
+#define NRF24_MOSI_PIN            5u
+#define NRF24_SPI_AF              5u
+
+#define NRF24_CSN_PORT            GPIOD
+#define NRF24_CSN_PIN             14u
+#define NRF24_CE_PORT             GPIOD
+#define NRF24_CE_PIN              15u
+#define NRF24_IRQ_PORT            GPIOF
+#define NRF24_IRQ_PIN             12u
+
+/* Set to 1 if your application already owns DWT (e.g. an existing CPU profiler);
+ * then nrf24_port_micros() only reads CYCCNT and never reconfigures it.        */
+#ifndef NRF24_PORT_DWT_EXTERNALLY_OWNED
+#define NRF24_PORT_DWT_EXTERNALLY_OWNED  0
+#endif
+
+/* --------------------------------------------------------------- utilities */
+#define GPIO_MODE_OUT(p, n)   do { (p)->MODER = ((p)->MODER & ~(3u << (2u*(n)))) | (1u << (2u*(n))); } while (0)
+#define GPIO_MODE_AF(p, n)    do { (p)->MODER = ((p)->MODER & ~(3u << (2u*(n)))) | (2u << (2u*(n))); } while (0)
+#define GPIO_MODE_IN(p, n)    do { (p)->MODER &= ~(3u << (2u*(n))); } while (0)
+#define GPIO_SPEED_VHI(p, n)  do { (p)->OSPEEDR |= (3u << (2u*(n))); } while (0)
+#define GPIO_PULLUP(p, n)     do { (p)->PUPDR = ((p)->PUPDR & ~(3u << (2u*(n)))) | (1u << (2u*(n))); } while (0)
+#define GPIO_SET_AF(p, n, af) do { (p)->AFR[(n) >> 3] = ((p)->AFR[(n) >> 3] & ~(0xFu << (4u*((n) & 7u)))) \
+                                                        | ((uint32_t)(af) << (4u*((n) & 7u))); } while (0)
+
+static uint32_t s_cycles_per_us = 400u;
+
+static uint32_t spi_mbr_for(uint32_t f_ker, uint32_t f_max)
+{
+    /* f_sck = f_ker / 2^(MBR+1) ; MBR in 0..7 -> /2 .. /256 */
+    uint32_t mbr = 0u;
+    while ((mbr < 7u) && ((f_ker >> (mbr + 1u)) > f_max)) {
+        mbr++;
+    }
+    return mbr;
+}
+
+/* ------------------------------------------------------------------- init */
+void nrf24_port_init(void)
+{
+    RCC->AHB4ENR |= RCC_AHB4ENR_GPIOAEN | RCC_AHB4ENR_GPIOBEN |
+                    RCC_AHB4ENR_GPIODEN | RCC_AHB4ENR_GPIOFEN;
+    RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
+    (void)RCC->APB2ENR;
+
+    /* SPI123 kernel clock source: 000 = pll1_q_ck (reset value, made explicit) */
+    RCC->D2CCIP1R &= ~RCC_D2CCIP1R_SPI123SEL;
+
+    /* CSN high before anything else so the radio never sees a partial frame */
+    NRF24_CSN_PORT->BSRR = (1u << NRF24_CSN_PIN);
+    GPIO_MODE_OUT(NRF24_CSN_PORT, NRF24_CSN_PIN);
+    GPIO_SPEED_VHI(NRF24_CSN_PORT, NRF24_CSN_PIN);
+
+    NRF24_CE_PORT->BSRR = (1u << (NRF24_CE_PIN + 16u));   /* CE low */
+    GPIO_MODE_OUT(NRF24_CE_PORT, NRF24_CE_PIN);
+    GPIO_SPEED_VHI(NRF24_CE_PORT, NRF24_CE_PIN);
+
+    GPIO_MODE_IN(NRF24_IRQ_PORT, NRF24_IRQ_PIN);
+    GPIO_PULLUP(NRF24_IRQ_PORT, NRF24_IRQ_PIN);           /* IRQ is open-drain-ish, active low */
+
+    GPIO_SET_AF(NRF24_SCK_PORT,  NRF24_SCK_PIN,  NRF24_SPI_AF);
+    GPIO_SET_AF(NRF24_MISO_PORT, NRF24_MISO_PIN, NRF24_SPI_AF);
+    GPIO_SET_AF(NRF24_MOSI_PORT, NRF24_MOSI_PIN, NRF24_SPI_AF);
+    GPIO_SPEED_VHI(NRF24_SCK_PORT,  NRF24_SCK_PIN);
+    GPIO_SPEED_VHI(NRF24_MOSI_PORT, NRF24_MOSI_PIN);
+    GPIO_MODE_AF(NRF24_SCK_PORT,  NRF24_SCK_PIN);
+    GPIO_MODE_AF(NRF24_MISO_PORT, NRF24_MISO_PIN);
+    GPIO_MODE_AF(NRF24_MOSI_PORT, NRF24_MOSI_PIN);
+
+    /* --- SPI1: master, 8-bit, MSB first, mode 0, software NSS --- */
+    NRF24_SPI->CR1  = 0u;                                  /* SPE = 0 while configuring */
+    NRF24_SPI->CFG1 = (spi_mbr_for(NRF24_SPI_KERNEL_HZ, NRF24_SPI_MAX_HZ) << SPI_CFG1_MBR_Pos)
+                    | (7u << SPI_CFG1_DSIZE_Pos)           /* DSIZE = 8-1 */
+                    | (0u << SPI_CFG1_FTHLV_Pos);          /* FIFO threshold = 1 data */
+    NRF24_SPI->CFG2 = SPI_CFG2_MASTER                      /* CPOL = CPHA = 0, MSB first */
+                    | SPI_CFG2_SSM
+                    | SPI_CFG2_AFCNTR;                     /* keep AF driven while SPE = 0 */
+    NRF24_SPI->CR1  = SPI_CR1_SSI;                         /* SSM=1 needs SSI=1, else MODF */
+
+#if (NRF24_PORT_DWT_EXTERNALLY_OWNED == 0)
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    *(volatile uint32_t *)0xE0001FB0u = 0xC5ACCE55u;       /* DWT_LAR unlock (Cortex-M7) */
+    DWT->CYCCNT = 0u;
+    DWT->CTRL  |= DWT_CTRL_CYCCNTENA_Msk;
+#endif
+    s_cycles_per_us = SystemCoreClock / 1000000u;
+    if (s_cycles_per_us == 0u) {
+        s_cycles_per_us = 1u;
+    }
+}
+
+/* ------------------------------------------------------------ pin control */
+void nrf24_port_csn(int level)
+{
+    NRF24_CSN_PORT->BSRR = level ? (1u << NRF24_CSN_PIN)
+                                 : (1u << (NRF24_CSN_PIN + 16u));
+}
+
+void nrf24_port_ce(int level)
+{
+    NRF24_CE_PORT->BSRR = level ? (1u << NRF24_CE_PIN)
+                                : (1u << (NRF24_CE_PIN + 16u));
+}
+
+int nrf24_port_irq_level(void)
+{
+    return (NRF24_IRQ_PORT->IDR & (1u << NRF24_IRQ_PIN)) ? 1 : 0;
+}
+
+/* ------------------------------------------------------------- SPI burst */
+void nrf24_port_spi_xfer(const uint8_t *tx, uint8_t *rx, size_t n)
+{
+    volatile uint8_t *const txdr = (volatile uint8_t *)&NRF24_SPI->TXDR;
+    volatile uint8_t *const rxdr = (volatile uint8_t *)&NRF24_SPI->RXDR;
+    size_t i;
+
+    if (n == 0u) {
+        return;
+    }
+
+    NRF24_SPI->CR2 = (uint32_t)n;              /* TSIZE: exact byte count */
+    NRF24_SPI->CR1 |= SPI_CR1_SPE;
+    NRF24_SPI->CR1 |= SPI_CR1_CSTART;
+
+    for (i = 0u; i < n; i++) {
+        while ((NRF24_SPI->SR & SPI_SR_TXP) == 0u) { }
+        *txdr = (tx != NULL) ? tx[i] : 0xFFu;  /* byte-wide store: no FIFO packing */
+        while ((NRF24_SPI->SR & SPI_SR_RXP) == 0u) { }
+        {
+            uint8_t d = *rxdr;
+            if (rx != NULL) {
+                rx[i] = d;
+            }
+        }
+    }
+
+    while ((NRF24_SPI->SR & SPI_SR_EOT) == 0u) { }
+    NRF24_SPI->IFCR = SPI_IFCR_EOTC | SPI_IFCR_TXTFC;
+    NRF24_SPI->CR1 &= ~SPI_CR1_SPE;            /* clears the FIFOs for the next frame */
+}
+
+/* --------------------------------------------------------------- timebase */
+uint32_t nrf24_port_micros(void)
+{
+    return DWT->CYCCNT / s_cycles_per_us;
+}
+
+void nrf24_port_delay_us(uint32_t us)
+{
+    const uint32_t start = DWT->CYCCNT;
+    const uint32_t ticks = us * s_cycles_per_us;
+    while ((DWT->CYCCNT - start) < ticks) { }
+}

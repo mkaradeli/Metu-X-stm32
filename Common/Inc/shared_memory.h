@@ -69,14 +69,18 @@ typedef struct __attribute__((packed)) {
 	uint8_t kf_flags;
 
 
-//	uint32_t actuator_mode; // DISABLED, DUTY, CURRENT, ... FORCE
-//	uint32_t mission_modes; // DISABLED,  TESTFIRE, DROP, HOVER
-//	uint32_t system_modes;
+
+	uint8_t actuator_mode; // DISABLED, DUTY, CURRENT, ... FORCE
+	uint8_t mission_modes; // DISABLED,  TESTFIRE, DROP, HOVER
+	uint8_t system_modes;
 
 
 
+//	uint8_t _pad[3]; // pads packed size to a multiple of 4 so rec[] stays word-aligned
 	uint16_t crc;
 } SensorData_t;
+
+//_static_assert(sizewof(SensorData_t) % 4u == 0u, "SensorData_t must be a multiple of 4 bytes or rec[] elements drift out of word alignment");
 
 #define PACKET_SIZE sizeof(SensorData_t)
 //#define BUFFER_PACKET_COUNT (SHARED_MEM_SIZE / PACKET_SIZE -1)
@@ -87,7 +91,7 @@ typedef struct __attribute__((packed)) {
 //#endif
 
 //typedef struct __attribute
-#define LOG_HALF_RECORDS   128u // 128 * 6
+#define LOG_HALF_RECORDS   512u // 128 * 6
 #define LOG_TOTAL_RECORDS  (2u * LOG_HALF_RECORDS)
 #define LOG_HALF_BYTES     (LOG_HALF_RECORDS * PACKET_SIZE)
 
@@ -109,7 +113,9 @@ typedef struct {
 	volatile bool record;
 	volatile bool ready;
 
-	SensorData_t rec[2][LOG_HALF_RECORDS];
+	/* aligned(4): SensorData_t is packed (alignment 1), so without this the
+	 * compiler won't round rec's offset up to a word boundary. */
+	SensorData_t rec[2][LOG_HALF_RECORDS] __attribute__((aligned(4)));
 //	SensorData_t sensorData[5]; //BUFFER_PACKET_COUNT = 1560
 } SensorData_Buffer_t;
 

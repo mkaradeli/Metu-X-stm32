@@ -31,6 +31,8 @@
 #include "BNO085.hpp"
 #include "SdCard/sd_task.hpp"
 //#include "SdCardRaw.hpp"
+#include "nrf24.h"
+#include "nrf24_port.h"
 BNO085 imu;
 
 
@@ -67,7 +69,7 @@ task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
 task_timer_t uart_logging = { 2, 0};
 
 __attribute__((section(".sram3"), used))
-volatile uint16_t adc_dma_buf_current[4];
+volatile uint16_t adc_dma_buf_current[5];
 __attribute__((section(".sram3"), used))
 volatile uint16_t adc_dma_buf_encoder[8*4];
 __attribute__((section(".sram3"), used))
@@ -147,7 +149,7 @@ void app_init() {
 //	logData.record = false;
 //	SensorData_Buffer_Init(&logData_axiram);
 	HAL_ADCEx_Calibration_Start(&hadc2, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
-	  HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc_dma_buf_current, 4);
+	  HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc_dma_buf_current, 5);
 
 	  HAL_ADCEx_Calibration_Start(&hadc1, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 	  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_dma_buf_encoder, 32);
@@ -195,6 +197,38 @@ void app_init() {
 	  imu.enableReport(SH2_ACCELEROMETER, 5000);   // 200 Hz
 
 //	  imu.enableReport(SH2_GAME_ROTATION_VECTOR,2500);
+
+	  /* nRF24 bring-up check: does the radio answer over SPI4? Standby only,
+	   * no CE/RX/TX yet. */
+	  {
+	      nrf24_cfg_t nrf24_cfg;
+	      nrf24_default_cfg(&nrf24_cfg);
+	      nrf24_status_t nrf24_st = nrf24_init(&nrf24_cfg);
+	      printf("nRF24: %s (status=%d)\r\n",
+	             (nrf24_st == NRF24_OK) ? "OK, radio present" : "NOT FOUND",
+	             (int)nrf24_st);
+
+	      /* Bench test: broadcast a magic string at the lowest available TX
+	       * power. no_ack=true so this needs no listener on the other end -
+	       * TX_DS fires as soon as the packet is on air, no ARC retries.
+	       * Throwaway test code - remove once past bring-up. */
+	      if (nrf24_st == NRF24_OK) {
+	          static const char s_magic[] = "KARADELI";
+	          uint8_t sent = 0u;
+
+	          nrf24_set_power(NRF24_PWR_M18);   /* lowest chip setting - E01's PA still adds ~22 dB */
+	          nrf24_start_tx();
+	          for (uint8_t i = 0u; i < 20u; i++) {
+	              if (nrf24_tx_blocking(s_magic, sizeof(s_magic) - 1u, true, 5000u) == NRF24_OK) {
+	                  sent++;
+	              }
+	              nrf24_port_delay_us(50000u);
+	          }
+	          printf("nRF24 TX 'KARADELI': %u/20 bursts sent, ch=%u (%u MHz)\r\n",
+	                 (unsigned)sent, (unsigned)nrf24_cfg.channel,
+	                 (unsigned)(2400u + nrf24_cfg.channel));
+	      }
+	  }
 
 		lidar.Reset();
 //		altEstimator.begin();
@@ -262,10 +296,10 @@ void app_init() {
     mission_uart_init(&huart3);       // whichever UART your ground link is on
     g_altEst.beginCalibration();
     calStartTick = uwTick;
-    HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(LED3_GPIO_Port, LED3_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(LED4_GPIO_Port, LED4_Pin, GPIO_PIN_SET);
 
 //	const uint8_t tv[] = "123456789";
 //		uint16_t crc = crc16_calc(tv, 9);
@@ -307,87 +341,6 @@ void app_loop() {
 	if (uwTick - timeOfLastPrint >= 1000){
 
 		timeOfLastPrint+= 1000;
-//		printf(CLR_SCREEN);
-//		printf("timestamp = %ld \n\r", uwTick);
-
-#ifdef SHOW_INTERRUPT_TIMER_COUNTERS
-		printf("\n\rWelcome to STM32 world ! counter=%d\n\r", (int16_t)(uwTick/1e3));
-
-		printf("adc 2 - CS counter = %d, should be 8k\n\r", (int)adc2_profiler.call_frequency);
-
-		printf("current controller mean time = %d.%d us, cpu usage = %%%d.%d\n\r", (int)adc2_profiler.mean_time, FRACTIONAL(adc2_profiler.mean_time), (int)adc2_profiler.cpu_usage, FRACTIONAL(adc2_profiler.cpu_usage));
-		printf("adc 1 - HE counter = %d, should be 4k\n\r", (int)adc1_profiler.call_frequency);
-		printf("encoder decode mean time = %d.%d us, cpu usage = %%%d.%d\n\r", (int)adc1_profiler.mean_time, FRACTIONAL(adc1_profiler.mean_time), (int)adc1_profiler.cpu_usage, FRACTIONAL(adc1_profiler.cpu_usage));
-		printf("adc 3 - PT counter = %d, should be 1k\n\r", (int)adc3_profiler.call_frequency);
-		printf("pressure decode mean time = %d.%d us, cpu usage = %%%d.%d\n\r", (int)adc3_profiler.mean_time, FRACTIONAL(adc3_profiler.mean_time), (int)adc3_profiler.cpu_usage, FRACTIONAL(adc3_profiler.cpu_usage));
-//		uint32_t adc_src = (RCC->D3CCIPR & RCC_D3CCIPR_ADCSEL_Msk) >> RCC_D3CCIPR_ADCSEL_Pos;
-
-		printf("main loop mean time = %d us\n\r", (int) main_loop_profiler.mean_time);
-		printf("printf mean time = %d us\n\r", (int) printf_profiler.mean_time);
-//		printf("current controller mean time = %d us\n\r", (int) adc2_profiler.mean_time);
-		printf("%d\n\r",BUFFER_PACKET_COUNT);
-//		ready_to_write_a++;
-//		actuator[0].setDuty(actuator[0].getDutyCycle() * -1.0f);
-		printf("%%%d\n\r", (int)(actuator[0].getDutyCycle()*100));
-		printf("timestamp = %ld, %ld \n\r", uwTick, micros());
-
-		if (adc1_profiler.get_start_click() < adc2_profiler.get_start_click())
-			printf("encoder is before current controller\n\r");
-		else
-			printf("current is before encoder \n\r");
-
-		if (adc2_profiler.get_start_click() < adc3_profiler.get_start_click())
-			printf("current is before pressure controller\n\r");
-		else
-			printf("pressure is before current \n\r");
-		printf("pressure start %ld\n\r", adc3_profiler.get_start_click());
-		printf("encoder start %ld\n\r", adc1_profiler.get_start_click());
-		printf("current start %ld\n\r", adc2_profiler.get_start_click());
-
-#endif
-#ifndef PROFILER_RESULTS
-//		printf("free_profiler cpu usage = %%%d.%d\n\r",(int)free_profiler.cpu_usage,FRACTIONAL(free_profiler.cpu_usage));
-//		printf("load_cell_profiler cpu usage = %%%d.%d\n\r",(int)load_cell_profiler.cpu_usage,FRACTIONAL(load_cell_profiler.cpu_usage));
-//		printf("main_loop_profiler cpu usage = %%%d.%d\n\r",(int)main_loop_profiler.cpu_usage,FRACTIONAL(main_loop_profiler.cpu_usage));
-//		printf("printf_profiler cpu usage = %%%d.%d\n\r",(int)printf_profiler.cpu_usage,FRACTIONAL(printf_profiler.cpu_usage));
-//		printf("adc1_profiler cpu usage = %%%d.%d\n\r",(int)adc1_profiler.cpu_usage,FRACTIONAL(adc1_profiler.cpu_usage));
-//		printf("adc2_profiler cpu usage = %%%d.%d\n\r",(int)adc2_profiler.cpu_usage,FRACTIONAL(adc2_profiler.cpu_usage));
-//		printf("adc3_profiler cpu usage = %%%d.%d\n\r",(int)adc3_profiler.cpu_usage,FRACTIONAL(adc3_profiler.cpu_usage));
-//		printf("tim2_profiler cpu usage = %%%d.%d\n\r",(int)tim2_profiler.cpu_usage,FRACTIONAL(tim2_profiler.cpu_usage));
-//		printf("tim3_profiler cpu usage = %%%d.%d\n\r",(int)tim3_profiler.cpu_usage,FRACTIONAL(tim3_profiler.cpu_usage));
-//		printf("tim4_profiler cpu usage = %%%d.%d\n\r",(int)tim4_profiler.cpu_usage,FRACTIONAL(tim4_profiler.cpu_usage));
-//		printf("button_profiler cpu usage = %%%d.%d\n\r",(int)button_profiler.cpu_usage,FRACTIONAL(button_profiler.cpu_usage));
-//		printf("crc_profiler cpu usage = %%%d.%d\n\r",(int)crc_profiler.cpu_usage,FRACTIONAL(crc_profiler.cpu_usage));
-//		printf("sd_card_profiler cpu usage = %%%d.%d\n\r",(int)sd_card_profiler.cpu_usage,FRACTIONAL(sd_card_profiler.cpu_usage));
-////		printf("IMU_profiler cpu usage = %%%d.%d\n\r",(int)IMU_profiler.cpu_usage,FRACTIONAL(IMU_profiler.cpu_usage));
-
-		float total_usage = main_loop_profiler.cpu_usage
-		+ free_profiler.cpu_usage
-		+ printf_profiler.cpu_usage
-		+ adc1_profiler.cpu_usage
-		+ adc2_profiler.cpu_usage
-		+ adc3_profiler.cpu_usage
-		+ tim2_profiler.cpu_usage
-		+ tim3_profiler.cpu_usage
-		+ tim4_profiler.cpu_usage
-		+ button_profiler.cpu_usage
-		+ load_cell_profiler.cpu_usage
-		+ crc_profiler.cpu_usage
-		+ IMU_profiler.cpu_usage +sd_card_profiler.cpu_usage;
-//		printf("angle = %d, cur = %d\n\r", int(actuator[0].hallEffect.valveAngle), int(actuator[0].get_current()));
-//		printf("total cpu usage accounted %%%d.%d \n\r", (int)total_usage, FRACTIONAL(total_usage));
-#endif
-//		printf("ACTUATOR 1\n\r");
-//		printf("current = %d.%d A\n\r",(int)actuator[0].get_current(), FRACTIONAL(actuator[0].get_current()));
-//		printf("encoder = %d.%d deg\n\r",(int)actuator[0].hallEffect.valveAngleKalman, FRACTIONAL(actuator[0].hallEffect.valveAngleKalman));
-//		printf("Nozzle Pressure = %d.%d\n\r", (int)actuator[0].psSensor->getBar(), FRACTIONAL(actuator[0].psSensor->getBar()));
-//		printf("Manifold Pressure = %d.%d\n\r", (int)Actuator::manifold->getBar(), FRACTIONAL(Actuator::manifold->getBar()) );
-//		printf("measured weight = %d.%d\n\r", (int)loadCell.weight_kg_filtered, FRACTIONAL(loadCell.weight_kg_filtered));
-
-//		printf("logData wr=%lu half=[%u,%u] written=%lu dropped=%lu\n\r",
-//		       logData.write_idx, logData.half_full[0], logData.half_full[1],
-//		       logData.written, logData.dropped);		printf("\n\r\n\r");
-//		printf("%d, %d, %d, \n\r", imu.quaternion.i, imu.quaternion.j, imu.quaternion.k);
 
 		main_loop_profiler.metrics();
 		printf_profiler.metrics();
@@ -410,11 +363,9 @@ void app_loop() {
 	}
 		main_loop_profiler.end();
 	if (task_ready(&printf_task)) { // 1000 ms
-//		printf_profiler.start();
-//		printf("%ld %ld , %ld\n\r", rb_count(&common_print_buffer), common_print_buffer.head, common_print_buffer.tail);
-//		printf("uwTick = %ld \n\r",uwTick);
+		printf_profiler.start();
 		rb_flush();
-//		printf_profiler.end();
+		printf_profiler.end();
 	  }
 
 //	if (task_ready(&IMU_task)) { // 1 ms
@@ -423,7 +374,8 @@ void app_loop() {
 //		IMU_profiler.end();
 //	}
 	if (task_ready(&sd_card_task)) { // 500 ms
-		sd_card_prep();
+//		if (HAL_GPIO_ReadPin(SD_CARD_DETECT_GPIO_Port,SD_CARD_DETECT_Pin))
+			sd_card_prep();
 	}
 	sd_card_task_function(); // every iter
 }

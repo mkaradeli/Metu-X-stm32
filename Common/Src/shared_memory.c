@@ -10,8 +10,10 @@
 
 /* 32-byte aligned so the halves can later be handed to a DMA-capable SDMMC
  * or SPI driver without straddling cache lines. Lives in .bss -> AXI SRAM. */
-__attribute__((aligned(32)))
+//__attribute__((aligned(32)))
+__attribute__((section(".log_data"), used))
 SensorData_Buffer_t logData;
+static_assert(sizeof(SensorData_t)%4==0 ,"degerler sadece +1 ve -1 olabilir.");
 
 
 void SensorData_Buffer_Init(SensorData_Buffer_t *b)
