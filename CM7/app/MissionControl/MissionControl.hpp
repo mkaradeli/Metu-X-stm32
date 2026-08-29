@@ -65,11 +65,13 @@ enum : uint8_t {
 	SD_CARD   = 1u << 3,
 	TELEMETRY = 1u << 4,
 	CURRENT   = 1u << 5,
-	ALL       = IMU | LIDAR | PRESSURE | SD_CARD | TELEMETRY | CURRENT,
+	BATTERY   = 1u << 6,
+	ALL       = IMU | LIDAR | PRESSURE | SD_CARD | TELEMETRY | CURRENT | BATTERY,
 	/* TF_OPEN/TF_CLOSE/TF_HOLD/CONST_THRUST default: bench testfire runs
 	 * without the vehicle assembled, so IMU/LIDAR/TELEMETRY aren't expected
-	 * to be live. */
-	TESTFIRE_DEFAULT = PRESSURE | SD_CARD | CURRENT,
+	 * to be live. Battery stays checked -- a testfire still draws real
+	 * current from the same pack. */
+	TESTFIRE_DEFAULT = PRESSURE | SD_CARD | CURRENT | BATTERY,
 };
 }
 

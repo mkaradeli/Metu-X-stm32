@@ -56,6 +56,17 @@ uint8_t  go_no_go_status = 0u;
 static uint32_t s_last_imu_ok_tick   = 0u;
 static uint32_t s_last_lidar_ok_tick = 0u;
 
+/* Battery: 6S LiPo, sensed on adc_dma_buf_pressure[5] through a 1/21 divider.
+ * BATTERY_ADC_VREF_V assumes VREF+ = VDDA = 3.3 V (no VREFBUF override found
+ * in this project) -- if the board's analog reference is actually something
+ * else, this threshold is silently wrong by that same ratio. Verify against
+ * a real multimeter reading before trusting this gate. */
+#define BATTERY_DIVIDER_RATIO   21.0f
+#define BATTERY_ADC_VREF_V      3.3f
+#define BATTERY_MIN_VOLTS       22.25f   /* ~25% SoC cutoff for a 6S pack */
+#define BATTERY_RAW_MIN         ((uint16_t)((BATTERY_MIN_VOLTS / BATTERY_DIVIDER_RATIO \
+                                  / BATTERY_ADC_VREF_V) * 65535.0f + 0.5f))
+
 /* Ground uplink command wire format -- MUST match rf24_gateway.py's CMD_*
  * opcodes / VERB table and CMD_STRUCT ("<BBIH" + crc16, little-endian).
  * Delivered as a raw nRF24 ACK payload (nrf24_rx_read() below), NOT our own
@@ -256,6 +267,7 @@ Profiler *profilers[] = {
 };
 
 
+float battery_voltage = 0;
 //bool True = true;
 //MissionControl missionControl(&True,
 //			&logData.record);
@@ -437,6 +449,7 @@ void app_loop() {
 			total_cpu_usage += profilers[i]->cpu_usage;
 		}
 		printf("\ttotal cpu usage = %f\n\r", total_cpu_usage);
+		printf("battery voltage = %f\n\r", battery_voltage);
 
 	}
 		main_loop_profiler.end();
@@ -458,6 +471,8 @@ void app_loop() {
 			(void)nrf24_link_send(&local_sensor_data, sizeof(local_sensor_data));
 		}
 	}
+	battery_voltage = static_cast<float>(adc_dma_buf_pressure[5])/65536.0f *3.3f *21.0f;
+
 }
 
 
@@ -859,7 +874,7 @@ void LED_Counter_Tick(void)
 	else
 		BSP_LED_On(LED_YELLOW);
 
-	/* Go/no-go: recompute which of the 6 gated subsystems are currently
+	/* Go/no-go: recompute which of the 7 gated subsystems are currently
 	 * healthy. See MissionControl::Start(), which ANDs this against
 	 * missionControl.go_no_go_enabled before allowing an arm. */
 	{
@@ -883,6 +898,8 @@ void LED_Counter_Tick(void)
 		for (int i = 0; i < 4; i++)
 			if (adc_dma_buf_current[i] < 4000) current_ok = false;
 		if (current_ok) status |= GoNoGo::CURRENT;
+
+		if (adc_dma_buf_pressure[5] >= BATTERY_RAW_MIN) status |= GoNoGo::BATTERY;
 
 		go_no_go_status = status;
 	}
