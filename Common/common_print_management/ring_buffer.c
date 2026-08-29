@@ -36,7 +36,15 @@ size_t rb_write(rb_t *rb, const void *src, size_t n)
 {
 	const uint8_t *p = (const uint8_t *)src;
 
-	uint32_t h     = rb->head;          /* only this context writes head   */
+	/* Genuinely multi-producer now that different call sites (main loop,
+	 * TIM7, ...) can run at different NVIC priorities and preempt one
+	 * another: read-h / copy / write-back-h has to be one atomic step, or
+	 * two producers can both read the same stale head and copy into the
+	 * same region, corrupting each other's bytes and the index. */
+	uint32_t primask = __get_PRIMASK();
+	__disable_irq();
+
+	uint32_t h     = rb->head;
 	uint32_t space = rb_free(rb);       /* single volatile read of tail    */
 
 	if (n > space) {
@@ -44,6 +52,7 @@ size_t rb_write(rb_t *rb, const void *src, size_t n)
 		n = space;
 	}
 	if (n == 0u) {
+		__set_PRIMASK(primask);
 		return 0u;
 	}
 
@@ -59,6 +68,8 @@ size_t rb_write(rb_t *rb, const void *src, size_t n)
 
 	RB_COMPILER_BARRIER();              /* payload stored before index     */
 	rb->head = (uint32_t)(h + n) & RB_MASK;
+
+	__set_PRIMASK(primask);
 	return n;
 }
 

@@ -446,12 +446,12 @@ void app_loop() {
 		printf_profiler.end();
 	  }
 
-	sd_card_profiler.start();
 	if (task_ready(&sd_card_task)) { // 500 ms
-			sd_card_prep();
+		sd_card_profiler.start();
+		sd_card_prep();
+		sd_card_profiler.end();
 	}
 	sd_card_task_function(); // every iter
-	sd_card_profiler.end();
 
 	if (task_ready(&nrf24_tx_task)) { // 20 ms, 50 Hz downlink
 		if (nrf24_link_tx_idle()) {

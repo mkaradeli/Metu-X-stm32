@@ -6,9 +6,11 @@
  *
  *  Single-core (STM32H753) revision.
  *
- *  SPSC byte ring drained over UART by DMA. Producer is any thread/ISR
- *  context on the core; consumer is the DMA engine, advanced from the
- *  TX-complete interrupt.
+ *  Multi-producer, single-consumer byte ring drained over UART by DMA.
+ *  Producer side (rb_write()/rb_push()) is safe to call from the main loop
+ *  and from any ISR, at any NVIC priority, concurrently -- the read-modify-
+ *  write of `head` is wrapped in a critical section for exactly that reason.
+ *  Consumer is the DMA engine, advanced from the TX-complete interrupt.
  *
  *  Storage belongs in SRAM3 (0x30040000, D2 domain) so DMA1/DMA2 reach it
  *  without crossing an inter-domain bus. Mark that region non-cacheable in
@@ -74,17 +76,24 @@ static inline uint32_t rb_count(const rb_t *rb)
 
 static inline bool rb_push(rb_t *rb, uint8_t c)
 {
+	/* Same read-h/write-h race as rb_write() -- see its comment. */
+	uint32_t primask = __get_PRIMASK();
+	__disable_irq();
+
 	uint32_t h    = rb->head;
 	uint32_t next = (h + 1u) & RB_MASK;
 
-	if (next == rb->tail) {             /* full */
-		rb->dropped++;
-		return false;
+	bool ok = (next != rb->tail);
+	if (ok) {
+		rb->buffer[h] = c;
+		RB_COMPILER_BARRIER();          /* byte stored before index update */
+		rb->head = next;
+	} else {
+		rb->dropped++;                  /* full */
 	}
-	rb->buffer[h] = c;
-	RB_COMPILER_BARRIER();              /* byte stored before index update */
-	rb->head = next;
-	return true;
+
+	__set_PRIMASK(primask);
+	return ok;
 }
 
 /* Bulk insert. Copies as much as fits, counts the remainder as dropped,
