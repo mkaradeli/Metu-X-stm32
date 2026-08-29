@@ -13,7 +13,9 @@
 
 class Profiler{
 public:
-	Profiler();
+	explicit Profiler(const char *name_val = "----");
+
+	const char *name;
 	float cpu_usage;
 	float mean_time;
 	float call_frequency;

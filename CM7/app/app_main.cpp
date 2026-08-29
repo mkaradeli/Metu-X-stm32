@@ -82,54 +82,74 @@ static uint32_t s_last_lidar_ok_tick = 0u;
 static bool    s_have_last_cmd_seq = false;
 static uint8_t s_last_cmd_seq = 0;
 
-/* Turn one validated uplink command into the same ASCII line HandleCommand()
- * already accepts over the mission UART, so the radio path gets every safety
- * check that already exists there for free -- most importantly that ARM/
- * START only fires if `arg` names the mission currently SELECTed, exactly
- * like typing "ARM HOVER" -- instead of re-implementing arm/fire logic in a
- * second, unvetted path. */
+/* Dispatch one validated uplink command directly against MissionControl's
+ * API -- no ASCII round-trip through HandleCommand(). The one safety property
+ * that mattered there (ARM/START only fires if the operator's confirmation
+ * names the mission currently SELECTed) is preserved as a plain index
+ * compare: `arg == SelectedIndex()` is the binary-native equivalent of
+ * HandleCommand()'s ieq(arg, SelectedName()) check, and unlike the old
+ * missionTable[arg].name lookup it needs no bounds check at all -- arg is
+ * never used to index anything here, so an out-of-range value just fails the
+ * compare instead of ever risking an out-of-bounds read.
+ *
+ * Each case calls exactly what HandleCommand() itself calls underneath
+ * (direct Start()/End()/Select() vs. the ISR-safe Request* variants for
+ * discharge/shutdown), so this is not a change in ISR-safety -- only in how
+ * the command gets there. */
 static void uplink_cmd_dispatch(uint8_t cmd, uint16_t arg)
 {
-	char line[40];
-	char reply[64];
-
 	switch (cmd) {
 	case UPLINK_CMD_NOP:
 		return;
-	case UPLINK_CMD_SEL:
-		snprintf(line, sizeof(line), "SEL %u", (unsigned)arg);
-		break;
-	case UPLINK_CMD_ARM:
-	case UPLINK_CMD_START:
-		if (arg >= missionTableCount) return;   /* out-of-range index, drop */
-		snprintf(line, sizeof(line), "ARM %s", missionTable[arg].name);
-		break;
-	case UPLINK_CMD_STOP:
-		snprintf(line, sizeof(line), "STOP");
-		break;
-	case UPLINK_CMD_ABORT:
-		snprintf(line, sizeof(line), "ABORT");
-		break;
-	case UPLINK_CMD_DISCHARGE:
-		snprintf(line, sizeof(line), "DISCHARGE");
-		break;
-	case UPLINK_CMD_SHUTDOWN:
-		snprintf(line, sizeof(line), "SHUTDOWN");
-		break;
-	case UPLINK_CMD_SET_GONOGO:
-		/* Doesn't move hardware, just changes what's allowed to gate a later
-		 * ARM, so it skips the HandleCommand() ASCII round-trip -- there's no
-		 * "repeat the name to confirm" style safety property to inherit here. */
-		missionControl.go_no_go_enabled = (uint8_t)(arg & 0xFFu);
-		printf("GONOGO enabled=0x%02X\r\n", missionControl.go_no_go_enabled);
-		return;
-	default:
+
+	case UPLINK_CMD_SEL: {
+		bool ok = missionControl.Select((uint8_t)arg);
+		if (ok) printf("SEL %u OK\r\n", (unsigned)arg);
+		else    printf("SEL %u FAIL: %s\r\n", (unsigned)arg,
+		                MissionControl::ErrorText(missionControl.last_error));
 		return;
 	}
 
-	reply[0] = '\0';
-	missionControl.HandleCommand(line, reply, sizeof(reply));
-	if (reply[0]) printf("%s", reply);
+	case UPLINK_CMD_ARM:
+	case UPLINK_CMD_START: {
+		if (arg != missionControl.SelectedIndex()) {
+			printf("ARM FAIL: arg %u != selected %u\r\n",
+			       (unsigned)arg, (unsigned)missionControl.SelectedIndex());
+			return;
+		}
+		bool ok = missionControl.Start();
+		if (ok) printf("ARM %s OK\r\n", missionControl.SelectedName());
+		else    printf("ARM %s FAIL: %s\r\n", missionControl.SelectedName(),
+		                MissionControl::ErrorText(missionControl.last_error));
+		return;
+	}
+
+	case UPLINK_CMD_STOP:
+	case UPLINK_CMD_ABORT:
+		missionControl.End();
+		printf("STOP/ABORT: state=%s\r\n", missionControl.StateName());
+		return;
+
+	case UPLINK_CMD_DISCHARGE:
+		missionControl.RequestSafeDischarge();
+		printf("DISCHARGE requested\r\n");
+		return;
+
+	case UPLINK_CMD_SHUTDOWN:
+		missionControl.RequestShutdown();
+		printf("SHUTDOWN requested\r\n");
+		return;
+
+	case UPLINK_CMD_SET_GONOGO:
+		/* Doesn't move hardware, just changes what's allowed to gate a
+		 * later ARM. */
+		missionControl.go_no_go_enabled = (uint8_t)(arg & 0xFFu);
+		printf("GONOGO enabled=0x%02X\r\n", missionControl.go_no_go_enabled);
+		return;
+
+	default:
+		return;
+	}
 }
 
 
@@ -194,24 +214,46 @@ LowPass load_lpf{1.0f, 1000,1};  // 30 Hz cutoff @ 1 kHz sample rate
 LowPass accel_interval{1.0f, 1000,1};  // 30 Hz cutoff @ 1 kHz sample rate
 LowPass quatIntRV_interval{1.0f,1000,1};
 
-Profiler free_profiler;
-Profiler load_cell_profiler;
-Profiler main_loop_profiler;
-Profiler printf_profiler;
-Profiler adc1_profiler;
-Profiler adc2_profiler;
-Profiler adc3_profiler;
-Profiler tim2_profiler;
-Profiler tim3_profiler;
-Profiler tim4_profiler;
-Profiler button_profiler;
-Profiler crc_profiler;
-Profiler IMU_profiler;
-Profiler nrf24_profiler;
-Profiler sd_card_profiler;
-Profiler tim7_profiler;
-Profiler kf_profiler;
-Profiler tim12_profiler;
+Profiler free_profiler{"free"};
+Profiler load_cell_profiler{"load"};
+Profiler main_loop_profiler{"main"};
+Profiler printf_profiler{"prin"};
+Profiler adc1_profiler{"enco"};
+Profiler adc2_profiler{"curr"};
+Profiler adc3_profiler{"pres"};
+Profiler tim2_profiler{"tim2"};
+Profiler tim3_profiler{"tim3"};
+Profiler tim4_profiler{"tim4"};
+Profiler button_profiler{"butt"};
+Profiler crc_profiler{"crc_"};
+Profiler IMU_profiler{"IMU_"};
+Profiler nrf24_profiler{"nrf2"};
+Profiler sd_card_profiler{"sd_c"};
+Profiler tim7_profiler{"tim7"};
+Profiler kf_profiler{"kf_p"};
+Profiler tim12_profiler{"tim1"};
+
+Profiler *profilers[] = {
+		&free_profiler,
+		&load_cell_profiler,
+		&main_loop_profiler,
+		&printf_profiler,
+		&adc1_profiler,
+		&adc2_profiler,
+		&adc3_profiler,
+		&tim2_profiler,
+		&tim3_profiler,
+		&tim4_profiler,
+		&button_profiler,
+		&crc_profiler,
+		&IMU_profiler,
+		&nrf24_profiler,
+		&sd_card_profiler,
+		&tim7_profiler,
+		&kf_profiler,
+		&tim12_profiler,
+
+};
 
 
 //bool True = true;
@@ -326,37 +368,13 @@ void app_init() {
 //	    local_sensor_data.current_demand = 2;
 //	    local_sensor_data.timestamp = 0;
 //	    ready_to_write_a=0;
+		for (int i=0; i<(sizeof(profilers)/sizeof(profilers[0])); i++)
+			profilers[i]->reset();
 
-	    main_loop_profiler.reset();
-	    printf_profiler.reset();
-	    free_profiler.reset();
-	    adc1_profiler.reset();
-	    adc2_profiler.reset();
-	    adc3_profiler.reset();
-	    tim2_profiler.reset();
-	    tim3_profiler.reset();
-	    tim4_profiler.reset();
-	    button_profiler.reset();
-	    crc_profiler.reset();
-	    IMU_profiler.reset();
-	    nrf24_profiler.reset();
-	    sd_card_profiler.reset();
-	    tim7_profiler.reset();
-	    tim12_profiler.reset();
-	    kf_profiler.reset();
-
-
-
-//	    SCB_InvalidateDCache_by_Addr((uint32_t *)adc_dma_buf_encoder, sizeof(adc_dma_buf_encoder));
 	    HAL_Delay(10);
 	    for (int i=0; i<4; i++)
 	    	actuator[i].calibrate();
-//	    currentController.initialize();
-//	    Actuator::manifold->calibrate();
 	    platform_controller.initialize();
-
-//	    if (mount_ok and file_creation_ok)
-//			controller_mode = controller_modes::PRESSURE;
 
 		for (int i= 0; i< 4; i++) {
 			actuator[i].actuatorController.rtU.pos_feedback = actuator[i].hallEffect.valveAngle;
@@ -367,9 +385,6 @@ void app_init() {
 		}
 
 
-
-//		start_flag = micros();
-//		actuator[0].static_manifold = &psSensors[4];
 
 	free_profiler.start();
 //	missionControl.Init(taskFunction, shutdownFunction);
@@ -398,7 +413,7 @@ extern bool pc8_active;
 
 }
 bool selfTrigger = false;
-
+float total_cpu_usage = 0;
 bool altitudeEstimatorDone = false;
 void app_loop() {
 
@@ -415,24 +430,13 @@ void app_loop() {
 
 		timeOfLastPrint+= 1000;
 		printf("timestamp = %ld\n\r", uwTick);
-		main_loop_profiler.metrics();
-		printf_profiler.metrics();
-		adc1_profiler.metrics();
-		adc2_profiler.metrics();
-		adc3_profiler.metrics();
-		tim2_profiler.metrics();
-		tim3_profiler.metrics();
-		tim4_profiler.metrics();
-		free_profiler.metrics();
-		button_profiler.metrics();
-		crc_profiler.metrics();
-		IMU_profiler.metrics();
-		nrf24_profiler.metrics();
-		sd_card_profiler.metrics();
-		kf_profiler.metrics();
-		tim7_profiler.metrics();
-		tim12_profiler.metrics();
-
+		total_cpu_usage = 0;
+		for (int i=0; i<(sizeof(profilers)/sizeof(profilers[0])); i++){
+			profilers[i]->metrics();
+			printf("%.4s cpu=%f, freq=%f\n\r",profilers[i]->name, profilers[i]->cpu_usage, profilers[i]->call_frequency);
+			total_cpu_usage += profilers[i]->cpu_usage;
+		}
+		printf("\ttotal cpu usage = %f\n\r", total_cpu_usage);
 
 	}
 		main_loop_profiler.end();
@@ -442,10 +446,12 @@ void app_loop() {
 		printf_profiler.end();
 	  }
 
+	sd_card_profiler.start();
 	if (task_ready(&sd_card_task)) { // 500 ms
 			sd_card_prep();
 	}
 	sd_card_task_function(); // every iter
+	sd_card_profiler.end();
 
 	if (task_ready(&nrf24_tx_task)) { // 20 ms, 50 Hz downlink
 		if (nrf24_link_tx_idle()) {

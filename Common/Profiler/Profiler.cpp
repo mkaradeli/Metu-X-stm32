@@ -10,7 +10,7 @@
 
 static Profiler* g_active = nullptr;
 
-Profiler::Profiler() {
+Profiler::Profiler(const char *name_val) : name(name_val) {
 	total_cycles = 0;
 	elapsed_cycles = 0;  // cycles in 1MHz
 	cpu_usage = 0; // %
