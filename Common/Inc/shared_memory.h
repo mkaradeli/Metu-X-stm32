@@ -41,7 +41,7 @@ typedef struct __attribute__((packed)) {
     float pressure_demand;
     float thrust_demand;
     float thrust_estimated;
-    uint16_t nozzle_raw;
+//    uint16_t nozzle_raw;
 
 } ActuatorData_t;
 typedef struct __attribute__((packed)) {
@@ -49,9 +49,9 @@ typedef struct __attribute__((packed)) {
 	uint32_t timestamp;
 	ActuatorData_t actuatorData[4];
 	float manifold_pressure;
-	uint16_t manifold_raw;
+//	uint16_t manifold_raw;
     float thrust_measured;
-	uint16_t thrust_raw;
+//	uint16_t thrust_raw;
 
 	sh2_RotationVector_t quaternion; // float i j k real
 	sh2_Accelerometer_t  linearAccel; // float x y z
@@ -60,13 +60,6 @@ typedef struct __attribute__((packed)) {
 	uint16_t lidarStrength;
 	float kf_altitude;
 	float kf_velocity;
-	float kf_accelBias;
-	float kf_sigmaH;
-	float kf_sigmaV;
-	float kf_meanNis;
-	float kf_tiltCos;
-	uint32_t kf_rejects;
-	uint8_t kf_flags;
 
 
 
@@ -76,7 +69,7 @@ typedef struct __attribute__((packed)) {
 	uint8_t last_error;      // mission_error_t, see MissionControl.hpp
 	uint8_t go_no_go_status; // GoNoGo bitmask: bit=1 -> subsystem currently healthy
 	uint8_t go_no_go_enabled;// GoNoGo bitmask: bit=1 -> gates arming (see MissionControl::go_no_go_enabled)
-	uint8_t pad[1];
+//	uint8_t pad[1];
 	uint16_t crc;
 } SensorData_t;
 
@@ -91,7 +84,7 @@ typedef struct __attribute__((packed)) {
 //#endif
 
 //typedef struct __attribute
-#define LOG_HALF_RECORDS   512u // 128 * 6
+#define LOG_HALF_RECORDS   640u // 128 * 6
 #define LOG_TOTAL_RECORDS  (2u * LOG_HALF_RECORDS)
 #define LOG_HALF_BYTES     (LOG_HALF_RECORDS * PACKET_SIZE)
 

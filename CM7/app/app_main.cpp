@@ -677,7 +677,8 @@ void encoder_adc_complete(){
 	}
 	adc1_profiler.end();
 }
-
+bool accept_log_entry=false;
+static uint32_t log_tick = 0;
 void pressure_adc_complete(){
 	adc3_profiler.start();
 	for (int i=0; i<4; i++){
@@ -710,11 +711,15 @@ void pressure_adc_complete(){
 //	};/
 
 	// External outputs (root outports fed by signals with default storage)
-
+	log_tick++;
+	accept_log_entry = false;(logData.write_idx) < (LOG_HALF_RECORDS/2);
+	accept_log_entry |= !(logData.half_full[0] || logData.half_full[1]);
+	accept_log_entry |= ((log_tick%2) == 0);
+	if (accept_log_entry) {
 
 	local_sensor_data.timestamp = micros(); //microseconds
-
 	for (int j=0;j<4;j++){
+
 		local_sensor_data.actuatorData[j].current_measured = actuator[j].get_current();
 		local_sensor_data.actuatorData[j].current_demand = actuator[j].actuatorController.rtY.currentDemand;
 		local_sensor_data.actuatorData[j].speedDemand = actuator[j].actuatorController.rtY.speedDemand;
@@ -788,6 +793,7 @@ void pressure_adc_complete(){
 			crc_profiler.end();
 			SensorData_Buffer_Commit(&logData);
 		}
+	}
 	}
 
 	adc3_profiler.end();

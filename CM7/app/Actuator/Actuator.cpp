@@ -74,7 +74,8 @@ void Actuator::calibrate(){
 	this->updateHallEffect();
 	this->hallEffect.calibrate();
 	this->psSensor->calibrate();
-	this->current_bias = this->current_meas;
+	if (this->current_meas > -30.0f)
+		this->current_bias = this->current_meas;
 }
 
 void Actuator::readPressure(){
