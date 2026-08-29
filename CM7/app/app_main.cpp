@@ -43,7 +43,94 @@ BNO085 imu;
  * unambiguously by name; these globals sidestep that. */
 nrf24_stats_t      nrf24_radio_stats;   /* per-fragment: tx_ok, tx_dropped, tx_timeout, rx_ok, retransmits, lost_packets */
 nrf24_link_stats_t nrf24_frame_stats;   /* per-frame: frames_sent, frames_dropped, frags_sent, frames_rx, crc_errors, reassembly_drops */
-uint32_t           nrf24_uplink_rx_count = 0u;   /* ACK-payload uplink packets drained, see tim7_trigger() */
+uint32_t           nrf24_uplink_rx_count   = 0u;   /* ACK-payload uplink packets drained, see tim7_trigger() */
+uint32_t           nrf24_uplink_bad_frames = 0u;   /* wrong length or CRC-16 mismatch, dropped                */
+uint32_t           nrf24_uplink_dup_drops  = 0u;   /* repeat of an already-processed seq, ignored              */
+
+/* Go/no-go: bit set = subsystem currently healthy. Recomputed every 100 ms in
+ * LED_Counter_Tick(); MissionControl::Start() ANDs this against
+ * missionControl.go_no_go_enabled to decide whether arming is allowed. */
+uint8_t  go_no_go_status = 0u;
+#define IMU_STALE_MS    200u   /* IMU reports at 200-400 Hz; way past one period if stale */
+#define LIDAR_STALE_MS  300u   /* lidar repeats ~100/s per MissionUart.cpp's own estimate  */
+static uint32_t s_last_imu_ok_tick   = 0u;
+static uint32_t s_last_lidar_ok_tick = 0u;
+
+/* Ground uplink command wire format -- MUST match rf24_gateway.py's CMD_*
+ * opcodes / VERB table and CMD_STRUCT ("<BBIH" + crc16, little-endian).
+ * Delivered as a raw nRF24 ACK payload (nrf24_rx_read() below), NOT our own
+ * nrf24_link fragment format:
+ *
+ *   byte 0    seq       wraps at 256; gateway repeats a command 3x on the
+ *                       same seq so one lost ACK payload doesn't lose it
+ *   byte 1    cmd       opcode, see UPLINK_CMD_* below
+ *   byte 2..5 echo_ts   last telemetry timestamp the gateway had seen (u32 LE)
+ *   byte 6..7 arg       opcode-specific argument (u16 LE)
+ *   byte 8..9 crc16     CRC-16/CCITT-FALSE seed 0xFFFF over bytes 0..7, LE
+ */
+#define UPLINK_CMD_LEN        10u
+#define UPLINK_CMD_NOP        0x00u
+#define UPLINK_CMD_SEL        0x10u
+#define UPLINK_CMD_ARM        0x11u
+#define UPLINK_CMD_START      0x12u
+#define UPLINK_CMD_STOP       0x20u
+#define UPLINK_CMD_ABORT      0x21u
+#define UPLINK_CMD_DISCHARGE  0x30u
+#define UPLINK_CMD_SHUTDOWN   0x40u
+#define UPLINK_CMD_SET_GONOGO 0x50u   /* arg low byte = new go_no_go_enabled mask */
+
+static bool    s_have_last_cmd_seq = false;
+static uint8_t s_last_cmd_seq = 0;
+
+/* Turn one validated uplink command into the same ASCII line HandleCommand()
+ * already accepts over the mission UART, so the radio path gets every safety
+ * check that already exists there for free -- most importantly that ARM/
+ * START only fires if `arg` names the mission currently SELECTed, exactly
+ * like typing "ARM HOVER" -- instead of re-implementing arm/fire logic in a
+ * second, unvetted path. */
+static void uplink_cmd_dispatch(uint8_t cmd, uint16_t arg)
+{
+	char line[40];
+	char reply[64];
+
+	switch (cmd) {
+	case UPLINK_CMD_NOP:
+		return;
+	case UPLINK_CMD_SEL:
+		snprintf(line, sizeof(line), "SEL %u", (unsigned)arg);
+		break;
+	case UPLINK_CMD_ARM:
+	case UPLINK_CMD_START:
+		if (arg >= missionTableCount) return;   /* out-of-range index, drop */
+		snprintf(line, sizeof(line), "ARM %s", missionTable[arg].name);
+		break;
+	case UPLINK_CMD_STOP:
+		snprintf(line, sizeof(line), "STOP");
+		break;
+	case UPLINK_CMD_ABORT:
+		snprintf(line, sizeof(line), "ABORT");
+		break;
+	case UPLINK_CMD_DISCHARGE:
+		snprintf(line, sizeof(line), "DISCHARGE");
+		break;
+	case UPLINK_CMD_SHUTDOWN:
+		snprintf(line, sizeof(line), "SHUTDOWN");
+		break;
+	case UPLINK_CMD_SET_GONOGO:
+		/* Doesn't move hardware, just changes what's allowed to gate a later
+		 * ARM, so it skips the HandleCommand() ASCII round-trip -- there's no
+		 * "repeat the name to confirm" style safety property to inherit here. */
+		missionControl.go_no_go_enabled = (uint8_t)(arg & 0xFFu);
+		printf("GONOGO enabled=0x%02X\r\n", missionControl.go_no_go_enabled);
+		return;
+	default:
+		return;
+	}
+
+	reply[0] = '\0';
+	missionControl.HandleCommand(line, reply, sizeof(reply));
+	if (reply[0]) printf("%s", reply);
+}
 
 
 #define FRACTIONAL(x) int(floor(int((x)*100)))%100
@@ -327,7 +414,7 @@ void app_loop() {
 	if (uwTick - timeOfLastPrint >= 1000){
 
 		timeOfLastPrint+= 1000;
-
+		printf("timestamp = %ld\n\r", uwTick);
 		main_loop_profiler.metrics();
 		printf_profiler.metrics();
 		adc1_profiler.metrics();
@@ -455,11 +542,36 @@ void tim7_trigger() { // 1 khz low priority
 	    uint8_t pipe;
 	    while (nrf24_rx_available(&pipe)) {
 	        uint8_t cmd_buf[NRF24_MAX_PAYLOAD];
-	        (void)nrf24_rx_read(cmd_buf, sizeof(cmd_buf));
+	        uint8_t n = nrf24_rx_read(cmd_buf, sizeof(cmd_buf));
 	        nrf24_uplink_rx_count++;
 	        (void)pipe;
-	        // TODO: parse <BBIH>+crc16 (see rf24_gateway.py build_cmd/CMD_STRUCT)
-	        // and route to MissionControl - drain-only for now.
+
+	        if (n != UPLINK_CMD_LEN) {
+	            nrf24_uplink_bad_frames++;
+	            continue;
+	        }
+	        uint16_t crc_calc = nrf24_crc16_ccitt_false(cmd_buf, 8, 0xFFFFu);
+	        uint16_t crc_rx   = (uint16_t)cmd_buf[8] | ((uint16_t)cmd_buf[9] << 8);
+	        if (crc_calc != crc_rx) {
+	            nrf24_uplink_bad_frames++;
+	            continue;
+	        }
+
+	        uint8_t  seq = cmd_buf[0];
+	        uint8_t  cmd = cmd_buf[1];
+	        uint16_t arg = (uint16_t)cmd_buf[6] | ((uint16_t)cmd_buf[7] << 8);
+
+	        /* rf24_gateway.py repeats every command 3x on the same seq so one
+	         * lost ACK payload doesn't lose the command; dedup here so e.g.
+	         * STOP/ABORT doesn't get processed three times over. */
+	        if (s_have_last_cmd_seq && seq == s_last_cmd_seq) {
+	            nrf24_uplink_dup_drops++;
+	            continue;
+	        }
+	        s_have_last_cmd_seq = true;
+	        s_last_cmd_seq = seq;
+
+	        uplink_cmd_dispatch(cmd, arg);
 	    }
 	}
 	nrf24_profiler.end();
@@ -475,6 +587,7 @@ void tim7_trigger() { // 1 khz low priority
         (void)newQuat;
         if (newAccel) {
         	onImuReport(imu);
+        	s_last_imu_ok_tick = uwTick;
         }
 
     }
@@ -482,6 +595,7 @@ void tim7_trigger() { // 1 khz low priority
 	if(lidar.hasNewReading()) {
 
 		onLidarFrame(lidar.getDistance(), lidar.getStrength());
+		s_last_lidar_ok_tick = uwTick;
 	}
 //    float aw[3];
 //    for (int i = 0; i < 3; ++i)
@@ -630,6 +744,13 @@ void pressure_adc_complete(){
         local_sensor_data.kf_meanNis    = s.nis;
         local_sensor_data.kf_tiltCos    = s.cosTilt;
         local_sensor_data.kf_rejects    = s.consecutiveRejects;
+
+        local_sensor_data.actuator_mode = static_cast<uint8_t>(controller_mode);
+        local_sensor_data.mission_modes = static_cast<uint8_t>(mission_mode);
+        local_sensor_data.system_modes = static_cast<uint8_t>(missionControl.system_mode);
+        local_sensor_data.last_error   = static_cast<uint8_t>(missionControl.last_error);
+        local_sensor_data.go_no_go_status  = go_no_go_status;
+        local_sensor_data.go_no_go_enabled = missionControl.go_no_go_enabled;
 //        local_sensor_data.kf_flags      = (uint8_t)altEstimator.phase()
 //                                        | (uint8_t)(altEstimator.lastResult() << 4);
 
@@ -715,7 +836,50 @@ void LED_Counter_Tick(void)
 			BSP_LED_Off(LED_GREEN);
 	}
 
+	/* Yellow: on whenever the downlink isn't demonstrably working right now --
+	 * either it just dropped a frame (frames_dropped ticking up) or nothing
+	 * went out at all since the last check (frames_sent stalled -- covers a
+	 * dead/hung radio that never even gets far enough to hit a retry-exhausted
+	 * drop). Off only while frames are actually leaving clean. */
+	static uint32_t lastFramesSent = 0;
+	static uint32_t lastFramesDropped = 0;
+	bool sentProgress = (nrf24_frame_stats.frames_sent != lastFramesSent);
+	bool droppingNow  = (nrf24_frame_stats.frames_dropped != lastFramesDropped);
+	lastFramesSent    = nrf24_frame_stats.frames_sent;
+	lastFramesDropped = nrf24_frame_stats.frames_dropped;
 
+	if (sentProgress && !droppingNow)
+		BSP_LED_Off(LED_YELLOW);
+	else
+		BSP_LED_On(LED_YELLOW);
+
+	/* Go/no-go: recompute which of the 6 gated subsystems are currently
+	 * healthy. See MissionControl::Start(), which ANDs this against
+	 * missionControl.go_no_go_enabled before allowing an arm. */
+	{
+		uint8_t status = 0;
+
+		if ((uwTick - s_last_imu_ok_tick) < IMU_STALE_MS)
+			status |= GoNoGo::IMU;
+		if ((uwTick - s_last_lidar_ok_tick) < LIDAR_STALE_MS)
+			status |= GoNoGo::LIDAR;
+
+		bool pressure_ok = true;
+		for (int i = 0; i < 5; i++)
+			if (adc_dma_buf_pressure[i] < 4000) pressure_ok = false;
+		if (pressure_ok) status |= GoNoGo::PRESSURE;
+
+		if (logData.ready) status |= GoNoGo::SD_CARD;
+
+		if (sentProgress && !droppingNow) status |= GoNoGo::TELEMETRY;
+
+		bool current_ok = true;
+		for (int i = 0; i < 4; i++)
+			if (adc_dma_buf_current[i] < 4000) current_ok = false;
+		if (current_ok) status |= GoNoGo::CURRENT;
+
+		go_no_go_status = status;
+	}
 
 	index ++;
 	index %= 7;

@@ -73,7 +73,10 @@ typedef struct __attribute__((packed)) {
 	uint8_t actuator_mode; // DISABLED, DUTY, CURRENT, ... FORCE
 	uint8_t mission_modes; // DISABLED,  TESTFIRE, DROP, HOVER
 	uint8_t system_modes;
-
+	uint8_t last_error;      // mission_error_t, see MissionControl.hpp
+	uint8_t go_no_go_status; // GoNoGo bitmask: bit=1 -> subsystem currently healthy
+	uint8_t go_no_go_enabled;// GoNoGo bitmask: bit=1 -> gates arming (see MissionControl::go_no_go_enabled)
+	uint8_t pad[1];
 	uint16_t crc;
 } SensorData_t;
 

@@ -69,6 +69,26 @@ static bool all_digits(const char *s) {
 }
 /* ------------------------------------------------------------------------ */
 
+const char *MissionControl::ErrorText(mission_error_t e) {
+	switch (e) {
+	case mission_error_t::NONE:                              return "";
+	case mission_error_t::BUSY:                               return "busy";
+	case mission_error_t::BAD_INDEX:                          return "bad index";
+	case mission_error_t::NO_SUCH_MISSION:                    return "no such mission";
+	case mission_error_t::NOT_IDLE:                           return "not idle";
+	case mission_error_t::LOG_NOT_READY:                      return "log not ready";
+	case mission_error_t::MISSION_NOT_VALID:                  return "mission not valid";
+	case mission_error_t::SAFETY_ALREADY_RELEASED:            return "safety connector already released";
+	case mission_error_t::NO_SAFE_DISCHARGE_MISSION:          return "no SAFE_DISCHARGE mission in table";
+	case mission_error_t::SAFE_DISCHARGE_MISSION_NOT_VALID:   return "SAFE_DISCHARGE mission not valid";
+	case mission_error_t::SAFE_DISCHARGE_ACTIVE:              return "safe discharge";
+	case mission_error_t::ARM_TIMEOUT:                        return "arm timeout";
+	case mission_error_t::SAFETY_REINSERTED:                  return "safety connector re-inserted";
+	case mission_error_t::GO_NO_GO_FAIL:                      return "go/no-go check failed";
+	default:                                                  return "?";
+	}
+}
+
 MissionControl::MissionControl(volatile bool *log_ready,
 		volatile bool *log_recording) {
 	this->system_mode   = system_modes::IDLE;
@@ -131,15 +151,17 @@ uint32_t MissionControl::LogPreallocMs() const {
 
 bool MissionControl::Select(uint8_t index) {
 	if (running || system_mode != system_modes::IDLE) {
-		last_error = "busy";
+		last_error = mission_error_t::BUSY;
 		return false;
 	}
 	if (index >= missionTableCount) {
-		last_error = "bad index";
+		last_error = mission_error_t::BAD_INDEX;
 		return false;
 	}
 	selected_index = index;
-	last_error = "";
+	last_error = mission_error_t::NONE;
+	go_no_go_enabled = (missionTable[index].kind == system_modes::TESTFIRE)
+	                    ? GoNoGo::TESTFIRE_DEFAULT : GoNoGo::ALL;
 	return true;
 }
 
@@ -148,7 +170,7 @@ bool MissionControl::Select(const char *name) {
 		if (missionTable[i].name && ieq(missionTable[i].name, name))
 			return Select(i);
 	}
-	last_error = "no such mission";
+	last_error = mission_error_t::NO_SUCH_MISSION;
 	return false;
 }
 
@@ -222,20 +244,27 @@ void MissionControl::BeginShutdown() {
 /* ---------------- start / stop ------------------------------------------ */
 
 bool MissionControl::Start() {
-	last_error = "";
+	last_error = mission_error_t::NONE;
 
 	if (running || system_mode != system_modes::IDLE) {
-		last_error = "not idle";
+		last_error = mission_error_t::NOT_IDLE;
 		return false;
 	}
 	if (!*log_ready) {
-		last_error = "log not ready";
+		last_error = mission_error_t::LOG_NOT_READY;
 		return false;
 	}
 
 	const MissionDef *m = Selected();
 	if (m == nullptr || m->task == nullptr || m->shutdown == nullptr) {
-		last_error = "mission not valid";
+		last_error = mission_error_t::MISSION_NOT_VALID;
+		return false;
+	}
+
+	/* Any bit enabled here but not currently healthy in go_no_go_status
+	 * blocks arming. A disabled bit is never checked, healthy or not. */
+	if ((go_no_go_enabled & ~go_no_go_status) != 0) {
+		last_error = mission_error_t::GO_NO_GO_FAIL;
 		return false;
 	}
 
@@ -253,7 +282,7 @@ bool MissionControl::Start() {
 			*log_recording = false;
 			running = false;
 			active  = nullptr;
-			last_error = "safety connector already released";
+			last_error = mission_error_t::SAFETY_ALREADY_RELEASED;
 			return false;
 		}
 		ops_duration_ms      = m->ops_duration_ms;
@@ -302,12 +331,12 @@ void MissionControl::Toggle() {
 
 bool MissionControl::SafeDischarge() {
 	if (safe_index >= missionTableCount) {
-		last_error = "no SAFE_DISCHARGE mission in table";
+		last_error = mission_error_t::NO_SAFE_DISCHARGE_MISSION;
 		return false;
 	}
 	const MissionDef *m = &missionTable[safe_index];
 	if (m->task == nullptr || m->shutdown == nullptr) {
-		last_error = "SAFE_DISCHARGE mission not valid";
+		last_error = mission_error_t::SAFE_DISCHARGE_MISSION_NOT_VALID;
 		return false;
 	}
 
@@ -326,7 +355,7 @@ bool MissionControl::SafeDischarge() {
 
 	active = m;
 	BeginOps();
-	last_error = "safe discharge";
+	last_error = mission_error_t::SAFE_DISCHARGE_ACTIVE;
 	return true;
 }
 
@@ -358,7 +387,7 @@ void MissionControl::Iter() {
 		} else if (m->arm_timeout_ms != 0
 		        && m->arm_timeout_ms != MISSION_NO_TIMEOUT
 		        && armed_time_counter_ms >= m->arm_timeout_ms) {
-			last_error = "arm timeout";
+			last_error = mission_error_t::ARM_TIMEOUT;
 			End();
 		}
 		break;
@@ -371,7 +400,7 @@ void MissionControl::Iter() {
 		ops_time_counter_ms = uwTick - ops_start_ms;
 
 		if (m->abort_on_safety_connect && !safetyConnectorReleased()) {
-			last_error = "safety connector re-inserted";
+			last_error = mission_error_t::SAFETY_REINSERTED;
 			BeginShutdown();
 		} else if (req_shutdown) {
 			BeginShutdown();
@@ -437,7 +466,7 @@ int MissionControl::Report(char *out, size_t n) const {
 	    (unsigned long)ops_time_counter_ms,
 	    (unsigned long)armed_time_counter_ms,
 	    safetyConnectorReleased() ? "OUT" : "IN",
-	    last_error);
+	    ErrorText(last_error));
 }
 
 /*  Commands (case insensitive):
@@ -477,7 +506,7 @@ bool MissionControl::HandleCommand(const char *cmd, char *reply, size_t n) {
 		bool ok = all_digits(arg) ? Select((uint8_t)atoi(arg)) : Select(arg);
 		snprintf(reply, n, "%s -> %u:%s%s%s\r\n", ok ? "SEL OK" : "SEL FAIL",
 		         (unsigned)selected_index, SelectedName(),
-		         ok ? "" : " : ", ok ? "" : last_error);
+		         ok ? "" : " : ", ok ? "" : ErrorText(last_error));
 		return true;
 	}
 	if (ieq(verb, "ARM") || ieq(verb, "START") || ieq(verb, "GO")) {
@@ -491,7 +520,7 @@ bool MissionControl::HandleCommand(const char *cmd, char *reply, size_t n) {
 		}
 		bool ok = Start();
 		snprintf(reply, n, "%s %s state=%s%s%s\r\n", ok ? "START OK" : "START FAIL",
-		         SelectedName(), StateName(), ok ? "" : " : ", ok ? "" : last_error);
+		         SelectedName(), StateName(), ok ? "" : " : ", ok ? "" : ErrorText(last_error));
 		return true;
 	}
 	if (ieq(verb, "STOP") || ieq(verb, "ABORT") || ieq(verb, "END")) {

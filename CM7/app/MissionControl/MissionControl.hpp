@@ -30,6 +30,54 @@ enum class system_modes
   SAFE_DISCHARGE = 7        // new mission kind
 };
 
+/* Wire-sized so it can ride in SensorData_t::last_error (uint8_t). Append
+ * only -- reordering or removing a value changes what old logs and a ground
+ * station decode existing telemetry as. Every value here MUST have a matching
+ * entry in MissionControl::ErrorText() in the .cpp, and the ground tools'
+ * error-name table (rf24_gateway.py / live_plot.py) must be kept in sync by
+ * hand -- there is no over-the-air enum sync. */
+enum class mission_error_t : uint8_t {
+	NONE = 0,
+	BUSY,
+	BAD_INDEX,
+	NO_SUCH_MISSION,
+	NOT_IDLE,
+	LOG_NOT_READY,
+	MISSION_NOT_VALID,
+	SAFETY_ALREADY_RELEASED,
+	NO_SAFE_DISCHARGE_MISSION,
+	SAFE_DISCHARGE_MISSION_NOT_VALID,
+	SAFE_DISCHARGE_ACTIVE,
+	ARM_TIMEOUT,
+	SAFETY_REINSERTED,
+	GO_NO_GO_FAIL,
+};
+
+/* Go/no-go pre-arm health bits. Wire-sized (uint8_t) so both the mask and the
+ * live status ride in SensorData_t (go_no_go_enabled / go_no_go_status) and
+ * the ground uplink (CMD_SET_GONOGO's arg). Keep in sync by hand with the
+ * ground tools' bit-name tables -- same caveat as mission_error_t above. */
+namespace GoNoGo {
+enum : uint8_t {
+	IMU       = 1u << 0,
+	LIDAR     = 1u << 1,
+	PRESSURE  = 1u << 2,
+	SD_CARD   = 1u << 3,
+	TELEMETRY = 1u << 4,
+	CURRENT   = 1u << 5,
+	ALL       = IMU | LIDAR | PRESSURE | SD_CARD | TELEMETRY | CURRENT,
+	/* TF_OPEN/TF_CLOSE/TF_HOLD/CONST_THRUST default: bench testfire runs
+	 * without the vehicle assembled, so IMU/LIDAR/TELEMETRY aren't expected
+	 * to be live. */
+	TESTFIRE_DEFAULT = PRESSURE | SD_CARD | CURRENT,
+};
+}
+
+/* Provided by the app/sensor layer (app_main.cpp): bit set = that subsystem
+ * is currently healthy. Must be kept live-updated -- Start() ANDs this
+ * against go_no_go_enabled and refuses to arm if an enabled bit is unhealthy. */
+extern uint8_t go_no_go_status;
+
 extern controller_modes controller_mode;
 
 using Function = void (*)(uint32_t time_ms);
@@ -131,7 +179,15 @@ public:
 	uint32_t armed_time_counter_ms = 0;
 
 	uint32_t safety_debounce_ms = 20;   // pin must stay released this long
-	const char *last_error = "";
+	mission_error_t last_error = mission_error_t::NONE;
+	static const char *ErrorText(mission_error_t e);
+
+	/* Which go/no-go bits (GoNoGo::*) block arming right now. Select() resets
+	 * this to the mission's default (see GoNoGo::TESTFIRE_DEFAULT / ::ALL);
+	 * the ground station's CMD_SET_GONOGO overwrites it directly afterward,
+	 * one active mask at a time -- there is no per-mission memory of a
+	 * ground override, re-selecting reloads the compiled-in default. */
+	uint8_t go_no_go_enabled = GoNoGo::ALL;
 
 private:
 	void BeginOps();
