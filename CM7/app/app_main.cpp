@@ -74,7 +74,7 @@ static uint32_t s_last_lidar_ok_tick = 0u;
  * a real multimeter reading before trusting this gate. */
 #define BATTERY_DIVIDER_RATIO   21.0f
 #define BATTERY_ADC_VREF_V      3.3f
-#define BATTERY_MIN_VOLTS       22.25f   /* ~25% SoC cutoff for a 6S pack */
+#define BATTERY_MIN_VOLTS       23.0f   /* ~25% SoC cutoff for a 6S pack */
 #define BATTERY_RAW_MIN         ((uint16_t)((BATTERY_MIN_VOLTS / BATTERY_DIVIDER_RATIO \
                                   / BATTERY_ADC_VREF_V) * 65535.0f + 0.5f))
 
@@ -498,7 +498,7 @@ void app_loop() {
 			(void)nrf24_link_send(&local_sensor_data, sizeof(local_sensor_data));
 		}
 	}
-	battery_voltage = static_cast<float>(adc_dma_buf_pressure[5])/65536.0f *3.3f *21.0f;
+//	battery_voltage = static_cast<float>(adc_dma_buf_pressure[5])/65536.0f *3.3f *21.0f;
 
 }
 
@@ -742,6 +742,7 @@ void pressure_adc_complete(){
 	for (int i=0; i<4; i++) {
 		actuator[i].actuator_controller_step();
 	}
+	battery_voltage = static_cast<float>(adc_dma_buf_pressure[5])/65536.0f *3.3f *21.0f;
 	// External inputs (root inport signals with default storage)
 //	struct ExtU {
 	//  real32_T P_manifold;             // '<Root>/P_manifold'
@@ -812,6 +813,7 @@ void pressure_adc_complete(){
         local_sensor_data.last_error   = static_cast<uint8_t>(missionControl.last_error);
         local_sensor_data.go_no_go_status  = go_no_go_status;
         local_sensor_data.go_no_go_enabled = missionControl.go_no_go_enabled;
+        local_sensor_data.battery_voltage = battery_voltage;
 
 
 		if(task_ready(&uart_logging)){

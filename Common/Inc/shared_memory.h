@@ -70,6 +70,7 @@ typedef struct __attribute__((packed)) {
 	uint8_t go_no_go_status; // GoNoGo bitmask: bit=1 -> subsystem currently healthy
 	uint8_t go_no_go_enabled;// GoNoGo bitmask: bit=1 -> gates arming (see MissionControl::go_no_go_enabled)
 //	uint8_t pad[1];
+	float battery_voltage;
 	uint16_t crc;
 } SensorData_t;
 

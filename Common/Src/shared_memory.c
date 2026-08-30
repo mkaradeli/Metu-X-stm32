@@ -13,7 +13,7 @@
 //__attribute__((aligned(32)))
 __attribute__((section(".log_data"), used))
 SensorData_Buffer_t logData;
-//static_assert(sizeof(SensorData_t)%4==0 ,"4 bit allignment");
+static_assert(sizeof(SensorData_t)==290 ,"4 bit allignment");
 
 
 void SensorData_Buffer_Init(SensorData_Buffer_t *b)
