@@ -98,6 +98,8 @@ void Error_Handler(void);
 #define LEFT_EN_2_GPIO_Port GPIOC
 #define ADC1_HE2_Pin GPIO_PIN_0
 #define ADC1_HE2_GPIO_Port GPIOA
+#define ADC1_HE1_Pin GPIO_PIN_2
+#define ADC1_HE1_GPIO_Port GPIOA
 #define ADC2_CS1_Pin GPIO_PIN_3
 #define ADC2_CS1_GPIO_Port GPIOA
 #define ADC1_HE3_Pin GPIO_PIN_4
