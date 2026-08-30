@@ -25,6 +25,7 @@
 #include "platformController.h"
 #include "app_main.hpp"
 #include "Actuator.hpp"
+#include "HWIL.h"
 #define ADC_16B_MAX 65536U
 
 extern Actuator actuator[4];
@@ -42,7 +43,7 @@ extern PlatformController platform_controller;
 extern const float nozzle_gain[4];
 extern AltitudeEstimator::Params p;
 extern AltitudeEstimator g_altEst;
-
+extern HWIL hwil;
 /*
 1 x- left
 2 y+ front

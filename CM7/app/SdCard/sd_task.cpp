@@ -211,10 +211,12 @@ static void sd_create_file()
         return;
     }
 
-    /* Contiguous pre-allocation makes f_sync cheap. It also sets the file
-     * size to the full extent immediately, which is why the write pointer,
-     * not f_size, is the end of data everywhere below. Not fatal if the card
-     * has no contiguous run that big: fall back to plain appending. */
+    /* Contiguous pre-allocation is also why the per-write f_sync() calls got
+     * removed (see sd_card_task_function()): nothing here ever needs to grow
+     * the FAT chain or update the file's size after this point. It sets the
+     * file size to the full extent immediately, which is why the write
+     * pointer, not f_size, is the end of data everywhere below. Not fatal if
+     * the card has no contiguous run that big: fall back to plain appending. */
     const uint32_t want = prealloc_bytes();
     if (want) {
         res = f_expand(&Fil, want, 1);
@@ -337,6 +339,11 @@ static void sd_finalize_file()
 /* Tail flush at end of recording                                      */
 /* ------------------------------------------------------------------ */
 
+/* No f_sync() here: this is always immediately followed (same call chain, in
+ * sd_card_prep()) by sd_finalize_file()'s f_close(), which performs an
+ * equivalent-or-stronger flush on its own -- see the comment on
+ * sd_card_task_function() for why an explicit sync isn't load-bearing in
+ * this design even without that. */
 static void sd_flush_tail()
 {
     const SensorData_t *tail = NULL;
@@ -352,10 +359,6 @@ static void sd_flush_tail()
         }
         SensorData_Buffer_ReleaseTail(&logData, n);
         printf("flushed %u trailing records\n\r", (unsigned)n);
-    }
-
-    if (f_sync(&Fil) != FR_OK) {
-        sd_fault("syncing tail", FR_DISK_ERR);
     }
 }
 
@@ -422,13 +425,22 @@ void sd_card_task_function()
         return;
     }
 
-    res = f_sync(&Fil);
-    if (res != FR_OK) {
-        sd_card_profiler.end();
-        sd_fault("f_sync", res);
-        return;
-    }
-
+    /* No f_sync() here on purpose. The data is already durable once f_write()
+     * returns FR_OK: the SD protocol keeps the card in a busy/programming
+     * state until a write is actually committed to flash, and both
+     * disk_write() and BSP_SD_WriteBlocks[_DMA]() already wait that out
+     * before reporting success -- this isn't a write-back cache that needs
+     * an explicit flush. What f_sync() would additionally do -- flush
+     * FatFS's own dirty window buffer, update the directory entry's size --
+     * doesn't apply either: every half-buffer write is exactly sector-
+     * aligned (512 records * 324 B = 165888 B = 512 B/sector * 324, and
+     * LOG_HEADER_BYTES=512 keeps every write starting aligned too), so
+     * f_write() streams straight to disk_write() with nothing left
+     * buffered; and the file's size was fixed at the full f_expand()'d
+     * extent once at creation, so it never changes here for a sync to
+     * push out. Recovery (find_resume_offset()) already bisects for the
+     * real data instead of trusting f_size()/timestamps, so there's
+     * nothing left for a sync to protect in this design. */
     BSP_LED_Off(LED_RED);
     sd_card_profiler.end();
 }

@@ -70,5 +70,6 @@ static_assert(encoderSigns[2]==1 or encoderSigns[2]==-1,"degerler sadece +1 ve -
 static_assert(encoderSigns[3]==1 or encoderSigns[3]==-1,"degerler sadece +1 ve -1 olabilir.");
 
 PlatformController platform_controller;
+HWIL hwil;
 
 const float nozzle_gain[4] = {1/0.1699, 1/0.1723, 1/0.1730, 1/0.1763};

@@ -9,6 +9,17 @@
 #define DISABLE_CRC true
 #define CHECK_TIMER_FREQUENCIES false
 
+/* Hardware-in-the-loop: when 1, platform_controller and the SD/telemetry
+ * log see the HWIL-simulated plant (hwil.rtY.position/velocity/
+ * quaternion_sim) instead of the real altitude estimator/IMU. Real actuator
+ * commands still drive real valves/motors either way -- only the vehicle-
+ * level attitude/altitude/velocity feedback is substituted, so this is a
+ * bench rig (real hardware response, simulated flight dynamics), not a pure
+ * software sim. MUST be 0 for an actual flight build -- there is no runtime
+ * override, specifically so a corrupted command or an accidental UI click
+ * can never close the real flight-control loop against a simulated plant. */
+#define HWIL_ENABLED 1
+
 
 #include <shared_memory.h>
 #include "app_main.hpp"
@@ -243,6 +254,7 @@ Profiler sd_card_profiler{"sd_c"};
 Profiler tim7_profiler{"tim7"};
 Profiler kf_profiler{"kf_p"};
 Profiler tim12_profiler{"tim1"};
+Profiler hwil_profiler{"hwil"};
 
 Profiler *profilers[] = {
 		&free_profiler,
@@ -263,6 +275,7 @@ Profiler *profilers[] = {
 		&tim7_profiler,
 		&kf_profiler,
 		&tim12_profiler,
+		&hwil_profiler,
 
 };
 
@@ -387,7 +400,21 @@ void app_init() {
 	    for (int i=0; i<4; i++)
 	    	actuator[i].calibrate();
 	    platform_controller.initialize();
+	    hwil.initialize();
+#if HWIL_ENABLED
+	    /* Initial conditions, set once at boot -- not touched again per-tick.
+	     * NOTE: since hwil.initialize() only runs once per power cycle, a
+	     * second mission armed in the same session continues the simulated
+	     * rocket from wherever the first mission's flight left off (position/
+	     * velocity aren't reset back to X0/V0), rather than starting fresh.
+	     * If that's not what you want, this needs to move to wherever a
+	     * mission's Start() actually fires instead of here. */
+	    hwil.rtU.V0 = 0.0f;   // rocket starts at rest
+	    hwil.rtU.X0 = 9.0f;   // rocket starts at ground level
+	    hwil.rtY.position = hwil.rtU.X0;
+	    hwil.rtY.velocity = hwil.rtU.V0;
 
+#endif
 		for (int i= 0; i< 4; i++) {
 			actuator[i].actuatorController.rtU.pos_feedback = actuator[i].hallEffect.valveAngle;
 			actuator[i].actuatorController.rtU.SpeedFeedback = actuator[i].hallEffect.valveVelocity;
@@ -508,23 +535,8 @@ void tim7_trigger() { // 1 khz low priority
 		if (Button.pressed()) {
 			button_profiler.start();
             missionControl.RequestToggle();     // ISR-safe, serviced in Iter()
-            main_loop_profiler.reset();
-            	    printf_profiler.reset();
-            	    free_profiler.reset();
-            	    adc1_profiler.reset();
-            	    adc2_profiler.reset();
-            	    adc3_profiler.reset();
-            	    tim2_profiler.reset();
-            	    tim3_profiler.reset();
-            	    tim4_profiler.reset();
-            	    button_profiler.reset();
-            	    crc_profiler.reset();
-            	    IMU_profiler.reset();
-            	    nrf24_profiler.reset();
-            	    sd_card_profiler.reset();
-            	    tim7_profiler.reset();
-            	    tim12_profiler.reset();
-            	    kf_profiler.reset();
+            for (int i=0; i<(sizeof(profilers)/sizeof(profilers[0])); i++)
+            			profilers[i]->reset();
 		} else {
 			if (selfTrigger and uwTick==10000) {
 				selfTrigger = false;
@@ -629,6 +641,31 @@ void tim7_trigger() { // 1 khz low priority
 //    missionControl.HandleCommand(rx_line, reply, sizeof(reply))
     // TODO: recive handling
 
+#if HWIL_ENABLED
+    /* No "active" flag on the model itself, so gate it externally: only
+     * step (and only bother feeding it inputs) while a mission is actually
+     * running, so the simulated rocket doesn't integrate motion while idle
+     * on the bench pre-arm. */
+    hwil_profiler.start();
+    if (missionControl.running) {
+        hwil.rtU.F_nozzle_1 = actuator[0].actuatorController.rtY.ThrustEstimate;
+        hwil.rtU.F_nozzle_2 = actuator[1].actuatorController.rtY.ThrustEstimate;
+        hwil.rtU.F_nozzle_3 = actuator[2].actuatorController.rtY.ThrustEstimate;
+        hwil.rtU.F_nozzle_4 = actuator[3].actuatorController.rtY.ThrustEstimate;
+        hwil.rtU.P_nozzle_manifold = Actuator::manifold->getPsi();
+        hwil.rtU.P_nozzle_1 = actuator[0].getPressurePsi();
+        hwil.rtU.P_nozzle_2 = actuator[1].getPressurePsi();
+        hwil.rtU.P_nozzle_3 = actuator[2].getPressurePsi();
+        hwil.rtU.P_nozzle_4 = actuator[3].getPressurePsi();
+        hwil.rtU.quaternion_true[0] = imu.gyroIntegratedRV.i;
+        hwil.rtU.quaternion_true[1] = imu.gyroIntegratedRV.j;
+        hwil.rtU.quaternion_true[2] = imu.gyroIntegratedRV.k;
+        hwil.rtU.quaternion_true[3] = imu.gyroIntegratedRV.real;
+        hwil.step();
+    }
+    hwil_profiler.end();
+#endif
+
 	tim7_profiler.end();
 }
 
@@ -636,13 +673,22 @@ void tim12_trigger(){ // mid priority 50hz platform control task
 	tim12_profiler.start();
 //	platform_controller.rtU.Height = altEstimator.altitude(); // m
 //	platform_controller.rtU.Velocity = altEstimator.velocity(); // m/s
-	platform_controller.rtU.ManifoldPressure = Actuator::manifold->getBar(); // bar
+	platform_controller.rtU.ManifoldPressure = Actuator::manifold->getBar(); // bar -- real either way, HWIL has no manifold output
+#if HWIL_ENABLED
+	platform_controller.rtU.quaternion[0] = hwil.rtY.quaternion_sim[0];
+	platform_controller.rtU.quaternion[1] = hwil.rtY.quaternion_sim[1];
+	platform_controller.rtU.quaternion[2] = hwil.rtY.quaternion_sim[2];
+	platform_controller.rtU.quaternion[3] = hwil.rtY.quaternion_sim[3];
+	platform_controller.rtU.Height = hwil.rtY.position;
+	platform_controller.rtU.Velocity = hwil.rtY.velocity;
+#else
 	platform_controller.rtU.quaternion[0] = imu.gyroIntegratedRV.i;
 	platform_controller.rtU.quaternion[1] = imu.gyroIntegratedRV.j;
 	platform_controller.rtU.quaternion[2] = imu.gyroIntegratedRV.k;
 	platform_controller.rtU.quaternion[3] = imu.gyroIntegratedRV.real;
 	platform_controller.rtU.Height = g_altEst.height();
 	platform_controller.rtU.Velocity = g_altEst.velocity();
+#endif
 //	platform_controller.rtU.T_alloc_total = T_alloc_total;
 
 
@@ -731,45 +777,34 @@ void pressure_adc_complete(){
 		local_sensor_data.actuatorData[j].valveAngleKalman = actuator[j].hallEffect.valveAngleKalman;
 		local_sensor_data.actuatorData[j].valveVelocity = actuator[j].hallEffect.valveVelocity;
 		local_sensor_data.actuatorData[j].duty = actuator[j].getDutyCycle();
-
 		local_sensor_data.actuatorData[j].nozzle_pressure = actuator[j].getPressurePsi();
-		local_sensor_data.actuatorData[j].nozzle_raw = *actuator[j].psSensor->raw_value;
 		local_sensor_data.actuatorData[j].thrust_demand = actuator[j].actuatorController.rtU.F_demand;
 		local_sensor_data.actuatorData[j].thrust_estimated = actuator[j].actuatorController.rtY.ThrustEstimate;
 
 	}
-//		local_sensor_data.thrust_measured = loadCell.getForce();
-//		local_sensor_data.thrust_raw = *loadCell.raw_value;
 		local_sensor_data.manifold_pressure = Actuator::manifold->getPsi();
-		local_sensor_data.manifold_raw = *Actuator::manifold->raw_value;
-		local_sensor_data.linearAccel = imu.accel;
+		local_sensor_data.linearAccel = imu.accel;   // real either way: HWIL has no 3-axis accel output to substitute
+#if HWIL_ENABLED
+		local_sensor_data.quaternion.i = hwil.rtY.quaternion_sim[0];
+		local_sensor_data.quaternion.j = hwil.rtY.quaternion_sim[1];
+		local_sensor_data.quaternion.k = hwil.rtY.quaternion_sim[2];
+		local_sensor_data.quaternion.real = hwil.rtY.quaternion_sim[3];
+#else
 		local_sensor_data.quaternion.i = imu.gyroIntegratedRV.i;
 		local_sensor_data.quaternion.j = imu.gyroIntegratedRV.j;
 		local_sensor_data.quaternion.k = imu.gyroIntegratedRV.k;
 		local_sensor_data.quaternion.real = imu.gyroIntegratedRV.real;
+#endif
 		local_sensor_data.lidarDistance = lidar.getDistance();
 		local_sensor_data.lidarStrength = lidar.getStrength();
 
+#if HWIL_ENABLED
+		local_sensor_data.kf_altitude = hwil.rtY.position;
+		local_sensor_data.kf_velocity = hwil.rtY.velocity;
+#else
 		local_sensor_data.kf_altitude = g_altEst.height();
 		local_sensor_data.kf_velocity = g_altEst.velocity();
-//        float    innovation          = 0.0f;  /* last y = z - h        [m] */
-//        float    nis                 = 0.0f;  /* last y^2 / S          [-] */
-//        float    cosTilt             = 1.0f;  /* vertical fraction     [-] */
-//        uint32_t lidarAccepted       = 0;
-//        uint32_t lidarRejected       = 0;     /* gate or tilt failures     */
-//        uint32_t lidarBlocksDropped  = 0;     /* too few valid raw frames  */
-//        uint32_t consecutiveRejects  = 0;
-//        bool     lastUpdateAccepted  = false;
-
-		AltitudeEstimator::Status s = g_altEst.status();
-//        local_sensor_data.kf_altitude   = altEstimator.altitude();
-//        local_sensor_data.kf_velocity   = altEstimator.velocity();
-//        local_sensor_data.kf_accelBias  = altEstimator.accelBias();
-        local_sensor_data.kf_sigmaH     = g_altEst.heightSigma();
-        local_sensor_data.kf_sigmaV     = g_altEst.velocitySigma();
-        local_sensor_data.kf_meanNis    = s.nis;
-        local_sensor_data.kf_tiltCos    = s.cosTilt;
-        local_sensor_data.kf_rejects    = s.consecutiveRejects;
+#endif
 
         local_sensor_data.actuator_mode = static_cast<uint8_t>(controller_mode);
         local_sensor_data.mission_modes = static_cast<uint8_t>(mission_mode);
@@ -777,8 +812,7 @@ void pressure_adc_complete(){
         local_sensor_data.last_error   = static_cast<uint8_t>(missionControl.last_error);
         local_sensor_data.go_no_go_status  = go_no_go_status;
         local_sensor_data.go_no_go_enabled = missionControl.go_no_go_enabled;
-//        local_sensor_data.kf_flags      = (uint8_t)altEstimator.phase()
-//                                        | (uint8_t)(altEstimator.lastResult() << 4);
+
 
 		if(task_ready(&uart_logging)){
 //			rb_write(&common_print_buffer, &local_sensor_data, (size_t)sizeof(SensorData_t));
