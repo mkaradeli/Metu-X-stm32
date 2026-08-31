@@ -669,6 +669,10 @@ void tim12_trigger(){ // mid priority 50hz platform control task
 	platform_controller.rtU.quaternion[3] = hwil.rtY.quaternion_sim[3];
 	platform_controller.rtU.Height = hwil.rtY.position;
 	platform_controller.rtU.Velocity = hwil.rtY.velocity;
+	platform_controller.rtU.gyro_x = hwil.rtY.angular_velocity[0];
+	platform_controller.rtU.gyro_y = hwil.rtY.angular_velocity[1];
+	platform_controller.rtU.gyro_z = hwil.rtY.angular_velocity[2];
+
 #else
 	platform_controller.rtU.quaternion[0] = imu.gyroIntegratedRV.i;
 	platform_controller.rtU.quaternion[1] = imu.gyroIntegratedRV.j;
@@ -676,6 +680,9 @@ void tim12_trigger(){ // mid priority 50hz platform control task
 	platform_controller.rtU.quaternion[3] = imu.gyroIntegratedRV.real;
 	platform_controller.rtU.Height = g_altEst.height();
 	platform_controller.rtU.Velocity = g_altEst.velocity();
+	platform_controller.rtU.gyro_x = imu.gyroIntegratedRV.angVelX;
+	platform_controller.rtU.gyro_y = imu.gyroIntegratedRV.angVelY;
+	platform_controller.rtU.gyro_z = imu.gyroIntegratedRV.angVelZ;
 #endif
 //	platform_controller.rtU.T_alloc_total = T_alloc_total;
 
