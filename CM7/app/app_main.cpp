@@ -5,21 +5,9 @@
  *      Author: karadeli
  */
 
-#include "globals.hpp"
+#include "globals.hpp"   // HWIL_ENABLED lives here now, shared with UserTask.cpp
 #define DISABLE_CRC true
 #define CHECK_TIMER_FREQUENCIES false
-
-/* Hardware-in-the-loop: when 1, platform_controller and the SD/telemetry
- * log see the HWIL-simulated plant (hwil.rtY.position/velocity/
- * quaternion_sim) instead of the real altitude estimator/IMU. Real actuator
- * commands still drive real valves/motors either way -- only the vehicle-
- * level attitude/altitude/velocity feedback is substituted, so this is a
- * bench rig (real hardware response, simulated flight dynamics), not a pure
- * software sim. MUST be 0 for an actual flight build -- there is no runtime
- * override, specifically so a corrupted command or an accidental UI click
- * can never close the real flight-control loop against a simulated plant. */
-#define HWIL_ENABLED 1
-
 
 #include <shared_memory.h>
 #include "app_main.hpp"
@@ -817,7 +805,9 @@ void pressure_adc_complete(){
 
 
 		if(task_ready(&uart_logging)){
-//			rb_write(&common_print_buffer, &local_sensor_data, (size_t)sizeof(SensorData_t));
+#if not ENABLE_PRINT
+			rb_write(&common_print_buffer, &local_sensor_data, (size_t)sizeof(SensorData_t));
+#endif
 		}
 
 		if (missionControl.running and logData.ready) {

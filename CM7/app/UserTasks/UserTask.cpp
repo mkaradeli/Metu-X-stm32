@@ -91,6 +91,27 @@ uint32_t last_time_ms=10000;
 static void hoverTask(uint32_t time_ms) {
 	mission_mode = mission_modes::HOVER;
 	platform_controller.rtU.Dropped = true;
+#if HWIL_ENABLED
+	hwil.rtU.enable_spring = true;
+	if (time_ms == 0) {
+		/* rtU.X0/V0 only take effect on the first step() after
+		 * initialize() (one-shot DWORK latch in the generated code) --
+		 * re-initialize() here so each HOVER firing actually restarts
+		 * the simulated rocket at 2 m instead of continuing from
+		 * wherever the previous mission's flight left off.
+		 *
+		 * hwil.step() runs from tim7_trigger() (TIM7, prio 2), while
+		 * this runs from pressure_adc_complete() off a DMA1 completion
+		 * (prio 0 -- higher, so it can preempt TIM7). Without a guard,
+		 * that preemption could hit mid-step() and reset rtX/rtDW out
+		 * from under the ODE3 sub-stepping. Mask TIM7 for the reset. */
+		HAL_NVIC_DisableIRQ(TIM7_IRQn);
+		hwil.rtU.X0 = 2.0f;
+		hwil.rtU.V0 = 0.0f;
+		hwil.initialize();
+		HAL_NVIC_EnableIRQ(TIM7_IRQn);
+	}
+#endif
 
 	{
 		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.LeftThrustCmd;
@@ -103,6 +124,21 @@ static void hoverTask(uint32_t time_ms) {
 static void dropTask(uint32_t time_ms) {
 	mission_mode = mission_modes::DROP;
 	platform_controller.rtU.Dropped = true;
+#if HWIL_ENABLED
+	hwil.rtU.enable_spring = false;
+	if (time_ms == 0) {
+		/* see hoverTask(): rtU.X0/V0 only latch on the first step()
+		 * after initialize(), so re-initialize() here to actually
+		 * restart the simulated rocket at 9 m for this firing. Mask
+		 * TIM7 (hwil.step()'s ISR, lower prio than this DMA callback)
+		 * so it can't preempt mid-reset -- see hoverTask() for why. */
+		HAL_NVIC_DisableIRQ(TIM7_IRQn);
+		hwil.rtU.X0 = 9.0f;
+		hwil.rtU.V0 = 0.0f;
+		hwil.initialize();
+		HAL_NVIC_EnableIRQ(TIM7_IRQn);
+	}
+#endif
 	{
 		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.LeftThrustCmd;
 		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.FrontThrustCmd;
