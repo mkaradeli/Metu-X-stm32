@@ -120,10 +120,17 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : SAFETY_CONNECTOR_Pin SD_CARD_DETECT_Pin */
-  GPIO_InitStruct.Pin = SAFETY_CONNECTOR_Pin|SD_CARD_DETECT_Pin;
+  GPIO_InitStruct.Pin = SD_CARD_DETECT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : SAFETY_CONNECTOR_Pin SD_CARD_DETECT_Pin */
+  GPIO_InitStruct.Pin = SAFETY_CONNECTOR_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
 
   /*Configure GPIO pin : PB13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;

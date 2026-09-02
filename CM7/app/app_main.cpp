@@ -207,7 +207,7 @@ uint32_t timeOfLastPrint=uwTick;
 
 
 DebouncedButton Button{1,BUTTON_USER_GPIO_PORT,BUTTON_USER_PIN};
-DebouncedButton SafetyConnector{1,SAFETY_CONNECTOR_GPIO_Port,SAFETY_CONNECTOR_Pin};
+DebouncedButton SafetyConnector{false,SAFETY_CONNECTOR_GPIO_Port,SAFETY_CONNECTOR_Pin};
 volatile float load_filtered;
 uint16_t crc16_calc(const uint8_t *p, size_t n);
 bool mount_ok;
@@ -397,10 +397,10 @@ void app_init() {
 	     * velocity aren't reset back to X0/V0), rather than starting fresh.
 	     * If that's not what you want, this needs to move to wherever a
 	     * mission's Start() actually fires instead of here. */
-	    hwil.rtU.V0 = 0.0f;   // rocket starts at rest
-	    hwil.rtU.X0 = 9.0f;   // rocket starts at ground level
-	    hwil.rtY.position = hwil.rtU.X0;
-	    hwil.rtY.velocity = hwil.rtU.V0;
+	     hwil.rtU.V0 = 0.0f;   // rocket starts at rest
+	     hwil.rtU.X0 = 2.0f;   // rocket starts at ground level
+	     hwil.rtY.position = hwil.rtU.X0;
+	     hwil.rtY.velocity = hwil.rtU.V0;
 
 #endif
 		for (int i= 0; i< 4; i++) {
@@ -635,7 +635,7 @@ void tim7_trigger() { // 1 khz low priority
      * running, so the simulated rocket doesn't integrate motion while idle
      * on the bench pre-arm. */
     hwil_profiler.start();
-    if (missionControl.running) {
+    if (missionControl.firing) {
         hwil.rtU.F_nozzle_1 = actuator[0].actuatorController.rtY.ThrustEstimate;
         hwil.rtU.F_nozzle_2 = actuator[1].actuatorController.rtY.ThrustEstimate;
         hwil.rtU.F_nozzle_3 = actuator[2].actuatorController.rtY.ThrustEstimate;
