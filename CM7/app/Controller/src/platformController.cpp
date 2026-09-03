@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'platformController'.
 //
-// Model version                  : 1.59
+// Model version                  : 1.64
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Mon Aug 31 19:25:38 2026
+// C/C++ source code generated on : Thu Sep  3 22:08:56 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -23,7 +23,7 @@
 #include "rtwtypes.h"
 
 // Exported block parameters
-struct_3ZX3knSwPrLS8q4TorELdE platform_targets{
+struct_V02IQCW8z51sc9ktARnSeC platform_targets{
   0.1,
   0.25,
   1.0,
@@ -37,13 +37,14 @@ struct_3ZX3knSwPrLS8q4TorELdE platform_targets{
 
   {
     9.8,
-    32.013333333333343
+    32.013333333333343,
+    2.3,
+    1.763333333333333
   },
 
   {
-    5.0,
     3.0,
-    3.0,
+    4.0,
 
     { -1.0, 2.2 }
   },
@@ -76,13 +77,13 @@ struct_3ZX3knSwPrLS8q4TorELdE platform_targets{
                                           //    '<S4>/Gain5'
                                           //    '<S4>/Saturation1'
                                           //    '<S4>/Saturation3'
-                                          //    '<S5>/Constant'
-                                          //    '<S5>/Gain3'
-                                          //    '<S5>/Gain4'
-                                          //    '<S5>/Gain5'
                                           //    '<S6>/Constant'
-                                          //    '<S160>/Integral Gain'
-                                          //    '<S168>/Proportional Gain'
+                                          //    '<S127>/Constant'
+                                          //    '<S127>/Gain3'
+                                          //    '<S128>/Gain4'
+                                          //    '<S128>/Gain5'
+                                          //    '<S162>/Integral Gain'
+                                          //    '<S170>/Proportional Gain'
 
 
 mission_modes mission_mode{ mission_modes::DISABLE };// Variable: mission_mode
@@ -113,12 +114,12 @@ void PlatformController::step()
   int8_T tmp_1;
   boolean_T rtb_NOT;
 
-  // Gain: '<S5>/Gain3' incorporates:
+  // Gain: '<S127>/Gain3' incorporates:
   //   Gain: '<S5>/Gain1'
   //   Inport: '<Root>/quaternion'
   //   Product: '<S5>/Product2'
   //   Product: '<S5>/Product3'
-  //   Sum: '<S127>/Sum'
+  //   Sum: '<S129>/Sum'
   //   Sum: '<S5>/Subtract1'
 
   rtb_error_idx_1 = (0.0 - (rtU.quaternion[1] * rtU.quaternion[2] +
@@ -126,10 +127,10 @@ void PlatformController::step()
     platform_targets.attitude.Kp_att;
   rtb_error_idx_0 = rtb_error_idx_1;
 
-  // DotProduct: '<S5>/Dot Product'
+  // DotProduct: '<S127>/Dot Product'
   rtb_Diff_n = rtb_error_idx_1 * rtb_error_idx_1;
 
-  // Gain: '<S5>/Gain3' incorporates:
+  // Gain: '<S127>/Gain3' incorporates:
   //   Gain: '<S5>/Gain'
   //   Inport: '<Root>/quaternion'
   //   Product: '<S5>/Product'
@@ -139,28 +140,28 @@ void PlatformController::step()
   rtb_error_idx_1 = (rtU.quaternion[0] * rtU.quaternion[2] - rtU.quaternion[1] *
                      rtU.quaternion[3]) * 2.0 * platform_targets.attitude.Kp_att;
 
-  // Product: '<S5>/Divide' incorporates:
-  //   Constant: '<S5>/Constant'
-  //   DotProduct: '<S5>/Dot Product'
-  //   MinMax: '<S5>/Min'
-  //   Sqrt: '<S5>/Sqrt'
+  // Product: '<S127>/Divide' incorporates:
+  //   Constant: '<S127>/Constant'
+  //   DotProduct: '<S127>/Dot Product'
+  //   MinMax: '<S127>/Min'
+  //   Sqrt: '<S127>/Sqrt'
 
   rtb_Diff_n = platform_targets.attitude.w_sat / std::fmax
     (platform_targets.attitude.w_sat, std::sqrt(rtb_error_idx_1 *
       rtb_error_idx_1 + rtb_Diff_n));
 
-  // Sum: '<S5>/Subtract3' incorporates:
-  //   Gain: '<S5>/Gain3'
+  // Sum: '<S128>/Subtract3' incorporates:
+  //   Gain: '<S127>/Gain3'
   //   Inport: '<Root>/gyro_x'
   //   Inport: '<Root>/gyro_y'
-  //   Product: '<S5>/Product4'
+  //   Product: '<S127>/Product4'
 
   rtb_error_idx_0 = rtb_Diff_n * rtb_error_idx_0 - rtU.gyro_x;
   rtb_error_idx_1 = rtb_Diff_n * rtb_error_idx_1 - rtU.gyro_y;
 
-  // Sum: '<S172>/Sum' incorporates:
-  //   DiscreteIntegrator: '<S163>/Integrator'
-  //   Gain: '<S168>/Proportional Gain'
+  // Sum: '<S174>/Sum' incorporates:
+  //   DiscreteIntegrator: '<S165>/Integrator'
+  //   Gain: '<S170>/Proportional Gain'
 
   rtb_Diff_n = platform_targets.attitude.Kp_rate * rtb_error_idx_0 +
     rtDW.Integrator_DSTATE[0];
@@ -169,22 +170,22 @@ void PlatformController::step()
   // Outport: '<Root>/Mxyz'
   rtY.Mxyz[0] = rtb_Diff_n;
 
-  // Sum: '<S172>/Sum' incorporates:
-  //   DiscreteIntegrator: '<S163>/Integrator'
-  //   Gain: '<S168>/Proportional Gain'
+  // Sum: '<S174>/Sum' incorporates:
+  //   DiscreteIntegrator: '<S165>/Integrator'
+  //   Gain: '<S170>/Proportional Gain'
 
   rtb_Diff_n = platform_targets.attitude.Kp_rate * rtb_error_idx_1 +
     rtDW.Integrator_DSTATE[1];
 
   // Outport: '<Root>/Mxyz' incorporates:
-  //   DiscreteIntegrator: '<S163>/Integrator'
+  //   DiscreteIntegrator: '<S165>/Integrator'
 
   rtY.Mxyz[1] = rtb_Diff_n;
   rtY.Mxyz[2] = rtDW.Integrator_DSTATE[2];
 
-  // Gain: '<S5>/Gain5' incorporates:
-  //   Gain: '<S5>/Gain4'
-  //   Sum: '<S172>/Sum'
+  // Gain: '<S128>/Gain5' incorporates:
+  //   Gain: '<S128>/Gain4'
+  //   Sum: '<S174>/Sum'
 
   rtb_Saturation1_tmp = 1.0 / (2.0 * platform_targets.attitude.r);
   rtb_Saturation1 = rtb_Saturation1_tmp * rtb_Diff_n;
@@ -275,7 +276,8 @@ void PlatformController::step()
   //   Product: '<S113>/PProd Out'
   //   Saturate: '<S4>/Saturation3'
 
-  rtb_Sum += rtb_Sum_h * platform_targets.altitude.kP + rtDW.Integrator_DSTATE_a;
+  rtb_Sum += rtb_Sum_h * platform_targets.altitude.kP_hover +
+    rtDW.Integrator_DSTATE_a;
 
   // Switch: '<S116>/Switch2' incorporates:
   //   Constant: '<S4>/Constant1'
@@ -452,8 +454,8 @@ void PlatformController::step()
   // Gain: '<S2>/Gain'
   rtb_SumI1 *= 0.25;
 
-  // Saturate: '<S5>/Saturation3' incorporates:
-  //   Gain: '<S5>/Gain7'
+  // Saturate: '<S128>/Saturation3' incorporates:
+  //   Gain: '<S128>/Gain7'
 
   if (-rtb_Saturation1 > 272.0) {
     tmp = 272.0;
@@ -464,12 +466,12 @@ void PlatformController::step()
   }
 
   // Outport: '<Root>/FrontThrustCmd' incorporates:
-  //   Saturate: '<S5>/Saturation3'
+  //   Saturate: '<S128>/Saturation3'
   //   Sum: '<S2>/Sum'
 
   rtY.FrontThrustCmd = rtb_SumI1 + tmp;
 
-  // Saturate: '<S5>/Saturation2'
+  // Saturate: '<S128>/Saturation2'
   if (rtb_Saturation1 > 272.0) {
     rtb_Saturation1 = 272.0;
   } else if (rtb_Saturation1 < -272.0) {
@@ -477,15 +479,15 @@ void PlatformController::step()
   }
 
   // Outport: '<Root>/BackThrustCmd' incorporates:
-  //   Saturate: '<S5>/Saturation2'
+  //   Saturate: '<S128>/Saturation2'
   //   Sum: '<S2>/Sum1'
 
   rtY.BackThrustCmd = rtb_SumI1 + rtb_Saturation1;
 
-  // Gain: '<S5>/Gain4'
+  // Gain: '<S128>/Gain4'
   rtb_Saturation1 = rtb_Saturation1_tmp * rtb_Sum_i_idx_0;
 
-  // Saturate: '<S5>/Saturation'
+  // Saturate: '<S128>/Saturation'
   if (rtb_Saturation1 > 272.0) {
     tmp = 272.0;
   } else if (rtb_Saturation1 < -272.0) {
@@ -495,13 +497,13 @@ void PlatformController::step()
   }
 
   // Outport: '<Root>/LeftThrustCmd' incorporates:
-  //   Saturate: '<S5>/Saturation'
+  //   Saturate: '<S128>/Saturation'
   //   Sum: '<S2>/Sum2'
 
   rtY.LeftThrustCmd = rtb_SumI1 + tmp;
 
-  // Saturate: '<S5>/Saturation1' incorporates:
-  //   Gain: '<S5>/Gain6'
+  // Saturate: '<S128>/Saturation1' incorporates:
+  //   Gain: '<S128>/Gain6'
 
   if (-rtb_Saturation1 > 272.0) {
     tmp = 272.0;
@@ -512,7 +514,7 @@ void PlatformController::step()
   }
 
   // Outport: '<Root>/RightThrustCmd' incorporates:
-  //   Saturate: '<S5>/Saturation1'
+  //   Saturate: '<S128>/Saturation1'
   //   Sum: '<S2>/Sum3'
 
   rtY.RightThrustCmd = rtb_SumI1 + tmp;
@@ -607,8 +609,8 @@ void PlatformController::step()
   //   Product: '<S105>/IProd Out'
   //   Sum: '<S120>/SumI3'
 
-  rtb_SumI1 = platform_targets.altitude.kI * 2.0 * rtb_Sum_h + (rtb_Sum_i_idx_0
-    - rtb_Switch2);
+  rtb_SumI1 = platform_targets.altitude.kI_hover * 2.0 * rtb_Sum_h +
+    (rtb_Sum_i_idx_0 - rtb_Switch2);
 
   // Switch: '<S100>/Switch' incorporates:
   //   RelationalOperator: '<S100>/u_GTE_up'
@@ -632,8 +634,8 @@ void PlatformController::step()
   // Sum: '<S100>/Diff'
   rtb_Diff_n = rtb_Sum - rtb_Diff_n;
 
-  // Update for DiscreteIntegrator: '<S163>/Integrator' incorporates:
-  //   Gain: '<S160>/Integral Gain'
+  // Update for DiscreteIntegrator: '<S165>/Integrator' incorporates:
+  //   Gain: '<S162>/Integral Gain'
 
   rtDW.Integrator_DSTATE[0] += platform_targets.attitude.Ki_rate *
     rtb_error_idx_0 * 0.02;
