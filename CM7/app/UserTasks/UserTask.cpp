@@ -114,10 +114,13 @@ static void hoverTask(uint32_t time_ms) {
 #endif
 
 	{
-		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.LeftThrustCmd;
-		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.FrontThrustCmd;
-		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.RightThrustCmd;
-		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.BackThrustCmd;
+		/* actuator[i] nozzle position in the IMU frame: 0=+X, 1=-Y, 2=+Y, 3=-X.
+		 * The controller ports are axis roles, not physical sides:
+		 * Front=+X, Back=-X, Right=+Y, Left=-Y. */
+		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.FrontThrustCmd;	// +X
+		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.LeftThrustCmd;	// -Y
+		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.RightThrustCmd;	// +Y
+		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.BackThrustCmd;	// -X
 	}
 }
 
@@ -140,10 +143,13 @@ static void dropTask(uint32_t time_ms) {
 	}
 #endif
 	{
-		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.LeftThrustCmd;
-		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.FrontThrustCmd;
-		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.RightThrustCmd;
-		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.BackThrustCmd;
+		/* actuator[i] nozzle position in the IMU frame: 0=+X, 1=-Y, 2=+Y, 3=-X.
+		 * The controller ports are axis roles, not physical sides:
+		 * Front=+X, Back=-X, Right=+Y, Left=-Y. */
+		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.FrontThrustCmd;	// +X
+		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.LeftThrustCmd;	// -Y
+		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.RightThrustCmd;	// +Y
+		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.BackThrustCmd;	// -X
 	}
 }
 

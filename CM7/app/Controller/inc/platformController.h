@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'platformController'.
 //
-// Model version                  : 1.64
+// Model version                  : 1.69
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Thu Sep  3 22:08:56 2026
+// C/C++ source code generated on : Fri Sep  4 20:56:27 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -141,7 +141,10 @@ class PlatformController final
  public:
   // Block signals and states (default storage) for system '<Root>'
   struct DW {
+    real_T RateTransition1[3];         // '<S5>/Rate Transition1'
     real_T Integrator_DSTATE[3];       // '<S165>/Integrator'
+    real_T RateTransition_Buffer[3];   // '<S5>/Rate Transition'
+    real_T RateTransition1_Buffer0[3]; // '<S5>/Rate Transition1'
     real_T Integrator_DSTATE_a;        // '<S108>/Integrator'
     real_T Integrator_DSTATE_m;        // '<S49>/Integrator'
     int8_T Integrator_PrevResetState;  // '<S108>/Integrator'
@@ -174,6 +177,18 @@ class PlatformController final
   // Real-time Model Data Structure
   struct RT_MODEL {
     const char_T * volatile errorStatus;
+
+    //
+    //  Timing:
+    //  The following substructure contains information regarding
+    //  the timing information for the model.
+
+    struct {
+      struct {
+        uint8_T TID[3];
+      } TaskCounters;
+    } Timing;
+
     const char_T* getErrorStatus() const;
     void setErrorStatus(const char_T* const volatile aErrorStatus);
   };
@@ -263,12 +278,16 @@ class PlatformController final
 //  Block '<S4>/Scope4' : Unused code path elimination
 //  Block '<S4>/Scope5' : Unused code path elimination
 //  Block '<S4>/Scope8' : Unused code path elimination
+//  Block '<S5>/Rate Transition5' : Unused code path elimination
 //  Block '<S2>/Cast To Boolean' : Unused code path elimination
 //  Block '<S2>/Cast To Boolean1' : Unused code path elimination
 //  Block '<S2>/Cast To Boolean2' : Unused code path elimination
 //  Block '<S2>/Cast To Boolean3' : Unused code path elimination
 //  Block '<S61>/Kt' : Eliminated nontunable gain of 1
 //  Block '<S120>/Kt' : Eliminated nontunable gain of 1
+//  Block '<S5>/Rate Transition2' : Eliminated since input and output rates are identical
+//  Block '<S5>/Rate Transition3' : Eliminated since input and output rates are identical
+//  Block '<S5>/Rate Transition4' : Eliminated since input and output rates are identical
 
 
 //-
