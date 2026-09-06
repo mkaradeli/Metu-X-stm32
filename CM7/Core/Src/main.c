@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "bdma.h"
 #include "crc.h"
 #include "dma.h"
 #include "fatfs.h"
@@ -208,6 +209,7 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
   /* Initialize all configured peripherals */
   MX_DMA_Init();
   MX_GPIO_Init();
+  MX_BDMA_Init();
   MX_ADC2_Init();
   MX_TIM3_Init();
   MX_ADC1_Init();

@@ -25,6 +25,7 @@
 #include "rtw_continuous.h"
 #include "rtw_solver.h"
 #include <cstring>
+
 #ifndef ODE3_INTG
 #define ODE3_INTG
 
@@ -36,27 +37,8 @@ struct ODE3_IntgData {
 
 #endif
 
-extern "C"
-{
-  static real_T rtGetInf(void);
-  static real32_T rtGetInfF(void);
-  static real_T rtGetMinusInf(void);
-  static real32_T rtGetMinusInfF(void);
-}                                      // extern "C"
 
-extern "C"
-{
-  extern real_T rtInf;
-  extern real_T rtMinusInf;
-  extern real_T rtNaN;
-  extern real32_T rtInfF;
-  extern real32_T rtMinusInfF;
-  extern real32_T rtNaNF;
-  static boolean_T rtIsInf(real_T value);
-  static boolean_T rtIsInfF(real32_T value);
-  static boolean_T rtIsNaN(real_T value);
-  static boolean_T rtIsNaNF(real32_T value);
-}                                      // extern "C"
+
 
 // Class declaration for model HWIL
 class HWIL final

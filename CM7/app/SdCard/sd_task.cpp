@@ -180,6 +180,7 @@ static FRESULT write_log_header()
     if (res == FR_OK && wc != sizeof(hdr)) {
         res = FR_INT_ERR;            /* short header => misaligned records */
     }
+
     return res;
 }
 
@@ -224,6 +225,7 @@ static void sd_create_file()
             printf("f_expand %lu B failed (res=%d), logging unallocated\n\r",
                    (unsigned long)want, (int)res);
         }
+        f_sync(&Fil);
     }
 
     res = write_log_header();
@@ -231,6 +233,7 @@ static void sd_create_file()
         sd_fault("writing log header", res);
         return;
     }
+    f_sync(&Fil);
 
     bound_mission = missionControl.SelectedIndex();
 

@@ -54,3 +54,58 @@ void Lidar::Reset(){
 	HAL_UART_Transmit(this->uart_handle, command, sizeof(command), 1000);
 	HAL_UART_Receive(this->uart_handle, buffer, 5, 100);
 }
+
+// Pings the sensor with the "obtain firmware version" command (5A 04 01 5F).
+// Unlike Reset(), this doesn't reboot the sensor, so it's safe to use as a
+// pure liveness/wiring check. Must be called before the continuous
+// HAL_UARTEx_ReceiveToIdle_DMA capture is started on this UART, since it
+// polls the RX line with blocking reads.
+bool Lidar::HealthCheck(uint8_t *fwVersion){
+	const uint8_t command[] = {0x5A, 0x04, 0x01, 0x5F};
+	const uint8_t responseHeader[3] = {0x5A, 0x07, 0x01};
+	uint8_t payload[4] = {0}; // V1, V2, V3, checksum
+
+	if (HAL_UART_Transmit(this->uart_handle, (uint8_t*)command, sizeof(command), 100) != HAL_OK){
+		return false;
+	}
+
+	// Continuous distance frames (0x59 0x59 ...) may be interleaved with the
+	// reply on this line, so scan byte-by-byte for the response header
+	// instead of assuming the reply arrives first.
+	uint8_t matched = 0;
+	uint8_t rxByte = 0;
+	uint32_t start = HAL_GetTick();
+	while ((HAL_GetTick() - start) < 500){
+		if (HAL_UART_Receive(this->uart_handle, &rxByte, 1, 20) != HAL_OK){
+			continue;
+		}
+		if (rxByte == responseHeader[matched]){
+			matched++;
+			if (matched == 3){
+				break;
+			}
+		} else {
+			matched = (rxByte == responseHeader[0]) ? 1 : 0;
+		}
+	}
+	if (matched != 3){
+		return false; // No response -> check wiring, power and baud rate
+	}
+
+	if (HAL_UART_Receive(this->uart_handle, payload, sizeof(payload), 100) != HAL_OK){
+		return false; // Header matched but payload never completed
+	}
+
+	uint8_t checksum = responseHeader[0] + responseHeader[1] + responseHeader[2]
+			+ payload[0] + payload[1] + payload[2];
+	if (checksum != payload[3]){
+		return false; // Corrupted reply -> likely a baud-rate/noise issue
+	}
+
+	if (fwVersion != nullptr){
+		fwVersion[0] = payload[0]; // V1
+		fwVersion[1] = payload[1]; // V2
+		fwVersion[2] = payload[2]; // V3 - displayed as V3.V2.V1
+	}
+	return true;
+}

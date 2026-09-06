@@ -6,7 +6,7 @@
  */
 
 #include "globals.hpp"   // HWIL_ENABLED lives here now, shared with UserTask.cpp
-#define DISABLE_CRC true
+#define DISABLE_CRC false
 #define CHECK_TIMER_FREQUENCIES false
 
 #include <shared_memory.h>
@@ -206,6 +206,8 @@ volatile uint16_t adc_dma_buf_pressure[6];
 uint32_t timeOfLastPrint=uwTick;
 
 
+
+
 DebouncedButton Button{1,BUTTON_USER_GPIO_PORT,BUTTON_USER_PIN};
 DebouncedButton SafetyConnector{false,SAFETY_CONNECTOR_GPIO_Port,SAFETY_CONNECTOR_Pin};
 volatile float load_filtered;
@@ -216,6 +218,7 @@ float time_sec = 0;
 int load_cell_counter = 0;
 
 SensorData_t local_sensor_data{'K','D'};
+SensorData_t * last_valid_sensor_data = 0;
 
 void onImuReport(const BNO085& r);
 void onLidarFrame(uint16_t distMm, uint16_t strength);
@@ -243,6 +246,7 @@ Profiler tim7_profiler{"tim7"};
 Profiler kf_profiler{"kf_p"};
 Profiler tim12_profiler{"tim1"};
 Profiler hwil_profiler{"hwil"};
+Profiler lidar_profiler{"lidr"};
 
 Profiler *profilers[] = {
 		&free_profiler,
@@ -264,15 +268,16 @@ Profiler *profilers[] = {
 		&kf_profiler,
 		&tim12_profiler,
 		&hwil_profiler,
+		&lidar_profiler,
 
 };
 
 
 float battery_voltage = 0;
-//bool True = true;
-//MissionControl missionControl(&True,
-//			&logData.record);
-MissionControl missionControl(&logData.ready, &logData.record);
+bool True = true;
+MissionControl missionControl(&True,
+			&logData.record);
+//MissionC/ontrol missionControl(&logData.ready, &logData.record);
 
 //platformController platform_controller;
 
@@ -373,6 +378,15 @@ void app_init() {
 	  }
 
 		lidar.Reset();
+		HAL_Delay(1000);  /* TF02-Pro needs ~1s after a system reset before it responds again (Benewake protocol manual) */
+		uint8_t lidarFwVersion[3] = {0};
+		bool lidarHealthy = lidar.HealthCheck(lidarFwVersion);
+		printf("TF02-Pro lidar: %s\r\n",
+		       lidarHealthy ? "OK" : "NOT RESPONDING (check USART6 wiring/power/baud)");
+		if (lidarHealthy) {
+			printf("TF02-Pro lidar firmware v%u.%u.%u\r\n",
+			       lidarFwVersion[2], lidarFwVersion[1], lidarFwVersion[0]);
+		}
 //		altEstimator.begin();
 		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);
 //	  dummy_init();
@@ -442,6 +456,7 @@ extern bool pc8_active;
 bool selfTrigger = false;
 float total_cpu_usage = 0;
 bool altitudeEstimatorDone = false;
+extern Profiler HWIL_STEP_profiler;
 void app_loop() {
 
 	if (!altitudeEstimatorDone && (uwTick - calStartTick) >= 1500) {
@@ -463,6 +478,7 @@ void app_loop() {
 			printf("%.4s cpu=%f, freq=%f\n\r",profilers[i]->name, profilers[i]->cpu_usage, profilers[i]->call_frequency);
 			total_cpu_usage += profilers[i]->cpu_usage;
 		}
+		HWIL_STEP_profiler.metrics();
 		printf("\ttotal cpu usage = %f\n\r", total_cpu_usage);
 		printf("battery voltage = %f\n\r", battery_voltage);
 
@@ -657,7 +673,7 @@ void tim7_trigger() { // 1 khz low priority
 	tim7_profiler.end();
 }
 
-void tim12_trigger(){ // mid priority 50hz platform control task
+void tim12_trigger(){ // mid priority 1000hz platform control task
 	tim12_profiler.start();
 //	platform_controller.rtU.Height = altEstimator.altitude(); // m
 //	platform_controller.rtU.Velocity = altEstimator.velocity(); // m/s
@@ -669,9 +685,9 @@ void tim12_trigger(){ // mid priority 50hz platform control task
 	platform_controller.rtU.quaternion[3] = hwil.rtY.quaternion_sim[3];
 	platform_controller.rtU.Height = hwil.rtY.position;
 	platform_controller.rtU.Velocity = hwil.rtY.velocity;
-	platform_controller.rtU.gyro_x = hwil.rtY.angular_velocity[0];
-	platform_controller.rtU.gyro_y = hwil.rtY.angular_velocity[1];
-	platform_controller.rtU.gyro_z = hwil.rtY.angular_velocity[2];
+	platform_controller.rtU.angularVelocity[0] = hwil.rtY.angular_velocity[0];
+	platform_controller.rtU.angularVelocity[1] = hwil.rtY.angular_velocity[1];
+	platform_controller.rtU.angularVelocity[2] = hwil.rtY.angular_velocity[2];
 
 #else
 	platform_controller.rtU.quaternion[0] = imu.gyroIntegratedRV.i;
@@ -680,9 +696,9 @@ void tim12_trigger(){ // mid priority 50hz platform control task
 	platform_controller.rtU.quaternion[3] = imu.gyroIntegratedRV.real;
 	platform_controller.rtU.Height = g_altEst.height();
 	platform_controller.rtU.Velocity = g_altEst.velocity();
-	platform_controller.rtU.gyro_x = imu.gyroIntegratedRV.angVelX;
-	platform_controller.rtU.gyro_y = imu.gyroIntegratedRV.angVelY;
-	platform_controller.rtU.gyro_z = imu.gyroIntegratedRV.angVelZ;
+	platform_controller.rtU.angularVelocity[0] = imu.gyroIntegratedRV.angVelX;
+	platform_controller.rtU.angularVelocity[1] = imu.gyroIntegratedRV.angVelY;
+	platform_controller.rtU.angularVelocity[2] = imu.gyroIntegratedRV.angVelZ;
 #endif
 //	platform_controller.rtU.T_alloc_total = T_alloc_total;
 
@@ -779,18 +795,33 @@ void pressure_adc_complete(){
 
 	}
 		local_sensor_data.manifold_pressure = Actuator::manifold->getPsi();
-		local_sensor_data.linearAccel = imu.accel;   // real either way: HWIL has no 3-axis accel output to substitute
 #if HWIL_ENABLED
+//		for (int i = 0; i <3; i++)
+		local_sensor_data.linearAccel.x = hwil.rtY.acceleration[0];   // real either way: HWIL has no 3-axis accel output to substitute
+		local_sensor_data.linearAccel.y = hwil.rtY.acceleration[1];   // real either way: HWIL has no 3-axis accel output to substitute
+		local_sensor_data.linearAccel.z = hwil.rtY.acceleration[2];   // real either way: HWIL has no 3-axis accel output to substitute
 		local_sensor_data.quaternion.i = hwil.rtY.quaternion_sim[0];
 		local_sensor_data.quaternion.j = hwil.rtY.quaternion_sim[1];
 		local_sensor_data.quaternion.k = hwil.rtY.quaternion_sim[2];
 		local_sensor_data.quaternion.real = hwil.rtY.quaternion_sim[3];
+		local_sensor_data.angularVelocity.x = hwil.rtY.angular_velocity[0];
+		local_sensor_data.angularVelocity.y = hwil.rtY.angular_velocity[1];
+		local_sensor_data.angularVelocity.z = hwil.rtY.angular_velocity[2];
 #else
+		local_sensor_data.angularVelocity.x = imu.gyroIntegratedRV.angVelX;
+		local_sensor_data.angularVelocity.y = imu.gyroIntegratedRV.angVelY;
+		local_sensor_data.angularVelocity.z = imu.gyroIntegratedRV.angVelZ;
+//				local_sensor_data.angularVelocity.y = hwil.rtY.angular_velocity[1];
+//				local_sensor_data.angularVelocity.z = hwil.rtY.angular_velocity[2];
+		local_sensor_data.linearAccel = imu.accel;   // real either way: HWIL has no 3-axis accel output to substitute
 		local_sensor_data.quaternion.i = imu.gyroIntegratedRV.i;
 		local_sensor_data.quaternion.j = imu.gyroIntegratedRV.j;
 		local_sensor_data.quaternion.k = imu.gyroIntegratedRV.k;
 		local_sensor_data.quaternion.real = imu.gyroIntegratedRV.real;
 #endif
+		local_sensor_data.angularVelocityDemand.x = platform_controller.rtY.omega_demand[0];
+		local_sensor_data.angularVelocityDemand.y = platform_controller.rtY.omega_demand[1];
+		local_sensor_data.angularVelocityDemand.z = platform_controller.rtY.omega_demand[2];
 		local_sensor_data.lidarDistance = lidar.getDistance();
 		local_sensor_data.lidarStrength = lidar.getStrength();
 
@@ -824,6 +855,7 @@ void pressure_adc_complete(){
 			crc_profiler.start();
 			slot->crc = crc16_calc((uint8_t*)slot, sizeof(SensorData_t) - 2);
 			crc_profiler.end();
+			last_valid_sensor_data = slot;
 			SensorData_Buffer_Commit(&logData);
 		}
 	}
@@ -834,13 +866,13 @@ void pressure_adc_complete(){
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
 	if (huart == &huart6){
-//		lidar_profiler.start();
+		lidar_profiler.start();
 //		printf("aaaa lidar frame captured!\n\r");
 		lidar.FrameHandler(Size);
 //		if (lidar.hasNewReading()) altEstimator.onLidarFrame(lidar.getDistance(), lidar.getStrength());
 
 		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);  // re-arm!
-//		lidar_profiler.end();
+		lidar_profiler.end();
 	}
 }
 void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
@@ -949,7 +981,7 @@ void LED_Counter_Tick(void)
 
 uint16_t crc16_calc(const uint8_t *p, size_t n)
 {
-#ifdef DISABLE_CRC
+#if DISABLE_CRC
 	return LOG_TERMINATOR;
 //	return (uint16_t) '\n\r';
 #else

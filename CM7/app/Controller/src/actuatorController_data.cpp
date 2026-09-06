@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'actuatorController'.
 //
-// Model version                  : 1.73
+// Model version                  : 1.78
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Mon Aug 17 23:22:53 2026
+// C/C++ source code generated on : Sun Sep  6 13:11:33 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -47,11 +47,6 @@ controller::actuatorController::P controller::actuatorController::rtP{
 
   controller_modes::SPEED,
 
-  // Mask Parameter: CompareToConstant4_const
-  //  Referenced by: '<S7>/Constant'
-
-  controller_modes::POSITION,
-
   // Mask Parameter: CompareToConstant6_const
   //  Referenced by: '<S9>/Constant'
 
@@ -66,6 +61,11 @@ controller::actuatorController::P controller::actuatorController::rtP{
   //  Referenced by: '<S5>/Constant'
 
   controller_modes::PRESSURE,
+
+  // Mask Parameter: CompareToConstant4_const
+  //  Referenced by: '<S7>/Constant'
+
+  controller_modes::POSITION,
 
   // Mask Parameter: DiscreteDerivative_ICPrevScaled
   //  Referenced by: '<S71>/UD'
@@ -122,6 +122,41 @@ controller::actuatorController::P controller::actuatorController::rtP{
 
   0.0,
 
+  // Expression: -15
+  //  Referenced by: '<S13>/Constant1'
+
+  -15.0,
+
+  // Expression: -2
+  //  Referenced by: '<S13>/Constant2'
+
+  -2.0,
+
+  // Expression: [0.0]
+  //  Referenced by: '<S13>/Y'
+
+  0.0,
+
+  // Expression: 15
+  //  Referenced by: '<S13>/Constant'
+
+  15.0,
+
+  // Computed Parameter: DiscreteTimeIntegrator_gainval
+  //  Referenced by: '<S13>/Discrete-Time Integrator'
+
+  0.001,
+
+  // Expression: 0
+  //  Referenced by: '<S13>/Discrete-Time Integrator'
+
+  0.0,
+
+  // Computed Parameter: Gain2_Gain
+  //  Referenced by: '<S13>/Gain2'
+
+  4.454289436340332,
+
   // Computed Parameter: Gain_Gain
   //  Referenced by: '<S2>/Gain'
 
@@ -163,20 +198,10 @@ controller::actuatorController::P controller::actuatorController::rtP{
 
   1000.0F,
 
-  // Computed Parameter: Y_Y0
-  //  Referenced by: '<S13>/Y'
+  // Computed Parameter: Switch_Threshold
+  //  Referenced by: '<S13>/Switch'
 
-  0.0F,
-
-  // Computed Parameter: DiscreteTimeIntegrator_gainval
-  //  Referenced by: '<S13>/Discrete-Time Integrator'
-
-  0.001F,
-
-  // Computed Parameter: DiscreteTimeIntegrator_IC
-  //  Referenced by: '<S13>/Discrete-Time Integrator'
-
-  0.0F,
+  50.0F,
 
   // Computed Parameter: RateLimiter_IC_o
   //  Referenced by: '<S13>/Rate Limiter'
@@ -209,12 +234,12 @@ controller::actuatorController::P controller::actuatorController::rtP{
   0.0F,
 
   // Computed Parameter: DiscreteTimeIntegrator_gainva_l
-  //  Referenced by: '<S72>/Discrete-Time Integrator'
+  //  Referenced by: '<S73>/Discrete-Time Integrator'
 
   0.001F,
 
   // Computed Parameter: DiscreteTimeIntegrator_IC_c
-  //  Referenced by: '<S72>/Discrete-Time Integrator'
+  //  Referenced by: '<S73>/Discrete-Time Integrator'
 
   0.0F,
 
@@ -239,22 +264,22 @@ controller::actuatorController::P controller::actuatorController::rtP{
   0.0F,
 
   // Computed Parameter: K_Gain
-  //  Referenced by: '<S72>/K'
+  //  Referenced by: '<S73>/K'
 
   1.0F,
 
   // Computed Parameter: Gain_Gain_h
-  //  Referenced by: '<S72>/Gain'
+  //  Referenced by: '<S73>/Gain'
 
   188.49556F,
 
   // Computed Parameter: Saturation_UpperSat_k
-  //  Referenced by: '<S72>/Saturation'
+  //  Referenced by: '<S73>/Saturation'
 
   2400.0F,
 
   // Computed Parameter: Saturation_LowerSat_kk
-  //  Referenced by: '<S72>/Saturation'
+  //  Referenced by: '<S73>/Saturation'
 
   -2400.0F,
 

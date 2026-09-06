@@ -26,6 +26,8 @@
 #include "app_main.hpp"
 #include "Actuator.hpp"
 #include "HWIL.h"
+#include "BNO085.hpp"
+
 
 /* Hardware-in-the-loop: when 1, platform_controller and the SD/telemetry
  * log see the HWIL-simulated plant (hwil.rtY.position/velocity/
@@ -58,6 +60,7 @@ extern const float nozzle_gain[4];
 extern AltitudeEstimator::Params p;
 extern AltitudeEstimator g_altEst;
 extern HWIL hwil;
+extern BNO085 imu;
 /*
 1 x- left
 2 y+ front

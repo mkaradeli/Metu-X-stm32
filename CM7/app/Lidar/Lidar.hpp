@@ -19,6 +19,7 @@ class Lidar {
 		Lidar(UART_HandleTypeDef* uartHandle);
 		void FrameHandler(uint16_t size);
 		void Reset();
+		bool HealthCheck(uint8_t *fwVersion = nullptr);
 		uint8_t* getBuffer(){
 			return this->buffer;
 		}

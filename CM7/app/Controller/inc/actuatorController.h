@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'actuatorController'.
 //
-// Model version                  : 1.73
+// Model version                  : 1.78
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Mon Aug 17 23:22:53 2026
+// C/C++ source code generated on : Sun Sep  6 13:11:33 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -123,9 +123,7 @@ extern struct_IJnI4imAtcq7GOnq1yNUdE currentControllerGains;// Variable: control
                                                                //    '<S13>/Discrete-Time Integrator'
                                                                //    '<S13>/Gain'
                                                                //    '<S13>/Gain1'
-                                                               //    '<S13>/Gain2'
                                                                //    '<S13>/Rate Limiter'
-                                                               //    '<S13>/Saturation'
                                                                //    '<S50>/Integral Gain'
                                                                //    '<S58>/Proportional Gain'
 
@@ -143,12 +141,12 @@ namespace controller
     // Block signals and states (default storage) for system '<Root>'
     struct DW {
       real_T RateLimiter;              // '<S2>/Rate Limiter'
+      real_T DiscreteTimeIntegrator_DSTATE;// '<S13>/Discrete-Time Integrator'
       real_T Integrator_DSTATE;        // '<S53>/Integrator'
       real_T PrevY;                    // '<S2>/Rate Limiter'
       real32_T Product;                // '<S14>/Product'
-      real32_T Saturation_m;           // '<S12>/Saturation'
-      real32_T DiscreteTimeIntegrator_DSTATE;// '<S72>/Discrete-Time Integrator' 
-      real32_T DiscreteTimeIntegrator_DSTATE_b;// '<S13>/Discrete-Time Integrator' 
+      real32_T Saturation;             // '<S12>/Saturation'
+      real32_T DiscreteTimeIntegrator_DSTATE_j;// '<S73>/Discrete-Time Integrator' 
       real32_T UD_DSTATE;              // '<S71>/UD'
       real32_T PrevY_h;                // '<S13>/Rate Limiter'
       boolean_T SpeedController_MODE;  // '<S1>/Speed Controller'
@@ -171,7 +169,7 @@ namespace controller
 
     // External outputs (root outports fed by signals with default storage)
     struct ExtY {
-      real32_T currentDemand;          // '<Root>/currentDemand'
+      real_T currentDemand;            // '<Root>/currentDemand'
       real32_T speedDemand;            // '<Root>/speedDemand'
       real32_T position_demand;        // '<Root>/position_demand'
       real32_T pos_ref_rate_limited;   // '<Root>/pos_ref_rate_limited'
@@ -201,10 +199,6 @@ namespace controller
                                       // Mask Parameter: CompareToConstant_const
                                          //  Referenced by: '<S3>/Constant'
 
-      controller_modes CompareToConstant4_const;
-                                     // Mask Parameter: CompareToConstant4_const
-                                        //  Referenced by: '<S7>/Constant'
-
       controller_modes CompareToConstant6_const;
                                      // Mask Parameter: CompareToConstant6_const
                                         //  Referenced by: '<S9>/Constant'
@@ -216,6 +210,10 @@ namespace controller
       controller_modes CompareToConstant2_const;
                                      // Mask Parameter: CompareToConstant2_const
                                         //  Referenced by: '<S5>/Constant'
+
+      controller_modes CompareToConstant4_const;
+                                     // Mask Parameter: CompareToConstant4_const
+                                        //  Referenced by: '<S7>/Constant'
 
       real32_T DiscreteDerivative_ICPrevScaled;
                               // Mask Parameter: DiscreteDerivative_ICPrevScaled
@@ -252,6 +250,28 @@ namespace controller
       real_T RateLimiter_IC;           // Expression: 0
                                           //  Referenced by: '<S2>/Rate Limiter'
 
+      real_T Constant1_Value_p;        // Expression: -15
+                                          //  Referenced by: '<S13>/Constant1'
+
+      real_T Constant2_Value;          // Expression: -2
+                                          //  Referenced by: '<S13>/Constant2'
+
+      real_T Y_Y0;                     // Expression: [0.0]
+                                          //  Referenced by: '<S13>/Y'
+
+      real_T Constant_Value_o;         // Expression: 15
+                                          //  Referenced by: '<S13>/Constant'
+
+      real_T DiscreteTimeIntegrator_gainval;
+                           // Computed Parameter: DiscreteTimeIntegrator_gainval
+                              //  Referenced by: '<S13>/Discrete-Time Integrator'
+
+      real_T DiscreteTimeIntegrator_IC;// Expression: 0
+                                          //  Referenced by: '<S13>/Discrete-Time Integrator'
+
+      real_T Gain2_Gain;               // Computed Parameter: Gain2_Gain
+                                          //  Referenced by: '<S13>/Gain2'
+
       real32_T Gain_Gain;              // Computed Parameter: Gain_Gain
                                           //  Referenced by: '<S2>/Gain'
 
@@ -277,16 +297,8 @@ namespace controller
       real32_T TSamp_WtEt;             // Computed Parameter: TSamp_WtEt
                                           //  Referenced by: '<S71>/TSamp'
 
-      real32_T Y_Y0;                   // Computed Parameter: Y_Y0
-                                          //  Referenced by: '<S13>/Y'
-
-      real32_T DiscreteTimeIntegrator_gainval;
-                           // Computed Parameter: DiscreteTimeIntegrator_gainval
-                              //  Referenced by: '<S13>/Discrete-Time Integrator'
-
-      real32_T DiscreteTimeIntegrator_IC;
-                                // Computed Parameter: DiscreteTimeIntegrator_IC
-                                   //  Referenced by: '<S13>/Discrete-Time Integrator'
+      real32_T Switch_Threshold;       // Computed Parameter: Switch_Threshold
+                                          //  Referenced by: '<S13>/Switch'
 
       real32_T RateLimiter_IC_o;       // Computed Parameter: RateLimiter_IC_o
                                           //  Referenced by: '<S13>/Rate Limiter'
@@ -312,11 +324,11 @@ namespace controller
 
       real32_T DiscreteTimeIntegrator_gainva_l;
                           // Computed Parameter: DiscreteTimeIntegrator_gainva_l
-                             //  Referenced by: '<S72>/Discrete-Time Integrator'
+                             //  Referenced by: '<S73>/Discrete-Time Integrator'
 
       real32_T DiscreteTimeIntegrator_IC_c;
                               // Computed Parameter: DiscreteTimeIntegrator_IC_c
-                                 //  Referenced by: '<S72>/Discrete-Time Integrator'
+                                 //  Referenced by: '<S73>/Discrete-Time Integrator'
 
       real32_T Gain1_Gain;             // Computed Parameter: Gain1_Gain
                                           //  Referenced by: '<S10>/Gain1'
@@ -333,18 +345,18 @@ namespace controller
                                       //  Referenced by: '<S15>/Saturation1'
 
       real32_T K_Gain;                 // Computed Parameter: K_Gain
-                                          //  Referenced by: '<S72>/K'
+                                          //  Referenced by: '<S73>/K'
 
       real32_T Gain_Gain_h;            // Computed Parameter: Gain_Gain_h
-                                          //  Referenced by: '<S72>/Gain'
+                                          //  Referenced by: '<S73>/Gain'
 
       real32_T Saturation_UpperSat_k;
                                     // Computed Parameter: Saturation_UpperSat_k
-                                       //  Referenced by: '<S72>/Saturation'
+                                       //  Referenced by: '<S73>/Saturation'
 
       real32_T Saturation_LowerSat_kk;
                                    // Computed Parameter: Saturation_LowerSat_kk
-                                      //  Referenced by: '<S72>/Saturation'
+                                      //  Referenced by: '<S73>/Saturation'
 
       real32_T Gain_Gain_j;            // Computed Parameter: Gain_Gain_j
                                           //  Referenced by: '<S1>/Gain'
@@ -426,6 +438,8 @@ extern "C"
 //  Block '<S71>/Data Type Duplicate' : Unused code path elimination
 //  Block '<S12>/Scope' : Unused code path elimination
 //  Block '<S1>/Scope' : Unused code path elimination
+//  Block '<S72>/Data Type Duplicate' : Unused code path elimination
+//  Block '<S72>/Data Type Propagation' : Unused code path elimination
 //  Block '<S15>/Scope' : Unused code path elimination
 
 
@@ -515,7 +529,8 @@ extern "C"
 //  '<S69>'  : 'actuatorController/Subsystem1/1D Valve Lookup Controller External Table/PID Controller/preInt Signal/Internal PreInt'
 //  '<S70>'  : 'actuatorController/Subsystem1/1D Valve Lookup Controller External Table/PID Controller/preSat Signal/Forward_Path'
 //  '<S71>'  : 'actuatorController/Subsystem1/Position Controller/Discrete Derivative'
-//  '<S72>'  : 'actuatorController/Subsystem1/reference conditioning/first order hiz limitli filtre'
+//  '<S72>'  : 'actuatorController/Subsystem1/Speed Controller/Saturation Dynamic1'
+//  '<S73>'  : 'actuatorController/Subsystem1/reference conditioning/first order hiz limitli filtre'
 
 #endif                                 // actuatorController_h_
 

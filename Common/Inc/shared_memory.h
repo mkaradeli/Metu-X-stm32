@@ -55,6 +55,8 @@ typedef struct __attribute__((packed)) {
 
 	sh2_RotationVector_t quaternion; // float i j k real
 	sh2_Accelerometer_t  linearAccel; // float x y z
+	sh2_Gyroscope_t angularVelocity;
+	sh2_Gyroscope_t angularVelocityDemand;
 
 	uint16_t lidarDistance;
 	uint16_t lidarStrength;
@@ -69,6 +71,7 @@ typedef struct __attribute__((packed)) {
 	uint8_t last_error;      // mission_error_t, see MissionControl.hpp
 	uint8_t go_no_go_status; // GoNoGo bitmask: bit=1 -> subsystem currently healthy
 	uint8_t go_no_go_enabled;// GoNoGo bitmask: bit=1 -> gates arming (see MissionControl::go_no_go_enabled)
+
 //	uint8_t pad[1];
 	float battery_voltage;
 	uint16_t crc;
@@ -85,7 +88,7 @@ typedef struct __attribute__((packed)) {
 //#endif
 
 //typedef struct __attribute
-#define LOG_HALF_RECORDS   640u // 128 * 6
+#define LOG_HALF_RECORDS   512u // 128 * 6
 #define LOG_TOTAL_RECORDS  (2u * LOG_HALF_RECORDS)
 #define LOG_HALF_BYTES     (LOG_HALF_RECORDS * PACKET_SIZE)
 

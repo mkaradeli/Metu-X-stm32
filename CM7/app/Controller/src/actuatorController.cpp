@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'actuatorController'.
 //
-// Model version                  : 1.73
+// Model version                  : 1.78
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Mon Aug 17 23:22:53 2026
+// C/C++ source code generated on : Sun Sep  6 13:11:33 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -56,8 +56,8 @@ struct_IJnI4imAtcq7GOnq1yNUdE currentControllerGains{
   },
 
   {
-    0.25F,
-    8.0F
+    0.4F,
+    3.0F
   }
 } ;                                    // Variable: controllerGains
                                           //  Referenced by:
@@ -67,9 +67,7 @@ struct_IJnI4imAtcq7GOnq1yNUdE currentControllerGains{
                                           //    '<S13>/Discrete-Time Integrator'
                                           //    '<S13>/Gain'
                                           //    '<S13>/Gain1'
-                                          //    '<S13>/Gain2'
                                           //    '<S13>/Rate Limiter'
-                                          //    '<S13>/Saturation'
                                           //    '<S50>/Integral Gain'
                                           //    '<S58>/Proportional Gain'
 
@@ -80,20 +78,20 @@ controller_modes controller_mode{ controller_modes::DISABLE };// Variable: contr
 
 static real32_T look1_iflf_bingc(real32_T u0, const real32_T bp0[], const
   real32_T table[], uint32_T maxIndex);
-extern "C"
-{
-  real_T rtNaN { -std::numeric_limits<real_T>::quiet_NaN() };
-
-  real_T rtInf { std::numeric_limits<real_T>::infinity() };
-
-  real_T rtMinusInf { -std::numeric_limits<real_T>::infinity() };
-
-  real32_T rtNaNF { -std::numeric_limits<real32_T>::quiet_NaN() };
-
-  real32_T rtInfF { std::numeric_limits<real32_T>::infinity() };
-
-  real32_T rtMinusInfF { -std::numeric_limits<real32_T>::infinity() };
-}
+//extern "C"
+//{
+//  real_T rtNaN { -std::numeric_limits<real_T>::quiet_NaN() };
+//
+//  real_T rtInf { std::numeric_limits<real_T>::infinity() };
+//
+//  real_T rtMinusInf { -std::numeric_limits<real_T>::infinity() };
+//
+//  real32_T rtNaNF { -std::numeric_limits<real32_T>::quiet_NaN() };
+//
+//  real32_T rtInfF { std::numeric_limits<real32_T>::infinity() };
+//
+//  real32_T rtMinusInfF { -std::numeric_limits<real32_T>::infinity() };
+//}
 
 static real32_T look1_iflf_bingc(real32_T u0, const real32_T bp0[], const
   real32_T table[], uint32_T maxIndex)
@@ -157,14 +155,13 @@ namespace controller
   void actuatorController::step()
   {
     real_T rateLimiterRate;
-    real_T rtb_Saturation3;
-    real_T rtb_Sum;
+    real_T rtb_Sum1;
+    real_T rtb_Switch_c;
     real_T tmp;
     real32_T rtb_Gain1;
-    real32_T rtb_Sum2_g;
+    real32_T rtb_Gain_n;
     real32_T rtb_Switch2;
     real32_T rtb_TSamp;
-    real32_T u0;
 
     // Outputs for Enabled SubSystem: '<S1>/Position Controller' incorporates:
     //   EnablePort: '<S12>/Enable'
@@ -186,15 +183,15 @@ namespace controller
       }
 
       // SampleTimeMath: '<S71>/TSamp' incorporates:
-      //   DiscreteIntegrator: '<S72>/Discrete-Time Integrator'
+      //   DiscreteIntegrator: '<S73>/Discrete-Time Integrator'
       //
       //  About '<S71>/TSamp':
       //   y = u * K where K = 1 / ( w * Ts )
       //
-      rtb_TSamp = rtDW.DiscreteTimeIntegrator_DSTATE * rtP.TSamp_WtEt;
+      rtb_TSamp = rtDW.DiscreteTimeIntegrator_DSTATE_j * rtP.TSamp_WtEt;
 
       // Sum: '<S12>/Sum1' incorporates:
-      //   DiscreteIntegrator: '<S72>/Discrete-Time Integrator'
+      //   DiscreteIntegrator: '<S73>/Discrete-Time Integrator'
       //   Gain: '<S12>/Gain'
       //   Gain: '<S12>/Gain1'
       //   Inport: '<Root>/pos_feedback'
@@ -210,20 +207,21 @@ namespace controller
       //
       //   Store in Global RAM
 
-      u0 = (rtb_TSamp - rtDW.UD_DSTATE) * currentControllerGains.position.Kff +
-        (rtDW.DiscreteTimeIntegrator_DSTATE - rtU.pos_feedback) *
+      rtb_Gain1 = (rtb_TSamp - rtDW.UD_DSTATE) *
+        currentControllerGains.position.Kff +
+        (rtDW.DiscreteTimeIntegrator_DSTATE_j - rtU.pos_feedback) *
         currentControllerGains.position.Kp;
 
       // Saturate: '<S12>/Saturation'
-      if (u0 > currentControllerGains.position.SatMax) {
+      if (rtb_Gain1 > currentControllerGains.position.SatMax) {
         // Saturate: '<S12>/Saturation'
-        rtDW.Saturation_m = currentControllerGains.position.SatMax;
-      } else if (u0 < currentControllerGains.position.SatMin) {
+        rtDW.Saturation = currentControllerGains.position.SatMax;
+      } else if (rtb_Gain1 < currentControllerGains.position.SatMin) {
         // Saturate: '<S12>/Saturation'
-        rtDW.Saturation_m = currentControllerGains.position.SatMin;
+        rtDW.Saturation = currentControllerGains.position.SatMin;
       } else {
         // Saturate: '<S12>/Saturation'
-        rtDW.Saturation_m = u0;
+        rtDW.Saturation = rtb_Gain1;
       }
 
       // End of Saturate: '<S12>/Saturation'
@@ -239,7 +237,7 @@ namespace controller
       // Disable for Saturate: '<S12>/Saturation' incorporates:
       //   Outport: '<S12>/SpeedDemand'
 
-      rtDW.Saturation_m = rtP.SpeedDemand_Y0;
+      rtDW.Saturation = rtP.SpeedDemand_Y0;
       rtDW.PositionController_MODE = false;
     }
 
@@ -256,7 +254,7 @@ namespace controller
     if (controller_mode == rtP.CompareToConstant3_const) {
       rtb_TSamp = rtU.speedDemand_ext;
     } else {
-      rtb_TSamp = rtDW.Saturation_m;
+      rtb_TSamp = rtDW.Saturation;
     }
 
     // End of Switch: '<S1>/Switch'
@@ -274,7 +272,7 @@ namespace controller
     if (controller_mode >= rtP.CompareToConstant_const) {
       if (!rtDW.SpeedController_MODE) {
         // InitializeConditions for DiscreteIntegrator: '<S13>/Discrete-Time Integrator' 
-        rtDW.DiscreteTimeIntegrator_DSTATE_b = rtP.DiscreteTimeIntegrator_IC;
+        rtDW.DiscreteTimeIntegrator_DSTATE = rtP.DiscreteTimeIntegrator_IC;
 
         // InitializeConditions for RateLimiter: '<S13>/Rate Limiter'
         rtDW.PrevY_h = rtP.RateLimiter_IC_o;
@@ -282,12 +280,12 @@ namespace controller
       }
 
       // RateLimiter: '<S13>/Rate Limiter'
-      rtb_Sum2_g = rtb_Gain1 - rtDW.PrevY_h;
-      u0 = static_cast<real32_T>(currentControllerGains.speed.RateLimiterMax *
-        period);
-      if (rtb_Sum2_g > u0) {
-        rtb_Gain1 = u0 + rtDW.PrevY_h;
-      } else if (rtb_Sum2_g < static_cast<real32_T>
+      rtb_Switch2 = rtb_Gain1 - rtDW.PrevY_h;
+      rtb_Gain_n = static_cast<real32_T>
+        (currentControllerGains.speed.RateLimiterMax * period);
+      if (rtb_Switch2 > rtb_Gain_n) {
+        rtb_Gain1 = rtb_Gain_n + rtDW.PrevY_h;
+      } else if (rtb_Switch2 < static_cast<real32_T>
                  (currentControllerGains.speed.RateLimiterMin * period)) {
         rtb_Gain1 = static_cast<real32_T>
           (currentControllerGains.speed.RateLimiterMin * period) + rtDW.PrevY_h;
@@ -307,22 +305,46 @@ namespace controller
       //   DiscreteIntegrator: '<S13>/Discrete-Time Integrator'
       //   Gain: '<S13>/Gain'
 
-      rtb_Sum2_g = currentControllerGains.speed.Kp * rtb_Gain1 +
-        rtDW.DiscreteTimeIntegrator_DSTATE_b;
+      rtb_Sum1 = currentControllerGains.speed.Kp * rtb_Gain1 +
+        rtDW.DiscreteTimeIntegrator_DSTATE;
 
-      // Saturate: '<S13>/Saturation'
-      if (rtb_Sum2_g > currentControllerGains.speed.SatMax) {
+      // Switch: '<S72>/Switch2' incorporates:
+      //   Constant: '<S13>/Constant'
+      //   Inport: '<Root>/pos_feedback'
+      //   RelationalOperator: '<S72>/LowerRelop1'
+      //   Switch: '<S13>/Switch'
+
+      if (rtb_Sum1 > rtP.Constant_Value_o) {
         // Outport: '<Root>/currentDemand'
-        rtY.currentDemand = currentControllerGains.speed.SatMax;
-      } else if (rtb_Sum2_g < currentControllerGains.speed.SatMin) {
-        // Outport: '<Root>/currentDemand'
-        rtY.currentDemand = currentControllerGains.speed.SatMin;
+        rtY.currentDemand = rtP.Constant_Value_o;
       } else {
-        // Outport: '<Root>/currentDemand'
-        rtY.currentDemand = rtb_Sum2_g;
+        if (rtU.pos_feedback > rtP.Switch_Threshold) {
+          // Switch: '<S13>/Switch' incorporates:
+          //   Constant: '<S13>/Constant1'
+
+          rtb_Switch_c = rtP.Constant1_Value_p;
+        } else {
+          // Switch: '<S13>/Switch' incorporates:
+          //   Constant: '<S13>/Constant2'
+
+          rtb_Switch_c = rtP.Constant2_Value;
+        }
+
+        // Switch: '<S72>/Switch' incorporates:
+        //   RelationalOperator: '<S72>/UpperRelop'
+
+        if (rtb_Sum1 < rtb_Switch_c) {
+          // Outport: '<Root>/currentDemand'
+          rtY.currentDemand = rtb_Switch_c;
+        } else {
+          // Outport: '<Root>/currentDemand'
+          rtY.currentDemand = rtb_Sum1;
+        }
+
+        // End of Switch: '<S72>/Switch'
       }
 
-      // End of Saturate: '<S13>/Saturation'
+      // End of Switch: '<S72>/Switch2'
 
       // Update for DiscreteIntegrator: '<S13>/Discrete-Time Integrator' incorporates:
       //   Gain: '<S13>/Gain1'
@@ -331,18 +353,15 @@ namespace controller
       //   Sum: '<S13>/Sum2'
       //   Sum: '<S13>/Sum3'
 
-      rtDW.DiscreteTimeIntegrator_DSTATE_b += (currentControllerGains.speed.Ki /
-        currentControllerGains.speed.Kp * (rtY.currentDemand - rtb_Sum2_g) +
-        currentControllerGains.speed.Ki * rtb_Gain1) *
+      rtDW.DiscreteTimeIntegrator_DSTATE += ((rtY.currentDemand - rtb_Sum1) *
+        rtP.Gain2_Gain + currentControllerGains.speed.Ki * rtb_Gain1) *
         rtP.DiscreteTimeIntegrator_gainval;
-      if (rtDW.DiscreteTimeIntegrator_DSTATE_b >
+      if (rtDW.DiscreteTimeIntegrator_DSTATE >
           currentControllerGains.speed.SatMax) {
-        rtDW.DiscreteTimeIntegrator_DSTATE_b =
-          currentControllerGains.speed.SatMax;
-      } else if (rtDW.DiscreteTimeIntegrator_DSTATE_b <
+        rtDW.DiscreteTimeIntegrator_DSTATE = currentControllerGains.speed.SatMax;
+      } else if (rtDW.DiscreteTimeIntegrator_DSTATE <
                  currentControllerGains.speed.SatMin) {
-        rtDW.DiscreteTimeIntegrator_DSTATE_b =
-          currentControllerGains.speed.SatMin;
+        rtDW.DiscreteTimeIntegrator_DSTATE = currentControllerGains.speed.SatMin;
       }
 
       // End of Update for DiscreteIntegrator: '<S13>/Discrete-Time Integrator'
@@ -357,14 +376,6 @@ namespace controller
     // End of RelationalOperator: '<S3>/Compare'
     // End of Outputs for SubSystem: '<S1>/Speed Controller'
 
-    // Outport: '<Root>/speedDemand'
-    rtY.speedDemand = rtb_TSamp;
-
-    // Outport: '<Root>/pos_ref_rate_limited' incorporates:
-    //   DiscreteIntegrator: '<S72>/Discrete-Time Integrator'
-
-    rtY.pos_ref_rate_limited = rtDW.DiscreteTimeIntegrator_DSTATE;
-
     // Outputs for Enabled SubSystem: '<S1>/Thrust Controller' incorporates:
     //   EnablePort: '<S14>/Enable'
 
@@ -377,29 +388,29 @@ namespace controller
       //   Inport: '<Root>/F_demand'
 
       if (rtU.F_demand > rtP.Saturation1_UpperSat_g) {
-        u0 = rtP.Saturation1_UpperSat_g;
+        rtb_Gain_n = rtP.Saturation1_UpperSat_g;
       } else if (rtU.F_demand < rtP.Saturation1_LowerSat_h) {
-        u0 = rtP.Saturation1_LowerSat_h;
+        rtb_Gain_n = rtP.Saturation1_LowerSat_h;
       } else {
-        u0 = rtU.F_demand;
+        rtb_Gain_n = rtU.F_demand;
       }
 
       // Saturate: '<S14>/Saturation' incorporates:
       //   Inport: '<Root>/nozzle_gain'
 
       if (rtU.nozzle_gain > rtP.Saturation_UpperSat_p) {
-        rtb_TSamp = rtP.Saturation_UpperSat_p;
+        rtb_Gain1 = rtP.Saturation_UpperSat_p;
       } else if (rtU.nozzle_gain < rtP.Saturation_LowerSat_k) {
-        rtb_TSamp = rtP.Saturation_LowerSat_k;
+        rtb_Gain1 = rtP.Saturation_LowerSat_k;
       } else {
-        rtb_TSamp = rtU.nozzle_gain;
+        rtb_Gain1 = rtU.nozzle_gain;
       }
 
       // Product: '<S14>/Product' incorporates:
       //   Saturate: '<S14>/Saturation'
       //   Saturate: '<S14>/Saturation1'
 
-      rtDW.Product = u0 * rtb_TSamp;
+      rtDW.Product = rtb_Gain_n * rtb_Gain1;
     }
 
     // End of RelationalOperator: '<S8>/Compare'
@@ -430,13 +441,13 @@ namespace controller
       // Gain: '<S2>/Gain' incorporates:
       //   Inport: '<Root>/P_manifold'
 
-      rtb_Sum2_g = rtP.Gain_Gain * rtU.P_manifold;
+      rtb_Gain1 = rtP.Gain_Gain * rtU.P_manifold;
 
       // Saturate: '<S2>/Saturation'
-      if (rtb_Sum2_g > rtP.Saturation_UpperSat) {
-        rtb_Sum2_g = rtP.Saturation_UpperSat;
-      } else if (rtb_Sum2_g < rtP.Saturation_LowerSat) {
-        rtb_Sum2_g = rtP.Saturation_LowerSat;
+      if (rtb_Gain1 > rtP.Saturation_UpperSat) {
+        rtb_Gain1 = rtP.Saturation_UpperSat;
+      } else if (rtb_Gain1 < rtP.Saturation_LowerSat) {
+        rtb_Gain1 = rtP.Saturation_LowerSat;
       }
 
       // End of Saturate: '<S2>/Saturation'
@@ -444,15 +455,15 @@ namespace controller
       // Switch: '<S18>/Switch2' incorporates:
       //   RelationalOperator: '<S18>/LowerRelop1'
 
-      if (rtb_Switch2 <= rtb_Sum2_g) {
+      if (rtb_Switch2 <= rtb_Gain1) {
         // Switch: '<S18>/Switch' incorporates:
         //   Constant: '<S2>/Constant'
         //   RelationalOperator: '<S18>/UpperRelop'
 
         if (rtb_Switch2 < rtP.Constant_Value) {
-          rtb_Sum2_g = static_cast<real32_T>(rtP.Constant_Value);
+          rtb_Gain1 = static_cast<real32_T>(rtP.Constant_Value);
         } else {
-          rtb_Sum2_g = rtb_Switch2;
+          rtb_Gain1 = rtb_Switch2;
         }
 
         // End of Switch: '<S18>/Switch'
@@ -464,11 +475,11 @@ namespace controller
       //   Inport: '<Root>/P_manifold'
 
       if (rtU.P_manifold > rtP.Saturation1_UpperSat) {
-        u0 = rtP.Saturation1_UpperSat;
+        rtb_Gain_n = rtP.Saturation1_UpperSat;
       } else if (rtU.P_manifold < rtP.Saturation1_LowerSat) {
-        u0 = rtP.Saturation1_LowerSat;
+        rtb_Gain_n = rtP.Saturation1_LowerSat;
       } else {
-        u0 = rtU.P_manifold;
+        rtb_Gain_n = rtU.P_manifold;
       }
 
       // Lookup_n-D: '<S2>/1-D Lookup Table' incorporates:
@@ -476,19 +487,19 @@ namespace controller
       //   Product: '<S2>/Divide'
       //   Saturate: '<S2>/Saturation1'
 
-      rtb_Gain1 = look1_iflf_bingc(rtb_Sum2_g / u0, rtU.ValveFitPressureRatios,
-        rtP.uDLookupTable_tableData, 10U);
+      rtb_Gain_n = look1_iflf_bingc(rtb_Gain1 / rtb_Gain_n,
+        rtU.ValveFitPressureRatios, rtP.uDLookupTable_tableData, 10U);
 
       // Sum: '<S2>/Sum2' incorporates:
       //   Inport: '<Root>/P_nozzle'
 
-      rtb_Sum2_g -= rtU.P_nozzle;
+      rtb_Gain1 -= rtU.P_nozzle;
 
       // Sum: '<S62>/Sum' incorporates:
       //   DiscreteIntegrator: '<S53>/Integrator'
       //   Gain: '<S58>/Proportional Gain'
 
-      rtb_Sum = currentControllerGains.pressure.Kp * rtb_Sum2_g +
+      rtb_Sum1 = currentControllerGains.pressure.Kp * rtb_Gain1 +
         rtDW.Integrator_DSTATE;
 
       // Switch: '<S2>/Switch' incorporates:
@@ -498,7 +509,7 @@ namespace controller
       //   RelationalOperator: '<S16>/Compare'
 
       if (rtU.P_nozzle >= rtP.CompareToConstant_const_p) {
-        tmp = rtb_Sum;
+        tmp = rtb_Sum1;
       } else {
         tmp = rtP.Constant1_Value;
       }
@@ -506,19 +517,19 @@ namespace controller
       // Sum: '<S2>/Sum' incorporates:
       //   Switch: '<S2>/Switch'
 
-      rtb_Saturation3 = rtb_Gain1 + tmp;
+      rtb_Switch_c = rtb_Gain_n + tmp;
 
       // Saturate: '<S2>/Saturation3'
-      if (rtb_Saturation3 > rtP.Saturation3_UpperSat) {
-        rtb_Saturation3 = rtP.Saturation3_UpperSat;
-      } else if (rtb_Saturation3 < rtP.Saturation3_LowerSat) {
-        rtb_Saturation3 = rtP.Saturation3_LowerSat;
+      if (rtb_Switch_c > rtP.Saturation3_UpperSat) {
+        rtb_Switch_c = rtP.Saturation3_UpperSat;
+      } else if (rtb_Switch_c < rtP.Saturation3_LowerSat) {
+        rtb_Switch_c = rtP.Saturation3_LowerSat;
       }
 
       // End of Saturate: '<S2>/Saturation3'
 
       // RateLimiter: '<S2>/Rate Limiter'
-      rateLimiterRate = rtb_Saturation3 - rtDW.PrevY;
+      rateLimiterRate = rtb_Switch_c - rtDW.PrevY;
       tmp = rtP.RateLimiter_RisingLim * period;
       if (rateLimiterRate > tmp) {
         // RateLimiter: '<S2>/Rate Limiter'
@@ -528,7 +539,7 @@ namespace controller
         rtDW.RateLimiter = rtP.RateLimiter_FallingLim * period + rtDW.PrevY;
       } else {
         // RateLimiter: '<S2>/Rate Limiter'
-        rtDW.RateLimiter = rtb_Saturation3;
+        rtDW.RateLimiter = rtb_Switch_c;
       }
 
       rtDW.PrevY = rtDW.RateLimiter;
@@ -542,8 +553,8 @@ namespace controller
       //   Sum: '<S64>/SumI3'
       //   Sum: '<S65>/SumI1'
 
-      rtDW.Integrator_DSTATE += (((rtDW.RateLimiter - rtb_Gain1) - rtb_Sum) *
-        rtP.PIDController_Kt + currentControllerGains.pressure.Ki * rtb_Sum2_g) *
+      rtDW.Integrator_DSTATE += (((rtDW.RateLimiter - rtb_Gain_n) - rtb_Sum1) *
+        rtP.PIDController_Kt + currentControllerGains.pressure.Ki * rtb_Gain1) *
         rtP.Integrator_gainval;
     }
 
@@ -557,18 +568,26 @@ namespace controller
     //   RelationalOperator: '<S7>/Compare'
 
     if (controller_mode == rtP.CompareToConstant4_const) {
-      rtb_TSamp = rtU.pos_ref_ext;
+      rtb_Gain_n = rtU.pos_ref_ext;
     } else {
-      rtb_TSamp = static_cast<real32_T>(rtDW.RateLimiter);
+      rtb_Gain_n = static_cast<real32_T>(rtDW.RateLimiter);
     }
 
     // End of Switch: '<S1>/Switch1'
 
     // Outport: '<Root>/position_demand'
-    rtY.position_demand = rtb_TSamp;
+    rtY.position_demand = rtb_Gain_n;
 
     // Outport: '<Root>/P_nozzle_demand1'
     rtY.P_nozzle_demand1 = rtb_Switch2;
+
+    // Outport: '<Root>/speedDemand'
+    rtY.speedDemand = rtb_TSamp;
+
+    // Outport: '<Root>/pos_ref_rate_limited' incorporates:
+    //   DiscreteIntegrator: '<S73>/Discrete-Time Integrator'
+
+    rtY.pos_ref_rate_limited = rtDW.DiscreteTimeIntegrator_DSTATE_j;
 
     // Outport: '<Root>/ThrustMax' incorporates:
     //   Gain: '<S1>/Gain'
@@ -586,40 +605,40 @@ namespace controller
     rtY.ThrustEstimate = rtU.P_nozzle / rtU.nozzle_gain;
 
     // Saturate: '<S15>/Saturation1'
-    if (rtb_TSamp > rtP.Saturation1_UpperSat_k) {
-      rtb_TSamp = rtP.Saturation1_UpperSat_k;
-    } else if (rtb_TSamp < rtP.Saturation1_LowerSat_k) {
-      rtb_TSamp = rtP.Saturation1_LowerSat_k;
+    if (rtb_Gain_n > rtP.Saturation1_UpperSat_k) {
+      rtb_Gain_n = rtP.Saturation1_UpperSat_k;
+    } else if (rtb_Gain_n < rtP.Saturation1_LowerSat_k) {
+      rtb_Gain_n = rtP.Saturation1_LowerSat_k;
     }
 
-    // Gain: '<S72>/Gain' incorporates:
-    //   DiscreteIntegrator: '<S72>/Discrete-Time Integrator'
-    //   Gain: '<S72>/K'
+    // Gain: '<S73>/Gain' incorporates:
+    //   DiscreteIntegrator: '<S73>/Discrete-Time Integrator'
+    //   Gain: '<S73>/K'
     //   Saturate: '<S15>/Saturation1'
-    //   Sum: '<S72>/Sum1'
+    //   Sum: '<S73>/Sum1'
 
-    u0 = (rtP.K_Gain * rtb_TSamp - rtDW.DiscreteTimeIntegrator_DSTATE) *
-      rtP.Gain_Gain_h;
+    rtb_Gain1 = (rtP.K_Gain * rtb_Gain_n - rtDW.DiscreteTimeIntegrator_DSTATE_j)
+      * rtP.Gain_Gain_h;
 
-    // Saturate: '<S72>/Saturation'
-    if (u0 > rtP.Saturation_UpperSat_k) {
-      u0 = rtP.Saturation_UpperSat_k;
-    } else if (u0 < rtP.Saturation_LowerSat_kk) {
-      u0 = rtP.Saturation_LowerSat_kk;
+    // Saturate: '<S73>/Saturation'
+    if (rtb_Gain1 > rtP.Saturation_UpperSat_k) {
+      rtb_Gain1 = rtP.Saturation_UpperSat_k;
+    } else if (rtb_Gain1 < rtP.Saturation_LowerSat_kk) {
+      rtb_Gain1 = rtP.Saturation_LowerSat_kk;
     }
 
-    // Update for DiscreteIntegrator: '<S72>/Discrete-Time Integrator' incorporates:
-    //   Saturate: '<S72>/Saturation'
+    // Update for DiscreteIntegrator: '<S73>/Discrete-Time Integrator' incorporates:
+    //   Saturate: '<S73>/Saturation'
 
-    rtDW.DiscreteTimeIntegrator_DSTATE += rtP.DiscreteTimeIntegrator_gainva_l *
-      u0;
+    rtDW.DiscreteTimeIntegrator_DSTATE_j += rtP.DiscreteTimeIntegrator_gainva_l *
+      rtb_Gain1;
   }
 
   // Model initialize function
   void actuatorController::initialize()
   {
-    // InitializeConditions for DiscreteIntegrator: '<S72>/Discrete-Time Integrator' 
-    rtDW.DiscreteTimeIntegrator_DSTATE = rtP.DiscreteTimeIntegrator_IC_c;
+    // InitializeConditions for DiscreteIntegrator: '<S73>/Discrete-Time Integrator' 
+    rtDW.DiscreteTimeIntegrator_DSTATE_j = rtP.DiscreteTimeIntegrator_IC_c;
 
     // SystemInitialize for Enabled SubSystem: '<S1>/Position Controller'
     // InitializeConditions for UnitDelay: '<S71>/UD'
@@ -633,13 +652,13 @@ namespace controller
     // SystemInitialize for Saturate: '<S12>/Saturation' incorporates:
     //   Outport: '<S12>/SpeedDemand'
 
-    rtDW.Saturation_m = rtP.SpeedDemand_Y0;
+    rtDW.Saturation = rtP.SpeedDemand_Y0;
 
     // End of SystemInitialize for SubSystem: '<S1>/Position Controller'
 
     // SystemInitialize for Enabled SubSystem: '<S1>/Speed Controller'
     // InitializeConditions for DiscreteIntegrator: '<S13>/Discrete-Time Integrator' 
-    rtDW.DiscreteTimeIntegrator_DSTATE_b = rtP.DiscreteTimeIntegrator_IC;
+    rtDW.DiscreteTimeIntegrator_DSTATE = rtP.DiscreteTimeIntegrator_IC;
 
     // InitializeConditions for RateLimiter: '<S13>/Rate Limiter'
     rtDW.PrevY_h = rtP.RateLimiter_IC_o;

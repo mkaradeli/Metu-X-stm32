@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "bdma.h"
 #include "dma.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -161,6 +162,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_DMA_Init();
+  MX_BDMA_Init();
   /* USER CODE BEGIN 2 */
 //  BSP_LED_Init(LED_RED);
 //  BSP_LED_Init(LED_GREEN);

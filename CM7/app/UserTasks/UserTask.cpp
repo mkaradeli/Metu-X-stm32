@@ -17,6 +17,10 @@
 #include "globals.hpp"
 #include "main.h"            // SAFETY_CONNECTOR_GPIO_Port / _Pin
 #include "platformController.h"
+#include "globals.hpp"
+
+bool SAFETY_CHECK = true;
+
 /* ======================================================================== */
 /*  Safety connector: reads 0 when connected, 1 when pulled out             */
 /* ======================================================================== */
@@ -37,7 +41,7 @@ static inline void setAllValves(float angle_deg) {
 static void valveShutdown(uint32_t time_ms) {   // current control mode
 	platform_controller.rtU.Dropped = false;
 
-	if (time_ms < 3000)
+	if (time_ms < 1000)
 		for (int i = 0; i < 4; i++)
 			actuator[i].actuatorController.rtY.currentDemand = -1.0f;
 	else
@@ -53,6 +57,12 @@ static const uint32_t TESTFIRE_OPS_MS   = 9000;
 
 static void testfireOpenTask(uint32_t time_ms) {   // position control mode
 	setAllValves((float)(int)(time_ms / TESTFIRE_STEP_MS) * 100.0f);
+	if (imu.gyroIntegratedRV.i > 0.3825 or imu.gyroIntegratedRV.i < -0.3825 or imu.gyroIntegratedRV.j > 0.3825 or imu.gyroIntegratedRV.j < -0.3825) {
+		SAFETY_CHECK = false;
+	}
+	if (g_altEst.height()> 1.5f) {
+				SAFETY_CHECK = false;
+			}
 }
 
 /* ======================================================================== */
@@ -93,7 +103,7 @@ static void hoverTask(uint32_t time_ms) {
 	platform_controller.rtU.Dropped = true;
 #if HWIL_ENABLED
 	hwil.rtU.enable_spring = true;
-	if (time_ms == 0) {
+	if (time_ms == 1) {
 		/* rtU.X0/V0 only take effect on the first step() after
 		 * initialize() (one-shot DWORK latch in the generated code) --
 		 * re-initialize() here so each HOVER firing actually restarts
@@ -114,13 +124,14 @@ static void hoverTask(uint32_t time_ms) {
 #endif
 
 	{
+
 		/* actuator[i] nozzle position in the IMU frame: 0=+X, 1=-Y, 2=+Y, 3=-X.
 		 * The controller ports are axis roles, not physical sides:
 		 * Front=+X, Back=-X, Right=+Y, Left=-Y. */
-		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.FrontThrustCmd;	// +X
-		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.LeftThrustCmd;	// -Y
-		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.RightThrustCmd;	// +Y
-		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.BackThrustCmd;	// -X
+		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_pos;	// +X
+		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_neg;	// -Y
+		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_pos;	// +Y
+		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_neg;	// -X
 	}
 }
 
@@ -129,7 +140,7 @@ static void dropTask(uint32_t time_ms) {
 	platform_controller.rtU.Dropped = true;
 #if HWIL_ENABLED
 	hwil.rtU.enable_spring = false;
-	if (time_ms == 0) {
+	if (time_ms == 1) {
 		/* see hoverTask(): rtU.X0/V0 only latch on the first step()
 		 * after initialize(), so re-initialize() here to actually
 		 * restart the simulated rocket at 9 m for this firing. Mask
@@ -138,6 +149,7 @@ static void dropTask(uint32_t time_ms) {
 		HAL_NVIC_DisableIRQ(TIM7_IRQn);
 		hwil.rtU.X0 = 9.0f;
 		hwil.rtU.V0 = 0.0f;
+//		hwil.rtU.quaternion_true
 		hwil.initialize();
 		HAL_NVIC_EnableIRQ(TIM7_IRQn);
 	}
@@ -146,10 +158,24 @@ static void dropTask(uint32_t time_ms) {
 		/* actuator[i] nozzle position in the IMU frame: 0=+X, 1=-Y, 2=+Y, 3=-X.
 		 * The controller ports are axis roles, not physical sides:
 		 * Front=+X, Back=-X, Right=+Y, Left=-Y. */
-		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.FrontThrustCmd;	// +X
-		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.LeftThrustCmd;	// -Y
-		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.RightThrustCmd;	// +Y
-		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.BackThrustCmd;	// -X
+		if (imu.gyroIntegratedRV.i > 0.25 or imu.gyroIntegratedRV.i < -0.25 or imu.gyroIntegratedRV.j > 0.25 or imu.gyroIntegratedRV.j < -0.25) {
+			SAFETY_CHECK = false;
+		}
+//		if (g_altEst.height()> 1.5f) {
+//					SAFETY_CHECK = false;
+//				}
+		if (SAFETY_CHECK){
+
+		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_pos;	// +X
+		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_neg;	// -Y
+		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_pos;	// +Y
+		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_neg;	// -X
+		} else {
+			actuator[0].actuatorController.rtU.F_demand = 0;	// +X
+			actuator[1].actuatorController.rtU.F_demand = 0;	// +X
+			actuator[2].actuatorController.rtU.F_demand = 0;	// +X
+			actuator[3].actuatorController.rtU.F_demand = 0;	// +X
+		}
 	}
 }
 
@@ -235,7 +261,7 @@ extern const uint8_t missionTableCount =
 
 // HOVER 4
 // DROP 5
-extern const uint8_t defaultMissionIndex = 4;   // TF_OPEN
+extern const uint8_t defaultMissionIndex = 5;   // TF_OPEN
 
 /* The old global logHeader[] / logHeaderSize are gone: sd_task now takes the
  * header text from the selected mission row above. Delete their extern
