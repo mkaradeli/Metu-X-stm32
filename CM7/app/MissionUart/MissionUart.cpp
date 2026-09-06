@@ -42,6 +42,8 @@ static char     cmd_line[CMD_LINE_MAX];
 static uint16_t cmd_len      = 0;
 static bool     cmd_too_long = false;
 
+static void (*raw_sink)(uint8_t c) = NULL;
+
 static uint32_t stat_restarts = 0;
 static uint32_t stat_lines    = 0;
 
@@ -82,6 +84,17 @@ void mission_uart_error(UART_HandleTypeDef *huart)
 		stat_restarts++;
 		cmd_rx_start();
 	}
+}
+
+void mission_uart_enter_raw(void (*sink)(uint8_t c))
+{
+	raw_sink = sink;
+}
+
+void mission_uart_exit_raw()
+{
+	raw_sink = NULL;
+	cmd_rx_start();
 }
 
 /* ------------------------------------------------------------------ */
@@ -156,8 +169,9 @@ void mission_uart_poll()
 	if (head >= CMD_RX_DMA_LEN) head = 0;
 
 	while (cmd_rx_tail != head) {
-		char c = (char)cmd_rx_dma[cmd_rx_tail];
+		uint8_t c = cmd_rx_dma[cmd_rx_tail];
 		if (++cmd_rx_tail >= CMD_RX_DMA_LEN) cmd_rx_tail = 0;
-		cmd_feed(c);
+		if (raw_sink) raw_sink(c);
+		else          cmd_feed((char)c);
 	}
 }

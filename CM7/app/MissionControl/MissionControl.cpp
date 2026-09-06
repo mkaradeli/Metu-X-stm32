@@ -33,6 +33,7 @@
  */
 
 #include "MissionControl.hpp"
+#include "../YModem/YModem.hpp"
 #include "stm32h7xx_hal.h"
 #include <string.h>
 #include <stdio.h>
@@ -246,6 +247,15 @@ void MissionControl::BeginShutdown() {
 bool MissionControl::Start() {
 	last_error = mission_error_t::NONE;
 
+	/* A GETLOG transfer only ever runs on the ground, but it still owns one
+	 * of FatFs's two open-file slots and holds the console UART's RX in raw
+	 * mode -- arming here (console ARM or the physical button, which reaches
+	 * Start() through ServiceRequests()/Toggle() without ever going through
+	 * HandleCommand()) would start a mission mid-download. */
+	if (ymodem_active()) {
+		last_error = mission_error_t::BUSY;
+		return false;
+	}
 	if (running || system_mode != system_modes::IDLE) {
 		last_error = mission_error_t::NOT_IDLE;
 		return false;
@@ -535,6 +545,16 @@ bool MissionControl::HandleCommand(const char *cmd, char *reply, size_t n) {
 	}
 	if (ieq(verb, "STATUS") || ieq(verb, "?")) {
 		Report(reply, n);
+		return true;
+	}
+	if (ieq(verb, "GETLOG")) {
+		/* ymodem_request_transfer() only does cheap state checks here (this
+		 * runs from the same ISR context as the rest of HandleCommand()) --
+		 * the actual transfer, including every FatFs call, happens later
+		 * from ymodem_poll() in app_loop(). Once it takes over this UART's
+		 * RX, no more console commands reach here until it hands control
+		 * back, whether the transfer finishes or is cancelled. */
+		ymodem_request_transfer(reply, n);
 		return true;
 	}
 	snprintf(reply, n, "unknown cmd '%s'\r\n", verb);

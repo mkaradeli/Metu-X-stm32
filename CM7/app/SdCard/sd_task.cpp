@@ -78,6 +78,32 @@ static bool tail_armed  = false;
 
 SdState sd_card_state() { return state; }
 
+/* Independent copy of find_free_log_index()'s bisection -- deliberately not
+ * shared with the write path, which must stay untouched. Existence of
+ * log%04u.bin is monotonic over [2000,10000) because files are created in
+ * strictly increasing order, so the lowest free index F means the most
+ * recent log is F-1. Caller (YModem) guarantees app_loop() context. */
+bool sd_get_last_log_name(char *out, size_t outsz)
+{
+    char     name[32];
+    uint16_t lo = 2000, hi = 10000;
+
+    while (lo < hi) {
+        uint16_t mid = lo + ((hi - lo) >> 1);
+        snprintf(name, sizeof(name), "log%04u.bin", mid);
+
+        FRESULT res = f_stat(name, NULL);
+        if (res == FR_OK)            lo = mid + 1;
+        else if (res == FR_NO_FILE)  hi = mid;
+        else                         return false;   /* media error */
+    }
+
+    if (lo <= 2000) return false;   /* nothing has ever been logged */
+
+    snprintf(out, outsz, "log%04u.bin", (unsigned)(lo - 1));
+    return true;
+}
+
 /* ------------------------------------------------------------------ */
 /* Fault handling                                                      */
 /* ------------------------------------------------------------------ */

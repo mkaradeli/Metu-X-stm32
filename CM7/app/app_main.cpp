@@ -25,6 +25,7 @@
 #include "MissionUart.hpp"
 
 #include "MissionControl.hpp"
+#include "YModem/YModem.hpp"
 //#include "platformController.h"
 
 #include "BNO085.hpp"
@@ -497,6 +498,11 @@ void app_loop() {
 	}
 	sd_card_task_function(); // every iter
 
+	/* Only safe context for this: FatFs has no reentrancy support and is
+	 * otherwise exclusively driven from sd_card_prep()/sd_card_task_function()
+	 * right above, both called from this same app_loop() iteration. */
+	ymodem_poll();
+
 	if (task_ready(&nrf24_tx_task)) { // 20 ms, 50 Hz downlink
 		if (nrf24_link_tx_idle()) {
 			(void)nrf24_link_send(&local_sensor_data, sizeof(local_sensor_data));
@@ -844,7 +850,9 @@ void pressure_adc_complete(){
 
 		if(task_ready(&uart_logging)){
 #if not ENABLE_PRINT
-			rb_write(&common_print_buffer, &local_sensor_data, (size_t)sizeof(SensorData_t));
+			if (!ymodem_active()) {
+				rb_write(&common_print_buffer, &local_sensor_data, (size_t)sizeof(SensorData_t));
+			}
 #endif
 		}
 
