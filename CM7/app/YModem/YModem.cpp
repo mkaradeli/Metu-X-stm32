@@ -119,6 +119,7 @@ static uint8_t  ym_retries;
 static uint8_t  ym_read_retries;
 static uint8_t  ym_can_count;
 static uint32_t ym_deadline;
+static uint32_t ym_gap_blocks;   /* diagnostic: blocks replaced by the marker below */
 
 /* SOH/STX + block# + ~block# + up to 1024B payload + 2B CRC. CPU-only, never
  * touched by DMA (rb_write() memcpy's it into common_print_buffer), so no
@@ -129,6 +130,13 @@ static uint32_t ym_block_len;
 bool ymodem_active()
 {
 	return ym_state != YmState::Idle;
+}
+
+/* Blocks replaced by the gap marker in the transfer just finished (or in
+ * progress). Reset at the start of the next transfer, not after this read. */
+uint32_t ymodem_gap_blocks()
+{
+	return ym_gap_blocks;
 }
 
 /* CRC-16/XMODEM: poly 0x1021, init 0x0000, no reflection. Deliberately not
@@ -239,6 +247,36 @@ static YmRead ym_build_data_block(uint8_t blk)
 	return YmRead::Ok;
 }
 
+/* Unmistakable, human-readable filler for a block that f_read() could not
+ * retrieve after YM_MAX_READ_RETRIES attempts (see the Error handling in
+ * ymodem_poll()'s SendData case). Deliberately not zeros or any other value
+ * that could pass for real telemetry, and deliberately not starting with
+ * 'K'/'D' -- that's the SensorData_t record sync marker (see
+ * find_resume_offset() in sd_task.cpp) and a gap block must never be
+ * mistakable for a real, if garbled, record. */
+static const char YM_GAP_MARKER[] =
+	"*** GETLOG: SD READ FAILED HERE AFTER RETRIES -- DATA MISSING *** ";
+
+static void ym_fill_gap_block(uint8_t blk)
+{
+	uint8_t *payload = ym_block_buf + 3;
+	size_t   mlen    = sizeof(YM_GAP_MARKER) - 1;   /* exclude the NUL */
+
+	for (size_t off = 0; off < YM_BLOCK_SIZE; off += mlen) {
+		size_t n = (off + mlen <= YM_BLOCK_SIZE) ? mlen : (YM_BLOCK_SIZE - off);
+		memcpy(payload + off, YM_GAP_MARKER, n);
+	}
+
+	ym_block_buf[0] = YM_STX;
+	ym_block_buf[1] = blk;
+	ym_block_buf[2] = (uint8_t)(0xFFu - blk);
+
+	uint16_t crc = ym_crc16(payload, YM_BLOCK_SIZE);
+	ym_block_buf[3 + YM_BLOCK_SIZE]     = (uint8_t)(crc >> 8);
+	ym_block_buf[3 + YM_BLOCK_SIZE + 1] = (uint8_t)(crc & 0xFFu);
+	ym_block_len = 3 + YM_BLOCK_SIZE + 2;
+}
+
 /* ------------------------------------------------------------------ */
 
 bool ymodem_request_transfer(char *reply, size_t n)
@@ -286,6 +324,7 @@ void ymodem_poll()
 		ym_retries     = 0;
 		ym_read_retries = 0;
 		ym_can_count   = 0;
+		ym_gap_blocks  = 0;
 
 		rb_drain_blocking(200);          /* quiesce any tail of the 500Hz stream */
 		ym_rxq_clear();
@@ -347,12 +386,38 @@ void ymodem_poll()
 			 * non-contiguously-allocated file timing out, or a genuine
 			 * media error -- is NOT end of file. Treating it as EOF here
 			 * would silently hand the receiver a truncated file it thinks
-			 * is complete (which is exactly what used to happen). Retry a
-			 * few times (poll-paced, so no busy-spin), then give up loudly
-			 * instead of quietly. f_read() leaves the file position at
-			 * whatever it actually managed to read, so retrying the same
-			 * call is correct -- no seek needed. */
-			if (++ym_read_retries > YM_MAX_READ_RETRIES) { ym_abort(); break; }
+			 * is complete (which is what used to happen). Retry a few
+			 * times first (poll-paced, so no busy-spin) in case it's
+			 * transient -- f_read() leaves the file position at whatever
+			 * it actually managed to read, so retrying the same call is
+			 * correct, no seek needed for that part.
+			 *
+			 * If it's still failing after that many attempts, this block
+			 * is genuinely unreadable (this card's tiny 512B cluster size
+			 * means a fragmented pre-allocation forces FatFs to re-walk
+			 * the FAT chain on almost every sector, and a bad link
+			 * anywhere in that chain fails every read past it forever --
+			 * retrying more won't help). Rather than aborting the whole
+			 * transfer, substitute an unmistakable marker for this one
+			 * block and skip the file position forward past it, so the
+			 * rest of the file -- which is likely fine -- still gets
+			 * through. A read past the true end of file is just a normal
+			 * EOF on the next attempt, so this can never loop forever
+			 * even if everything from here on is bad. */
+			if (++ym_read_retries <= YM_MAX_READ_RETRIES) break;
+
+			FSIZE_t gap_pos = f_tell(&ym_fil);
+			if (f_lseek(&ym_fil, gap_pos + YM_BLOCK_SIZE) != FR_OK) {
+				ym_abort();   /* can't even reposition -- media is truly gone */
+				break;
+			}
+			ym_fill_gap_block(ym_block_num);
+			ym_gap_blocks++;
+			ym_read_retries = 0;
+			ym_send(ym_block_buf, ym_block_len);
+			ym_retries = 0;
+			ym_arm_timeout(YM_BLOCK_TIMEOUT_MS);
+			ym_state = YmState::WaitDataResp;   /* ACK there advances ym_block_num, same as a real block */
 			break;
 		}
 		ym_read_retries = 0;

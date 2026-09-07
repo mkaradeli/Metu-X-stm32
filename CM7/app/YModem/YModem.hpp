@@ -40,4 +40,10 @@ void ymodem_rx_byte(uint8_t c);
  * MissionControl::Start(). */
 bool ymodem_active();
 
+/* Count of blocks in the most recent (or in-progress) transfer that
+ * couldn't be read from the SD card and were replaced with a marker
+ * instead -- see ym_fill_gap_block() in YModem.cpp. Zero means a clean,
+ * complete transfer with no substituted data. */
+uint32_t ymodem_gap_blocks();
+
 #endif /* YMODEM_YMODEM_HPP_ */
