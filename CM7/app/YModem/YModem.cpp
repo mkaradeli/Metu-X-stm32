@@ -167,6 +167,17 @@ static void ym_send_byte(uint8_t b)
 	rb_write(&common_print_buffer, &b, 1);
 }
 
+/* Status lines for the ground tool (metux-log-downloader), sent straight
+ * over the ring buffer rather than through the reply/printf path -- reply
+ * text there is silently swallowed whenever ENABLE_PRINT is false (as it is
+ * in this build), and these lines need to reach the wire regardless. Kept
+ * to a small fixed vocabulary (GETLOG:BUSY/NOTIDLE/NOFILE/OPENFAIL/START)
+ * so the ground tool can parse them without ambiguity. */
+static void ym_send_line(const char *msg)
+{
+	rb_write(&common_print_buffer, msg, strlen(msg));
+}
+
 static void ym_arm_timeout(uint32_t ms)
 {
 	ym_deadline = HAL_GetTick() + ms;
@@ -299,10 +310,12 @@ static void ym_send_gap_and_wait(uint8_t blk)
 bool ymodem_request_transfer(char *reply, size_t n)
 {
 	if (ym_state != YmState::Idle) {
+		ym_send_line("GETLOG:BUSY\r\n");
 		snprintf(reply, n, "GETLOG FAIL: transfer already in progress\r\n");
 		return false;
 	}
 	if (missionControl.system_mode != system_modes::IDLE || missionControl.running) {
+		ym_send_line("GETLOG:NOTIDLE\r\n");
 		snprintf(reply, n, "GETLOG FAIL: not idle\r\n");
 		return false;
 	}
@@ -329,10 +342,12 @@ void ymodem_poll()
 
 	case YmState::StartRequested: {
 		if (!sd_get_last_log_name(ym_name, sizeof(ym_name))) {
+			ym_send_line("GETLOG:NOFILE\r\n");
 			ym_state = YmState::Idle;    /* nothing logged yet */
 			return;
 		}
 		if (f_open(&ym_fil, ym_name, FA_OPEN_EXISTING | FA_READ) != FR_OK) {
+			ym_send_line("GETLOG:OPENFAIL\r\n");
 			ym_state = YmState::Idle;
 			return;
 		}
@@ -346,6 +361,14 @@ void ymodem_poll()
 		ym_hard_fault  = false;
 
 		rb_drain_blocking(200);          /* quiesce any tail of the 500Hz stream */
+
+		/* Announce after the drain (so it isn't stuck behind stale queued
+		 * bytes) and before touching raw mode/RX -- the ground tool reads
+		 * this one line, then starts its own YMODEM handshake. */
+		char line[80];
+		snprintf(line, sizeof(line), "GETLOG:START %s %lu\r\n", ym_name, (unsigned long)ym_size);
+		ym_send_line(line);
+
 		ym_rxq_clear();
 		mission_uart_enter_raw(ymodem_rx_byte);
 
