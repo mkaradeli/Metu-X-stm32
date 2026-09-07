@@ -8,7 +8,7 @@
 #ifndef APP_MAIN_HPP_
 #define APP_MAIN_HPP_
 #include "stm32h7xx_hal.h"
-
+#define ENABLE_PRINT true
 
 
 #define CLR_SCREEN      "\033[2J\033[H"
@@ -18,6 +18,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 	void app_init();
 	void app_loop();

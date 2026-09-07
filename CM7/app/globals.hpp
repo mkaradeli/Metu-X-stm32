@@ -19,6 +19,7 @@
 #include "Motor.hpp"
 #include "LoadCell.hpp"
 #include "Lidar.hpp"
+#include "Barometer.hpp"
 
 #include "AltitudeEstimator.hpp"
 
@@ -52,6 +53,7 @@ extern const uint16_t logFormatId;
 //extern const uint8_t logHeaderSize;
 extern const uint16_t sensorDataLength;
 extern Lidar lidar;
+extern Barometer baro;
 
 extern const float ValveFitPressureRatios[4][11];
 extern const int encoderSigns[4];

@@ -196,6 +196,7 @@ task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
 
 task_timer_t uart_logging = { 2, 0};
 task_timer_t nrf24_tx_task = {20, 0};   // 50 Hz downlink
+task_timer_t baro_task = {20, 0};       // 50 Hz, matches Barometer::init()'s ODR
 
 __attribute__((section(".sram3"), used))
 volatile uint16_t adc_dma_buf_current[5];
@@ -295,6 +296,23 @@ MissionControl missionControl(&True,
 //}
 static uint32_t calStartTick = 0;   // set right after beginCalibration()
 
+/* One-shot bring-up diagnostic: sweeps every 7-bit address on I2C4 and
+ * reports which ones ACK. Blocking (HAL_I2C_IsDeviceReady), only meant to
+ * run once at startup -- not for the hot path. If this finds nothing,
+ * the problem is upstream of software (power/ground/continuity), not the
+ * BMP581's address. */
+static void i2c4_bus_scan() {
+	printf("I2C4 bus scan:\r\n");
+	int found = 0;
+	for (uint8_t addr7 = 1; addr7 < 0x7F; addr7++) {
+		if (HAL_I2C_IsDeviceReady(&hi2c4, static_cast<uint16_t>(addr7) << 1, 2, 5) == HAL_OK) {
+			printf("  ACK at 0x%02X\r\n", addr7);
+			found++;
+		}
+	}
+	if (found == 0) printf("  no devices responded -- check power/ground/wiring, not just address\r\n");
+}
+
 void app_init() {
 	SensorData_Buffer_Init(&logData);
 
@@ -390,6 +408,12 @@ void app_init() {
 		}
 //		altEstimator.begin();
 		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);
+
+		bool baroHealthy = baro.init();
+		printf("BMP581 baro: %s\r\n",
+		       baroHealthy ? "OK" : "NOT RESPONDING (check I2C4 wiring/address)");
+		if (!baroHealthy) i2c4_bus_scan();
+		if (baroHealthy) baro.startRead();  /* first read; re-armed from tim7_trigger()'s baro_task */
 //	  dummy_init();
 //	  printf(CLR_SCREEN);
 
@@ -569,6 +593,9 @@ void tim7_trigger() { // 1 khz low priority
 		IMU_profiler.start();
 		imu.service();                 // poll at least every ~1 ms
 		IMU_profiler.end();
+	}
+	if (task_ready(&baro_task)) { // 20 ms, 50 Hz
+		baro.startRead();  // non-blocking; no-op if a transfer is still in flight
 	}
 	nrf24_profiler.start();
 	(void)nrf24_link_service();        // pumps the TX fragment FIFO, never blocks longer than one SPI burst
@@ -870,6 +897,17 @@ void pressure_adc_complete(){
 	}
 
 	adc3_profiler.end();
+}
+
+void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+	if (hi2c == &hi2c4) {
+		baro.onReadComplete();  // next startRead() is re-armed from tim7_trigger()'s baro_task
+	}
+}
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
+	if (hi2c == &hi2c4) {
+		baro.onReadError();
+	}
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){

@@ -53,6 +53,11 @@ const uint16_t sensorDataLength = sizeof(SensorData_t);
 
 
 Lidar lidar = Lidar(&huart6);
+/* Bare on-board BMP581 (U4). SDO/ADR is deliberately left unconnected --
+ * relying on the sensor's power-on-default address, which is the primary
+ * (0x46). If that ever stops ACKing, try kI2cAddrSecondary before suspecting
+ * wiring again. */
+Barometer baro = Barometer(&hi2c4);
 
 const float ValveFitPressureRatios[4][11] = {{0, 0.08017, 0.18849, 0.27854, 0.37946, 0.48270, 0.52072, 0.58562, 0.61721, 0.61722, 0.63468},
 		{0, 0.13364, 0.23557, 0.32940, 0.42822, 0.48331, 0.53583, 0.59307, 0.61894, 0.61990, 0.63189},

@@ -38,7 +38,9 @@ void ymodem_rx_byte(uint8_t c);
 /* True from the moment a transfer is requested until it finishes, errors
  * out, or is cancelled. Gates the 500Hz telemetry rb_write() and
  * MissionControl::Start(). */
+extern "C" {
 bool ymodem_active();
+}
 
 /* Count of blocks in the most recent (or in-progress) transfer that
  * couldn't be read from the SD card and were replaced with a marker

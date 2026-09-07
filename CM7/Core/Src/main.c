@@ -56,7 +56,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define ENABLE_PRINT false
+
 
 void LED_Counter_Tick(void);
 void sd_mount_check (void);
@@ -110,13 +110,15 @@ static void MPU_Config(void);
 //task_timer_t sd_mount_check_task = {1000, 5000};
 //task_timer_t common_heartbeat_task = {2000,1000};
 
-
+extern bool ymodem_active();
 int _write(int file, char *ptr, int len)
 {
 #if ENABLE_PRINT
 //	SCB_InvalidateDCache_by_Addr((uint32_t *)&common_print_buffer, sizeof(common_print_buffer));
     (void)file;
-    return (int)rb_write(&common_print_buffer, ptr, (size_t)len);
+    if (!ymodem_active()){
+    	return (int)rb_write(&common_print_buffer, ptr, (size_t)len);
+    }
 //
 //    return (int)rb_push_n(&common_print_buffer, ptr, (size_t)len);
 #else
