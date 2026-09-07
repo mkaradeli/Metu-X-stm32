@@ -67,6 +67,16 @@ static uint16_t log_index      = 0;
 static bool     have_log_index = false;   /* reopen this index after a fault */
 static char     log_name[32]   = { 0 };
 
+/* Name of the last file sd_finalize_file() actually closed with real data in
+ * it. A file is open here almost continuously -- one gets created right at
+ * boot and another right after every mission ends -- so "the most recent
+ * log%04u.bin that exists on disk" is nearly always the file currently open
+ * in the background, not a completed one. This is captured explicitly at
+ * finalize time instead, before the next prep tick opens a new file and
+ * overwrites log_name. */
+static char     last_completed_log_name[32] = { 0 };
+static bool     have_last_completed_log     = false;
+
 /* Mission this file was created for. 0xFF = none bound yet. */
 static uint8_t  bound_mission  = 0xFFu;
 
@@ -78,29 +88,15 @@ static bool tail_armed  = false;
 
 SdState sd_card_state() { return state; }
 
-/* Independent copy of find_free_log_index()'s bisection -- deliberately not
- * shared with the write path, which must stay untouched. Existence of
- * log%04u.bin is monotonic over [2000,10000) because files are created in
- * strictly increasing order, so the lowest free index F means the most
- * recent log is F-1. Caller (YModem) guarantees app_loop() context. */
+/* Returns the last file sd_finalize_file() closed with real data in it (see
+ * last_completed_log_name above) -- NOT the most recent log%04u.bin that
+ * exists on disk, which is almost always whatever's open in the background
+ * right now. Just a cached-string copy, so unlike the rest of this file it
+ * touches no FatFs state and has no context restriction of its own. */
 bool sd_get_last_log_name(char *out, size_t outsz)
 {
-    char     name[32];
-    uint16_t lo = 2000, hi = 10000;
-
-    while (lo < hi) {
-        uint16_t mid = lo + ((hi - lo) >> 1);
-        snprintf(name, sizeof(name), "log%04u.bin", mid);
-
-        FRESULT res = f_stat(name, NULL);
-        if (res == FR_OK)            lo = mid + 1;
-        else if (res == FR_NO_FILE)  hi = mid;
-        else                         return false;   /* media error */
-    }
-
-    if (lo <= 2000) return false;   /* nothing has ever been logged */
-
-    snprintf(out, outsz, "log%04u.bin", (unsigned)(lo - 1));
+    if (!have_last_completed_log) return false;
+    snprintf(out, outsz, "%s", last_completed_log_name);
     return true;
 }
 
@@ -127,6 +123,9 @@ static void sd_fault(const char *what, FRESULT res)
 /* Mounting                                                            */
 /* ------------------------------------------------------------------ */
 
+/* Defined below, after find_free_log_index() which it reuses. */
+static void seed_last_completed_log_from_disk();
+
 static void sd_try_mount()
 {
     static uint32_t attempts = 0;
@@ -144,6 +143,15 @@ static void sd_try_mount()
 
     attempts = 0;
     printf("SD card mounted\n\r");
+
+    /* A file is created on essentially every NoFile tick from here on, so
+     * this is the one moment disk contents are guaranteed to reflect only
+     * prior sessions -- the right (and only) time to seed "last completed
+     * log" from whatever's already on the card, for a GETLOG requested
+     * before this session has finalized anything of its own. No-op if the
+     * live cache already has an answer (e.g. a fault/remount mid-session). */
+    seed_last_completed_log_from_disk();
+
     state = SdState::NoFile;
 }
 
@@ -171,6 +179,23 @@ static bool find_free_log_index(uint16_t *out)
 
     *out = lo;
     return true;
+}
+
+/* One-shot at mount time (see sd_try_mount()): reuses find_free_log_index()'s
+ * bisection purely as a read -- the lowest free index F means the highest
+ * *existing* index is F-1, which at this exact moment is necessarily a file
+ * from a previous session (nothing this session has created anything yet). */
+static void seed_last_completed_log_from_disk()
+{
+    if (have_last_completed_log) return;
+
+    uint16_t free_index = 0;
+    if (!find_free_log_index(&free_index)) return;   /* media error */
+    if (free_index <= 2000) return;                  /* nothing on the card */
+
+    snprintf(last_completed_log_name, sizeof(last_completed_log_name),
+             "log%04u.bin", (unsigned)(free_index - 1));
+    have_last_completed_log = true;
 }
 
 /* "<mission name>: <mission header>", NUL included in the returned length,
@@ -354,8 +379,13 @@ static void sd_finalize_file()
     }
     f_close(&Fil);
 
-    if (empty) f_unlink(log_name);
-    else       printf("closed %s at %lu bytes\n\r", log_name, (unsigned long)end);
+    if (empty) {
+        f_unlink(log_name);
+    } else {
+        printf("closed %s at %lu bytes\n\r", log_name, (unsigned long)end);
+        snprintf(last_completed_log_name, sizeof(last_completed_log_name), "%s", log_name);
+        have_last_completed_log = true;
+    }
 
     logData.ready  = false;
     have_log_index = false;

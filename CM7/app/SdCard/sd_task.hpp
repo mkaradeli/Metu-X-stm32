@@ -31,13 +31,13 @@ void sd_card_task_function();
 
 SdState sd_card_state();
 
-/* Independent bisection lookup for the most recently written log file
- * (mirrors find_free_log_index()'s technique without touching the write
- * path). Only meaningful, and only safe to call, while idle
- * (sd_card_state() == SdState::NoFile) from app_loop() context -- FatFs has
- * no reentrancy support (_FS_REENTRANT=0), so this must never be called from
- * an ISR. Returns false if no log has ever been written or the card is
- * unreadable. */
+/* Name of the last log file actually closed with data in it -- NOT
+ * necessarily "the most recent log%04u.bin on disk", since a file is open
+ * here almost continuously (one is created at boot and another right after
+ * every mission ends) and that background file is nearly always the most
+ * recent one that exists. A plain cached-string read, no FatFs involved, so
+ * unlike most of this module it's safe from any context. Returns false if
+ * nothing has been recorded yet this session. */
 bool sd_get_last_log_name(char *out, size_t outsz);
 
 #endif /* SD_TASK_HPP_ */

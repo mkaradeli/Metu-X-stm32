@@ -241,10 +241,12 @@ bool ymodem_request_transfer(char *reply, size_t n)
 		snprintf(reply, n, "GETLOG FAIL: not idle\r\n");
 		return false;
 	}
-	if (sd_card_state() != SdState::NoFile) {
-		snprintf(reply, n, "GETLOG FAIL: SD card busy or not mounted\r\n");
-		return false;
-	}
+	/* Deliberately no sd_card_state() check here: a file is open in the
+	 * background almost continuously (one at boot, another after every
+	 * mission ends), so SdState::Logging is the normal idle condition, not
+	 * a sign anything is wrong. sd_get_last_log_name() below targets a
+	 * different, already-closed file, so there's no conflict with whatever
+	 * the SD task currently has open. */
 
 	ym_state = YmState::StartRequested;
 	snprintf(reply, n, "GETLOG: preparing transfer\r\n");
