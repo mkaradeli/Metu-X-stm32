@@ -49,6 +49,7 @@
 #define YM_HDR_SIZE             128u
 #define YM_BLOCK_SIZE          1024u
 #define YM_MAX_RETRIES           10u
+#define YM_MAX_READ_RETRIES       5u
 #define YM_BLOCK_TIMEOUT_MS    3000u
 #define YM_INITIAL_C_TIMEOUT_MS 60000u
 
@@ -115,6 +116,7 @@ static char     ym_name[32];
 static uint32_t ym_size;
 static uint8_t  ym_block_num;
 static uint8_t  ym_retries;
+static uint8_t  ym_read_retries;
 static uint8_t  ym_can_count;
 static uint32_t ym_deadline;
 
@@ -204,15 +206,23 @@ static void ym_build_header_block(bool terminator)
 	ym_block_len = 3 + YM_HDR_SIZE + 2;
 }
 
+enum class YmRead : uint8_t { Ok, Eof, Error };
+
 /* Reads up to 1024B from the file into an STX data block, 0x1A-padding a
- * short final read. Returns false at EOF (nothing left to send). */
-static bool ym_build_data_block(uint8_t blk)
+ * short final read. Ok/Eof are the only two outcomes that used to exist here
+ * (collapsed into a single bool) -- Error is a distinct, third outcome: a
+ * real f_read() failure (media error, or a distant seek on a file that
+ * fell back to non-contiguous allocation, see sd_create_file()'s f_expand
+ * comment) is NOT the same as having reached the end of the file, and must
+ * never be treated as "transfer complete" by the caller. */
+static YmRead ym_build_data_block(uint8_t blk)
 {
 	UINT     br      = 0;
 	uint8_t *payload = ym_block_buf + 3;
 
 	FRESULT res = f_read(&ym_fil, payload, YM_BLOCK_SIZE, &br);
-	if (res != FR_OK || br == 0) return false;
+	if (res != FR_OK) return YmRead::Error;
+	if (br == 0)       return YmRead::Eof;
 
 	if (br < YM_BLOCK_SIZE) {
 		memset(payload + br, YM_SUB, YM_BLOCK_SIZE - br);
@@ -226,7 +236,7 @@ static bool ym_build_data_block(uint8_t blk)
 	ym_block_buf[3 + YM_BLOCK_SIZE]     = (uint8_t)(crc >> 8);
 	ym_block_buf[3 + YM_BLOCK_SIZE + 1] = (uint8_t)(crc & 0xFFu);
 	ym_block_len = 3 + YM_BLOCK_SIZE + 2;
-	return true;
+	return YmRead::Ok;
 }
 
 /* ------------------------------------------------------------------ */
@@ -271,10 +281,11 @@ void ymodem_poll()
 			ym_state = YmState::Idle;
 			return;
 		}
-		ym_size      = (uint32_t)f_size(&ym_fil);
-		ym_block_num = 1;
-		ym_retries   = 0;
-		ym_can_count = 0;
+		ym_size        = (uint32_t)f_size(&ym_fil);
+		ym_block_num   = 1;
+		ym_retries     = 0;
+		ym_read_retries = 0;
+		ym_can_count   = 0;
 
 		rb_drain_blocking(200);          /* quiesce any tail of the 500Hz stream */
 		ym_rxq_clear();
@@ -323,13 +334,30 @@ void ymodem_poll()
 		}
 		break;
 
-	case YmState::SendData:
+	case YmState::SendData: {
 		/* Some receivers re-send 'C' right after ACKing block 0 to reconfirm
 		 * CRC mode; discard anything pending here rather than misreading it
 		 * as a NAK against the next data block. */
 		(void)ym_rxq_pop(&c);
 
-		if (!ym_build_data_block(ym_block_num)) {
+		YmRead rr = ym_build_data_block(ym_block_num);
+
+		if (rr == YmRead::Error) {
+			/* A real f_read() failure -- e.g. a distant seek on a
+			 * non-contiguously-allocated file timing out, or a genuine
+			 * media error -- is NOT end of file. Treating it as EOF here
+			 * would silently hand the receiver a truncated file it thinks
+			 * is complete (which is exactly what used to happen). Retry a
+			 * few times (poll-paced, so no busy-spin), then give up loudly
+			 * instead of quietly. f_read() leaves the file position at
+			 * whatever it actually managed to read, so retrying the same
+			 * call is correct -- no seek needed. */
+			if (++ym_read_retries > YM_MAX_READ_RETRIES) { ym_abort(); break; }
+			break;
+		}
+		ym_read_retries = 0;
+
+		if (rr == YmRead::Eof) {
 			ym_send_byte(YM_EOT);
 			ym_retries = 0;
 			ym_arm_timeout(YM_BLOCK_TIMEOUT_MS);
@@ -341,6 +369,7 @@ void ymodem_poll()
 		ym_arm_timeout(YM_BLOCK_TIMEOUT_MS);
 		ym_state = YmState::WaitDataResp;
 		break;
+	}
 
 	case YmState::WaitDataResp:
 		if (ym_rxq_pop(&c)) {
