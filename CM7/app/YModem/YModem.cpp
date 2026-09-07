@@ -120,6 +120,8 @@ static uint8_t  ym_read_retries;
 static uint8_t  ym_can_count;
 static uint32_t ym_deadline;
 static uint32_t ym_gap_blocks;   /* diagnostic: blocks replaced by the marker below */
+static uint32_t ym_bytes_sent;   /* running total, real + gap, vs. ym_size */
+static bool     ym_hard_fault;   /* true once even f_lseek() past a bad block fails */
 
 /* SOH/STX + block# + ~block# + up to 1024B payload + 2B CRC. CPU-only, never
  * touched by DMA (rb_write() memcpy's it into common_print_buffer), so no
@@ -277,6 +279,21 @@ static void ym_fill_gap_block(uint8_t blk)
 	ym_block_len = 3 + YM_BLOCK_SIZE + 2;
 }
 
+/* Builds and sends one gap block for the current block number, then arms
+ * the normal ACK/NAK wait -- shared by every place that substitutes a gap
+ * block, whether this is a single skipped block or part of a run of them
+ * once ym_hard_fault is set. */
+static void ym_send_gap_and_wait(uint8_t blk)
+{
+	ym_fill_gap_block(blk);
+	ym_gap_blocks++;
+	ym_bytes_sent += YM_BLOCK_SIZE;
+	ym_send(ym_block_buf, ym_block_len);
+	ym_retries = 0;
+	ym_arm_timeout(YM_BLOCK_TIMEOUT_MS);
+	ym_state = YmState::WaitDataResp;
+}
+
 /* ------------------------------------------------------------------ */
 
 bool ymodem_request_transfer(char *reply, size_t n)
@@ -325,6 +342,8 @@ void ymodem_poll()
 		ym_read_retries = 0;
 		ym_can_count   = 0;
 		ym_gap_blocks  = 0;
+		ym_bytes_sent  = 0;
+		ym_hard_fault  = false;
 
 		rb_drain_blocking(200);          /* quiesce any tail of the 500Hz stream */
 		ym_rxq_clear();
@@ -379,6 +398,27 @@ void ymodem_poll()
 		 * as a NAK against the next data block. */
 		(void)ym_rxq_pop(&c);
 
+		if (ym_hard_fault) {
+			/* A previous block's FAT chain link broke badly enough that
+			 * even f_lseek() past it failed (see below) -- sequential
+			 * FatFs access can never recover from a broken chain link, so
+			 * there is no point calling f_read()/f_lseek() again for the
+			 * rest of this file. Just account for the declared size
+			 * (captured from f_size() back when the file was still fully
+			 * readable) in gap blocks, no further FatFs calls at all.
+			 * This is what guarantees the full declared length always
+			 * gets delivered, however badly the tail of the file broke. */
+			if (ym_bytes_sent >= ym_size) {
+				ym_send_byte(YM_EOT);
+				ym_retries = 0;
+				ym_arm_timeout(YM_BLOCK_TIMEOUT_MS);
+				ym_state = YmState::WaitEot1Resp;
+				break;
+			}
+			ym_send_gap_and_wait(ym_block_num);
+			break;
+		}
+
 		YmRead rr = ym_build_data_block(ym_block_num);
 
 		if (rr == YmRead::Error) {
@@ -392,32 +432,25 @@ void ymodem_poll()
 			 * it actually managed to read, so retrying the same call is
 			 * correct, no seek needed for that part.
 			 *
-			 * If it's still failing after that many attempts, this block
-			 * is genuinely unreadable (this card's tiny 512B cluster size
-			 * means a fragmented pre-allocation forces FatFs to re-walk
-			 * the FAT chain on almost every sector, and a bad link
-			 * anywhere in that chain fails every read past it forever --
-			 * retrying more won't help). Rather than aborting the whole
-			 * transfer, substitute an unmistakable marker for this one
-			 * block and skip the file position forward past it, so the
-			 * rest of the file -- which is likely fine -- still gets
-			 * through. A read past the true end of file is just a normal
-			 * EOF on the next attempt, so this can never loop forever
-			 * even if everything from here on is bad. */
+			 * If it's still failing after that many attempts, substitute
+			 * a marker for this one block and try to skip the file
+			 * position forward past it with f_lseek(), so the rest of the
+			 * file -- which may still be fine -- keeps coming through. */
 			if (++ym_read_retries <= YM_MAX_READ_RETRIES) break;
 
 			FSIZE_t gap_pos = f_tell(&ym_fil);
 			if (f_lseek(&ym_fil, gap_pos + YM_BLOCK_SIZE) != FR_OK) {
-				ym_abort();   /* can't even reposition -- media is truly gone */
-				break;
+				/* Seeking forward has to walk the same FAT chain
+				 * f_read() walks, so failing here means a broken chain
+				 * link, not just one bad data sector -- no amount of
+				 * further nudging will get past it. Switch to
+				 * ym_hard_fault instead of aborting: gap-fill this block
+				 * and every remaining one by byte count against ym_size,
+				 * touching FatFs no further. */
+				ym_hard_fault = true;
 			}
-			ym_fill_gap_block(ym_block_num);
-			ym_gap_blocks++;
 			ym_read_retries = 0;
-			ym_send(ym_block_buf, ym_block_len);
-			ym_retries = 0;
-			ym_arm_timeout(YM_BLOCK_TIMEOUT_MS);
-			ym_state = YmState::WaitDataResp;   /* ACK there advances ym_block_num, same as a real block */
+			ym_send_gap_and_wait(ym_block_num);
 			break;
 		}
 		ym_read_retries = 0;
@@ -429,6 +462,7 @@ void ymodem_poll()
 			ym_state = YmState::WaitEot1Resp;
 			break;
 		}
+		ym_bytes_sent += YM_BLOCK_SIZE;
 		ym_send(ym_block_buf, ym_block_len);
 		ym_retries = 0;
 		ym_arm_timeout(YM_BLOCK_TIMEOUT_MS);
