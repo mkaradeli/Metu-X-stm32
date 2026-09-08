@@ -108,6 +108,16 @@ void Barometer::onReadComplete() {
     temperatureC_ = static_cast<float>(rawT) / 65536.0f;
     pressurePa_   = static_cast<float>(rawP) / 64.0f;
     newReading_   = true;
+
+    if (!bootPressureCaptured_) {
+        bootPressurePa_       = pressurePa_;
+        bootPressureCaptured_ = true;
+    }
+
+    altitudeM_ = pressureToAltitude(pressurePa_, referencePa_);
+    heightM_   = bootPressureCaptured_
+               ? altitudeM_ - pressureToAltitude(bootPressurePa_, referencePa_)
+               : 0.0f;
 }
 
 void Barometer::onReadError() {
@@ -120,8 +130,8 @@ bool Barometer::hasNewReading() {
     return r;
 }
 
-float Barometer::getAltitudeM() const {
-    if (referencePa_ <= 0.0f || pressurePa_ <= 0.0f)
+float Barometer::pressureToAltitude(float pressurePa, float referencePa) {
+    if (referencePa <= 0.0f || pressurePa <= 0.0f)
         return 0.0f;
-    return 44330.0f * (1.0f - std::pow(pressurePa_ / referencePa_, 1.0f / 5.255f));
+    return 44330.0f * (1.0f - std::pow(pressurePa / referencePa, 1.0f / 5.255f));
 }

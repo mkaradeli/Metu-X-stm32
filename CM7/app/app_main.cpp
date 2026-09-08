@@ -873,6 +873,12 @@ void pressure_adc_complete(){
         local_sensor_data.go_no_go_status  = go_no_go_status;
         local_sensor_data.go_no_go_enabled = missionControl.go_no_go_enabled;
         local_sensor_data.battery_voltage = battery_voltage;
+        local_sensor_data.baro_ambientTemp = baro.getTemperatureC();
+        local_sensor_data.baro_pressure = baro.getPressurePa();
+        local_sensor_data.baro_height = baro.getHeightM();
+//        float ambientTemp;
+//        	float pressure;
+//        	float height;
 
 
 		if(task_ready(&uart_logging)){

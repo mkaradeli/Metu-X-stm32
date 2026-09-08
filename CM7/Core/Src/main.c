@@ -56,7 +56,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+//#define ENABLE_PRINT false
 
 void LED_Counter_Tick(void);
 void sd_mount_check (void);

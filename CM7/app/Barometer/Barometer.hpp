@@ -60,20 +60,31 @@ public:
     float getPressurePa()   const { return pressurePa_; }
     float getTemperatureC() const { return temperatureC_; }
 
-    /* Ground-level reference pressure used by getAltitudeM(). Capture this
-     * once on the pad, e.g. by averaging getPressurePa() for ~1-2 s, the
-     * same way AltitudeEstimator calibrates its lidar height baseline. */
+    /* Reference pressure used by getAltitudeM(), defaults to the standard
+     * sea-level pressure. Call with local QNH for a true MSL altitude --
+     * otherwise getAltitudeM() is only an altitude *estimate*. */
     void  setReferencePressure(float pa) { referencePa_ = pa; }
     float getReferencePressure() const   { return referencePa_; }
 
-    /* Relative altitude above the reference pressure, international
-     * barometric formula. Positive = up. Not filtered -- feed this into
+    /* Altitude above referencePa_, international barometric formula.
+     * Positive = up. Cached in onReadComplete() (like pressurePa_/
+     * temperatureC_), so it's a plain member visible in a debugger's Live
+     * Expressions, not just a getter -- not filtered, feed this into
      * AltitudeEstimator (or your own low-pass) rather than using it raw. */
-    float getAltitudeM() const;
+    float getAltitudeM() const { return altitudeM_; }
+
+    /* Altitude change since the first successful reading after init(), i.e.
+     * how far up/down the vehicle has moved since boot. Independent of
+     * setReferencePressure() -- useful when you don't have local QNH but
+     * still want a relative height, the way the lidar path in
+     * AltitudeEstimator calibrates its own baseline at power-on. Also
+     * cached, same reasoning as getAltitudeM(). */
+    float getHeightM() const { return heightM_; }
 
 private:
     bool writeReg(uint8_t reg, uint8_t value);
     bool readReg(uint8_t reg, uint8_t* value);
+    static float pressureToAltitude(float pressurePa, float referencePa);
 
     I2C_HandleTypeDef* i2c_;
     uint16_t i2cAddr8_; /* HAL wants the address pre-shifted (7-bit << 1) */
@@ -81,6 +92,11 @@ private:
     float pressurePa_   = 0.0f;
     float temperatureC_ = 0.0f;
     float referencePa_  = 101325.0f;
+    float altitudeM_    = 0.0f;  /* cached each onReadComplete(), see getAltitudeM() */
+    float heightM_      = 0.0f;  /* cached each onReadComplete(), see getHeightM()   */
+
+    float bootPressurePa_       = 0.0f;
+    bool  bootPressureCaptured_ = false;
 
     volatile bool readInProgress_ = false;
     bool newReading_ = false;

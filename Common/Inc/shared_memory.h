@@ -73,6 +73,9 @@ typedef struct __attribute__((packed)) {
 	uint8_t go_no_go_enabled;// GoNoGo bitmask: bit=1 -> gates arming (see MissionControl::go_no_go_enabled)
 
 //	uint8_t pad[1];
+	float baro_ambientTemp;
+	float baro_pressure;
+	float baro_height;
 	float battery_voltage;
 	uint16_t crc;
 } SensorData_t;
