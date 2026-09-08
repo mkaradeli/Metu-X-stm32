@@ -277,10 +277,10 @@ Profiler *profilers[] = {
 
 
 float battery_voltage = 0;
-bool True = true;
-MissionControl missionControl(&True,
-			&logData.record);
-//MissionC/ontrol missionControl(&logData.ready, &logData.record);
+//bool True = true;
+//MissionControl missionControl(&True,
+//			&logData.record);
+MissionControl missionControl(&logData.ready, &logData.record);
 
 //platformController platform_controller;
 
@@ -406,6 +406,11 @@ void app_init() {
 		if (lidarHealthy) {
 			printf("TF02-Pro lidar firmware v%u.%u.%u\r\n",
 			       lidarFwVersion[2], lidarFwVersion[1], lidarFwVersion[0]);
+			lidar.SetOutputEnabled(false); // stop the live stream so the config ACKs below aren't lost to overrun
+			lidar.SetUnitMm();
+			lidar.SetFrameRate(1000);
+			lidar.SetOutputEnabled(true);
+			lidar.SaveConfig();
 		}
 //		altEstimator.begin();
 		HAL_UARTEx_ReceiveToIdle_DMA(&huart6, lidar.getBuffer(), 128);
@@ -505,18 +510,20 @@ void app_loop() {
 		total_cpu_usage = 0;
 		for (int i=0; i<(sizeof(profilers)/sizeof(profilers[0])); i++){
 			profilers[i]->metrics();
-			printf("%.4s cpu=%f, freq=%f\n\r",profilers[i]->name, profilers[i]->cpu_usage, profilers[i]->call_frequency);
+//			printf("%.4s cpu=%f, freq=%f\n\r",profilers[i]->name, profilers[i]->cpu_usage, profilers[i]->call_frequency);
 			total_cpu_usage += profilers[i]->cpu_usage;
 		}
 		HWIL_STEP_profiler.metrics();
-		printf("\ttotal cpu usage = %f\n\r", total_cpu_usage);
-		printf("battery voltage = %f\n\r", battery_voltage);
+//		printf("total cpu usage = %f\n\r", total_cpu_usage);
+//		printf("battery voltage = %f\n\r", battery_voltage);
 
 	}
 		main_loop_profiler.end();
 	if (task_ready(&printf_task)) { // 1000 ms
 		printf_profiler.start();
+//		if (!ymodem_active()) {
 		rb_flush();
+//		}
 		printf_profiler.end();
 	  }
 

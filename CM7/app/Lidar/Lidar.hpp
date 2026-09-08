@@ -20,6 +20,10 @@ class Lidar {
 		void FrameHandler(uint16_t size);
 		void Reset();
 		bool HealthCheck(uint8_t *fwVersion = nullptr);
+		void SetUnitMm();
+		void SetFrameRate(uint16_t rateHz);
+		void SetOutputEnabled(bool enabled);
+		void SaveConfig();
 		uint8_t* getBuffer(){
 			return this->buffer;
 		}

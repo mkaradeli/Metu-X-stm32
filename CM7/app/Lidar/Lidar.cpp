@@ -20,10 +20,11 @@ void Lidar::FrameHandler(uint16_t size){
         this->status = false;
         return; // Invalid this->buffer size
     }
-    if (this->buffer[0] != LIDAR_FRAME_HEADER && this->buffer[1] != LIDAR_FRAME_HEADER){
+    if (this->buffer[0] != LIDAR_FRAME_HEADER || this->buffer[1] != LIDAR_FRAME_HEADER){
         this->status = false;
         return; // Invalid this->buffer header
     }
+    this->checksum = 0;
     for (uint8_t i = 0; i < (LIDAR_FRAME_SIZE - 1); i++){
         this->checksum += this->buffer[i];
     }
@@ -32,7 +33,6 @@ void Lidar::FrameHandler(uint16_t size){
         return; // Checksum mismatch
     }
     status = true;
-    this->checksum = 0;
 
     this->interval_us = micros() - this->flag_us;
     this->flag_us = micros();
@@ -108,4 +108,53 @@ bool Lidar::HealthCheck(uint8_t *fwVersion){
 		fwVersion[2] = payload[2]; // V3 - displayed as V3.V2.V1
 	}
 	return true;
+}
+
+void Lidar::SetUnitMm(){
+	// TF02-Pro User Manual (BP-UM-30 A01) Table 4-1: "Output format" ->
+	// standard 9-byte frame, distance in mm.
+	uint8_t command[] = {
+			0x5A, 0x05, 0x05, 0x06, 0x6A
+	};
+	uint8_t buffer[16] = {0};
+	HAL_UART_Transmit(this->uart_handle, command, sizeof(command), 1000);
+	HAL_UART_Receive(this->uart_handle, buffer, 5, 100);
+}
+
+void Lidar::SetFrameRate(uint16_t rateHz){
+	if (rateHz == 0 || rateHz > 1000){
+		return;
+	}
+	uint8_t command[6] = {
+			0x5A, 0x06, 0x03, (uint8_t)(rateHz & 0xFF), (uint8_t)(rateHz >> 8), 0x00
+	};
+	for (uint8_t i = 0; i < (sizeof(command) - 1); i++){
+		command[sizeof(command) - 1] += command[i];
+	}
+	uint8_t buffer[16] = {0};
+	HAL_UART_Transmit(this->uart_handle, command, sizeof(command), 1000);
+	HAL_UART_Receive(this->uart_handle, buffer, 6, 100);
+}
+
+void Lidar::SetOutputEnabled(bool enabled){
+	// TF02-Pro User Manual Table 4-1: "Enable/Disable output". Silencing the
+	// sensor's continuous stream before/after the other config commands keeps
+	// their ACK from racing the live telemetry on the same, FIFO-less UART.
+	uint8_t command[5] = {
+			0x5A, 0x05, 0x07, (uint8_t)(enabled ? 0x01 : 0x00), (uint8_t)(enabled ? 0x67 : 0x66)
+	};
+	uint8_t buffer[16] = {0};
+	HAL_UART_Transmit(this->uart_handle, command, sizeof(command), 1000);
+	HAL_UART_Receive(this->uart_handle, buffer, 5, 100);
+}
+
+void Lidar::SaveConfig(){
+	// Must be sent after SetUnitMm()/SetFrameRate(), otherwise the settings
+	// revert to their previously saved values on the next power cycle.
+	uint8_t command[] = {
+			0x5A, 0x04, 0x11, 0x6F
+	};
+	uint8_t buffer[16] = {0};
+	HAL_UART_Transmit(this->uart_handle, command, sizeof(command), 1000);
+	HAL_UART_Receive(this->uart_handle, buffer, 5, 100);
 }
