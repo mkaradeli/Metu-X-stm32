@@ -24,9 +24,7 @@ class Lidar {
 		void SetFrameRate(uint16_t rateHz);
 		void SetOutputEnabled(bool enabled);
 		void SaveConfig();
-		uint8_t* getBuffer(){
-			return this->buffer;
-		}
+		uint8_t* getBuffer();
 		uint16_t getDistance(){
 			return this->distance;
 		}
@@ -42,7 +40,6 @@ class Lidar {
 
 	private:
 		UART_HandleTypeDef* uart_handle;
-		uint8_t buffer[128] = {0};
 		uint16_t distance = 0;
 		uint16_t strength = 0;
 		uint16_t temperature = 0;

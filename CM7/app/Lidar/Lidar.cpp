@@ -11,6 +11,18 @@
 extern "C" {
 extern uint64_t micros();
 }
+
+// DMA destination for HAL_UARTEx_ReceiveToIdle_DMA on USART6. Pinned to the
+// MPU-marked non-cacheable SRAM2 region (main.c MPU_Config, Region 4) so the
+// D-Cache can't leave FrameHandler() reading stale bytes behind a fresh DMA
+// write -- same fix as common_print_buffer (ring_buffer.c).
+__attribute__((section(".sram2"), used, aligned(32)))
+static uint8_t lidarRxBuffer[128] = {0};
+
+uint8_t* Lidar::getBuffer(){
+	return lidarRxBuffer;
+}
+
 Lidar::Lidar(UART_HandleTypeDef* uartHandle){
 	this->uart_handle = uartHandle;
 }
@@ -18,17 +30,17 @@ Lidar::Lidar(UART_HandleTypeDef* uartHandle){
 void Lidar::FrameHandler(uint16_t size){
     if (size != LIDAR_FRAME_SIZE){
         this->status = false;
-        return; // Invalid this->buffer size
+        return; // Invalid buffer size
     }
-    if (this->buffer[0] != LIDAR_FRAME_HEADER || this->buffer[1] != LIDAR_FRAME_HEADER){
+    if (lidarRxBuffer[0] != LIDAR_FRAME_HEADER || lidarRxBuffer[1] != LIDAR_FRAME_HEADER){
         this->status = false;
-        return; // Invalid this->buffer header
+        return; // Invalid buffer header
     }
     this->checksum = 0;
     for (uint8_t i = 0; i < (LIDAR_FRAME_SIZE - 1); i++){
-        this->checksum += this->buffer[i];
+        this->checksum += lidarRxBuffer[i];
     }
-    if (this->checksum != this->buffer[LIDAR_FRAME_SIZE - 1]){
+    if (this->checksum != lidarRxBuffer[LIDAR_FRAME_SIZE - 1]){
         this->status = false;
         return; // Checksum mismatch
     }
@@ -37,9 +49,9 @@ void Lidar::FrameHandler(uint16_t size){
     this->interval_us = micros() - this->flag_us;
     this->flag_us = micros();
 
-    this->distance = this->buffer[2] | (this->buffer[3] << 8);
-    this->strength = this->buffer[4] | (this->buffer[5] << 8);
-    this->temperature = this->buffer[6] | (this->buffer[7] << 8);
+    this->distance = lidarRxBuffer[2] | (lidarRxBuffer[3] << 8);
+    this->strength = lidarRxBuffer[4] | (lidarRxBuffer[5] << 8);
+    this->temperature = lidarRxBuffer[6] | (lidarRxBuffer[7] << 8);
     this->newReading = true;
 
 }
