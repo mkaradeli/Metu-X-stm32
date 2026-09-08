@@ -488,8 +488,12 @@ void app_loop() {
 	if (!altitudeEstimatorDone && (uwTick - calStartTick) >= 1500) {
 	    if (g_altEst.finishCalibration()) {
 	        altitudeEstimatorDone = true;
+	        const auto& st = g_altEst.status();
+	        printf("AltitudeEstimator calibrated: lidar=%s baro=%s\r\n",
+	               st.lidarCalibratedAtStart ? "OK" : "MISSING",
+	               st.baroCalibratedAtStart  ? "OK" : "MISSING");
 	    } else {
-	        calStartTick = uwTick;      // not enough samples yet, keep collecting
+	        calStartTick = uwTick;      // IMU not ready yet, keep collecting
 	    }
 	}
 		main_loop_profiler.start();
@@ -669,6 +673,9 @@ void tim7_trigger() { // 1 khz low priority
 
 		onLidarFrame(lidar.getDistance(), lidar.getStrength());
 		s_last_lidar_ok_tick = uwTick;
+	}
+	if (baro.hasNewReading()) {
+		g_altEst.pushBaroFrame(baro.getPressurePa());
 	}
 //    float aw[3];
 //    for (int i = 0; i < 3; ++i)

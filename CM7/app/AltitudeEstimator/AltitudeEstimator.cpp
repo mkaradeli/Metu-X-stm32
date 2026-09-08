@@ -52,6 +52,18 @@ float AltitudeEstimator::bodyToWorldZ(const float q[4], const float v[3])
     return r20*v[0] + r21*v[1] + r22*v[2];
 }
 
+/* International barometric formula against a fixed reference pressure. The
+ * reference doesn't need to match local QNH: pushBaroFrame() subtracts off
+ * a baseline computed with this same function during pad calibration, so
+ * any constant offset from using a fixed reference cancels out. */
+float AltitudeEstimator::pressureToHeight(float pressurePa)
+{
+    constexpr float kFixedRefPa = 101325.0f;
+    if (pressurePa <= 0.0f)
+        return 0.0f;
+    return 44330.0f * (1.0f - std::pow(pressurePa / kFixedRefPa, 1.0f / 5.255f));
+}
+
 void AltitudeEstimator::symmetrise()
 {
     const float a = 0.5f*(P_[0][1] + P_[1][0]); P_[0][1] = P_[1][0] = a;
@@ -80,31 +92,67 @@ void AltitudeEstimator::reset()
     anchorValid_ = false;
 
     blockSum_ = 0; blockValid_ = 0; blockSeen_ = 0;
-    calSumAz_ = 0.0; calSumH_ = 0.0; calNAz_ = 0; calNH_ = 0;
+    lastRange_ = 0.0f; lastRangeValid_ = false; frozenStreak_ = 0;
+
+    calSumAz_ = 0.0; calSumH_ = 0.0; calSumBaro_ = 0.0;
+    calNAz_ = 0; calNH_ = 0; calNBaro_ = 0;
+
+    baroHeightBias_ = 0.0f;
+    baroCalibrated_ = false;
 }
 
 void AltitudeEstimator::beginCalibration()
 {
-    calSumAz_ = 0.0; calSumH_ = 0.0; calNAz_ = 0; calNH_ = 0;
+    calSumAz_ = 0.0; calSumH_ = 0.0; calSumBaro_ = 0.0;
+    calNAz_ = 0; calNH_ = 0; calNBaro_ = 0;
     blockSum_ = 0; blockValid_ = 0; blockSeen_ = 0;
+    lastRange_ = 0.0f; lastRangeValid_ = false; frozenStreak_ = 0;
     phase_ = Phase::Calibrating;
 }
 
 bool AltitudeEstimator::finishCalibration()
 {
-    if (calNAz_ < kCalMinImu || calNH_ < kCalMinLidar)
+    /* IMU is the one truly mandatory input: without a gravity reference,
+     * predict() has nothing to integrate against, and nothing else in this
+     * filter can substitute for it. Lidar and baro are each optional here
+     * -- a disconnected/dead lidar (or baro) at boot must not leave the
+     * filter stuck in Calibrating forever with height()/velocity() frozen
+     * at 0, silently, while the vehicle is actually flying. */
+    if (calNAz_ < kCalMinImu)
         return false;
 
     /* gStatic_ absorbs local gravity and accelerometer scale error, so the
      * bias state starts at zero and only has to track drift from here. */
     gStatic_ = static_cast<float>(calSumAz_ / static_cast<double>(calNAz_));
 
-    x_[0] = static_cast<float>(calSumH_ / static_cast<double>(calNH_));
+    const bool lidarCalibrated = (calNH_ >= kCalMinLidar);
+    baroCalibrated_ = (calNBaro_ >= kCalMinBaro);
+    status_.lidarCalibratedAtStart = lidarCalibrated;
+    status_.baroCalibratedAtStart  = baroCalibrated_;
+
+    if (baroCalibrated_)
+        baroHeightBias_ = static_cast<float>(calSumBaro_ / static_cast<double>(calNBaro_));
+
+    /* Prefer lidar's tighter baseline when it's there; fall back to baro's
+     * (which is zero by construction once baroHeightBias_ is subtracted);
+     * with neither, start at a bare guess and let whichever sensor shows
+     * up first pull the (wide-open) covariance in. */
+    if (lidarCalibrated) {
+        x_[0] = static_cast<float>(calSumH_ / static_cast<double>(calNH_));
+    } else {
+        x_[0] = 0.0f;
+    }
     x_[1] = 0.0f;
     x_[2] = 0.0f;
 
     std::memset(P_, 0, sizeof(P_));
-    P_[0][0] = 0.02f*0.02f;
+    if (lidarCalibrated) {
+        P_[0][0] = 0.02f*0.02f;
+    } else if (baroCalibrated_) {
+        P_[0][0] = params_.sigmaBaro * params_.sigmaBaro;
+    } else {
+        P_[0][0] = 0.20f*0.20f;   /* no calibrated height reference at all */
+    }
     P_[1][1] = 0.05f*0.05f;
     P_[2][2] = 0.10f*0.10f;
 
@@ -280,11 +328,11 @@ bool AltitudeEstimator::update(float range, const float q[4])
     }
 
     const float y = z - x_[0];
-    const float S = P_[0][0] + Rm;
+    float S = 0.0f, nis = 0.0f;
+    innovationStats(P_[0][0], Rm, y, S, nis);
     if (S <= 0.0f)
         return false;
 
-    const float nis = (y*y) / S;
     status_.innovation = y;
     status_.nis        = nis;
 
@@ -299,6 +347,33 @@ bool AltitudeEstimator::update(float range, const float q[4])
         }
         return false;
     }
+
+    applyHeightCorrection(y, Rm);
+
+    status_.consecutiveRejects = 0;
+    ++status_.lidarAccepted;
+    status_.lastUpdateAccepted = true;
+
+    anchorH_ = x_[0]; anchorV_ = x_[1]; anchorTau_ = 0.0f; anchorValid_ = true;
+    return true;
+}
+
+/* Pure: computes S and nis for a would-be correction without touching
+ * state, so a caller can decide whether to apply it at all. */
+void AltitudeEstimator::innovationStats(float P00, float Rm, float y,
+                                        float& S, float& nis)
+{
+    S   = P00 + Rm;
+    nis = (S > 0.0f) ? (y*y) / S : 0.0f;
+}
+
+/* Applies the H=[1 0 0] Kalman correction unconditionally -- caller must
+ * have already decided to accept (checked S > 0, any gates). */
+void AltitudeEstimator::applyHeightCorrection(float y, float Rm)
+{
+    const float S = P_[0][0] + Rm;
+    if (S <= 0.0f)
+        return;
 
     const float K[3] = { P_[0][0]/S, P_[1][0]/S, P_[2][0]/S };
 
@@ -322,12 +397,40 @@ bool AltitudeEstimator::update(float range, const float q[4])
 
     std::memcpy(P_, Pn, sizeof(Pn));
     symmetrise();
+}
 
-    status_.consecutiveRejects = 0;
-    ++status_.lidarAccepted;
-    status_.lastUpdateAccepted = true;
+bool AltitudeEstimator::pushBaroFrame(float pressurePa)
+{
+    if (phase_ == Phase::Idle)
+        return false;
 
-    anchorH_ = x_[0]; anchorV_ = x_[1]; anchorTau_ = 0.0f; anchorValid_ = true;
+    const float h = pressureToHeight(pressurePa);
+
+    if (phase_ == Phase::Calibrating) {
+        calSumBaro_ += static_cast<double>(h);
+        ++calNBaro_;
+        return false;
+    }
+    if (phase_ != Phase::Running || !baroCalibrated_)
+        return false;
+
+    const float z  = h - baroHeightBias_;
+    const float y  = z - x_[0];
+    const float Rm = params_.sigmaBaro * params_.sigmaBaro;
+
+    float S = 0.0f, nis = 0.0f;
+    innovationStats(P_[0][0], Rm, y, S, nis);
+    if (S <= 0.0f)
+        return false;
+
+    status_.baroInnovation = y;
+    status_.baroNis        = nis;
+
+    /* No rejection gate, deliberately -- see the class-level comment. */
+    applyHeightCorrection(y, Rm);
+
+    ++status_.baroAccepted;
+    status_.lastBaroUpdateAccepted = true;
     return true;
 }
 
@@ -364,6 +467,27 @@ bool AltitudeEstimator::pushLidarFrame(uint16_t distMm, uint16_t strength,
      * block, i.e. ~2.5 ms before this call at a 1 kHz frame rate. */
     const float range = static_cast<float>(sum)
                       / static_cast<float>(nValid) * 0.001f;
+
+    /* Stuck-sensor detector: a wedged TF02-Pro repeats one exact distance
+     * forever with strength still in-range, which looks perfectly valid to
+     * every gate above. Real returns, even from a near-motionless vehicle,
+     * essentially never average to a bit-identical float across hundreds
+     * of consecutive blocks -- catch it here, before it can reach either
+     * the calibration accumulator or update()'s NIS gate. Deliberately does
+     * NOT feed consecutiveRejects/inflate(): a wedged sensor must never be
+     * able to trigger the "trust the sensor more" recovery path. */
+    const bool repeated = lastRangeValid_ && (range == lastRange_);
+    lastRange_ = range;
+    lastRangeValid_ = true;
+
+    if (repeated) {
+        if (++frozenStreak_ >= params_.frozenBlocksToReject) {
+            ++status_.lidarFrozen;
+            return false;
+        }
+    } else {
+        frozenStreak_ = 0;
+    }
 
     if (phase_ == Phase::Calibrating) {
         float z = 0.0f, c = 1.0f;
