@@ -25,10 +25,17 @@ namespace {
     constexpr uint8_t OSR_PRESS_8X  = 0x03;
     constexpr uint8_t PRESS_EN_BIT  = 0x40;
 
-    /* ODR_CONFIG (0x37): powermode[1:0], odr[6:2], deep_dis[7] */
-    constexpr uint8_t ODR_50_HZ            = 0x0F;
-    constexpr uint8_t POWERMODE_CONTINUOUS = 0x03;
-    constexpr uint8_t DEEP_DISABLED_BIT    = 0x80;
+    /* ODR_CONFIG (0x37): powermode[1:0], odr[6:2], deep_dis[7]
+     * NORMAL (not CONTINUOUS): CONTINUOUS ignores the odr field and just
+     * free-runs at whatever the OSR allows, with no phase relationship to
+     * our poll clock -- fine at this OSR (~155 Hz capable vs. our 100 Hz
+     * poll) but silently hands back stale duplicate samples the moment OSR
+     * is ever raised enough to drop the sensor's own rate below our poll
+     * rate. NORMAL mode paces itself to an explicit ODR and self-flags
+     * (OSR_EFF.odr_is_valid) if the OSR/ODR combo doesn't fit. */
+    constexpr uint8_t ODR_100_2_HZ      = 0x0A; /* closest code to 100 Hz */
+    constexpr uint8_t POWERMODE_NORMAL  = 0x01;
+    constexpr uint8_t DEEP_DISABLED_BIT = 0x80;
 
     constexpr uint32_t I2C_TIMEOUT_MS = 10;
 }
@@ -65,8 +72,8 @@ bool Barometer::init() {
     if (!writeReg(REG_OSR_CONFIG, osr))
         return false;
 
-    const uint8_t odr = static_cast<uint8_t>(POWERMODE_CONTINUOUS
-                       | (ODR_50_HZ << 2)
+    const uint8_t odr = static_cast<uint8_t>(POWERMODE_NORMAL
+                       | (ODR_100_2_HZ << 2)
                        | DEEP_DISABLED_BIT);
     if (!writeReg(REG_ODR_CONFIG, odr))
         return false;

@@ -196,7 +196,7 @@ task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
 
 task_timer_t uart_logging = { 2, 0};
 task_timer_t nrf24_tx_task = {20, 0};   // 50 Hz downlink
-task_timer_t baro_task = {20, 0};       // 50 Hz, matches Barometer::init()'s ODR
+task_timer_t baro_task = {10, 0};       // 100 Hz, matches Barometer::init()'s ODR (NORMAL mode)
 
 __attribute__((section(".sram3"), used))
 volatile uint16_t adc_dma_buf_current[5];
@@ -249,6 +249,7 @@ Profiler kf_profiler{"kf_p"};
 Profiler tim12_profiler{"tim1"};
 Profiler hwil_profiler{"hwil"};
 Profiler lidar_profiler{"lidr"};
+Profiler baro_profiler{"baro"};
 
 Profiler *profilers[] = {
 		&free_profiler,
@@ -271,7 +272,7 @@ Profiler *profilers[] = {
 		&tim12_profiler,
 		&hwil_profiler,
 		&lidar_profiler,
-
+		&baro_profiler,
 };
 
 
@@ -594,8 +595,10 @@ void tim7_trigger() { // 1 khz low priority
 		imu.service();                 // poll at least every ~1 ms
 		IMU_profiler.end();
 	}
-	if (task_ready(&baro_task)) { // 20 ms, 50 Hz
+	if (task_ready(&baro_task)) { // 10 ms, 100 Hz
+		baro_profiler.start();
 		baro.startRead();  // non-blocking; no-op if a transfer is still in flight
+		baro_profiler.end();
 	}
 	nrf24_profiler.start();
 	(void)nrf24_link_service();        // pumps the TX fragment FIFO, never blocks longer than one SPI burst
@@ -907,7 +910,9 @@ void pressure_adc_complete(){
 
 void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 	if (hi2c == &hi2c4) {
+		baro_profiler.start();
 		baro.onReadComplete();  // next startRead() is re-armed from tim7_trigger()'s baro_task
+		baro_profiler.end();
 	}
 }
 void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {

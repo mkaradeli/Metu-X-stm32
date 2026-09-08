@@ -41,7 +41,7 @@
  * can never close the real flight-control loop against a simulated plant.
  * Defined here (not app_main.cpp) so every translation unit that touches
  * hwil.rtU/rtY -- including UserTask.cpp -- guards on the same flag. */
-#define HWIL_ENABLED 1
+#define HWIL_ENABLED 0
 
 #define ADC_16B_MAX 65536U
 
