@@ -27,7 +27,8 @@ enum class system_modes
   SHUTDOWN = 4,
   FAULT = 5,
   ARMED = 6,                // logging, actuators cold, waiting for safety pin
-  SAFE_DISCHARGE = 7        // new mission kind
+  SAFE_DISCHARGE = 7,       // new mission kind
+  USB_MODE = 8              // SD card handed to USB host; terminal for this boot
 };
 
 /* Wire-sized so it can ride in SensorData_t::last_error (uint8_t). Append
@@ -152,6 +153,13 @@ public:
 	bool HasSafeDischarge() const { return safe_index < missionTableCount; }
 
 	void Iter();           // call at a fixed rate (pressure loop)
+
+	/* --- USB mode: terminal for this boot. Called once, from usb_msc_poll()
+	 *     in app_loop() after sd_release_for_usb() succeeds. Forces every
+	 *     actuator/logging flag off and moves to system_modes::USB_MODE,
+	 *     which Start()/End()/Toggle()/SafeDischarge() all then refuse to
+	 *     leave -- see the guard at the top of each. --- */
+	void EnterUsbMode();
 
 	/* --- UART helpers. Call from the main loop, not from an ISR (snprintf) --- */
 	int  ListMissions(char *out, size_t n) const;

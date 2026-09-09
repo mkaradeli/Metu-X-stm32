@@ -185,6 +185,7 @@ const char* MissionControl::StateName() const {
 	case system_modes::DROP:           return "DROP";
 	case system_modes::SAFE_DISCHARGE: return "SAFE_DISCHARGE";
 	case system_modes::SHUTDOWN:       return "SHUTDOWN";
+	case system_modes::USB_MODE:       return "USB_MODE";
 	default:                           return "FAULT";
 	}
 }
@@ -248,6 +249,11 @@ void MissionControl::BeginShutdown() {
 bool MissionControl::Start() {
 	last_error = mission_error_t::NONE;
 
+	/* USB_MODE is terminal for this boot -- see EnterUsbMode(). */
+	if (system_mode == system_modes::USB_MODE) {
+		last_error = mission_error_t::BUSY;
+		return false;
+	}
 	/* A GETLOG transfer only ever runs on the ground, but it still owns one
 	 * of FatFs's two open-file slots and holds the console UART's RX in raw
 	 * mode -- arming here (console ARM or the physical button, which reaches
@@ -324,6 +330,12 @@ bool MissionControl::Start() {
 }
 
 void MissionControl::End() {
+	/* USB_MODE is terminal for this boot -- see EnterUsbMode(). Nothing
+	 * should be running to end while in it anyway (EnterUsbMode() already
+	 * forces everything off), but refuse explicitly rather than let this
+	 * silently republish system_mode = IDLE and break the lock. */
+	if (system_mode == system_modes::USB_MODE) return;
+
 	SetActuatorMode(controller_modes::DISABLE);
 	firing  = false;
 	running = false;
@@ -337,8 +349,37 @@ void MissionControl::End() {
 }
 
 void MissionControl::Toggle() {
+	/* Redundant with the guards inside Start()/End() (running is always
+	 * false throughout USB_MODE, so this would only ever reach Start()
+	 * anyway) -- kept explicit so this function doesn't rely on inferring
+	 * that through another function's behavior. */
+	if (system_mode == system_modes::USB_MODE) return;
+
 	if (!running) this->Start();
 	else          this->End();
+}
+
+/* ---------------- USB mode -----------------------------------------------
+ * Terminal for this boot: called once, from usb_msc_poll() in app_loop()
+ * after sd_release_for_usb() has already unmounted FatFs. Start()/End()/
+ * Toggle()/SafeDischarge() all refuse once system_mode is USB_MODE, so
+ * there is no way back to any other state without a reset.
+ * ------------------------------------------------------------------------ */
+
+void MissionControl::EnterUsbMode() {
+	/* Start()'s usb_msc_active() gate already guarantees USBMSC is only
+	 * accepted from IDLE, so nothing should be running here -- force it
+	 * quiet anyway rather than trust that invariant blindly. */
+	SetActuatorMode(controller_modes::DISABLE);
+	firing  = false;
+	running = false;
+	active  = nullptr;
+	*log_recording = false;
+	safety_release_pending = false;
+	req_start = req_stop = req_toggle = req_shutdown = req_discharge = false;
+
+	__DMB();
+	system_mode = system_modes::USB_MODE;
 }
 
 /* ---------------- safe discharge override -------------------------------
@@ -349,6 +390,15 @@ void MissionControl::Toggle() {
  * ------------------------------------------------------------------------ */
 
 bool MissionControl::SafeDischarge() {
+	/* The one deliberate exception to "SafeDischarge works from any state":
+	 * USB_MODE only ever gets entered from IDLE (see Start()'s usb_msc_active()
+	 * gate), so nothing is armed or pressurized to discharge in the first
+	 * place -- and running BeginOps() here would both break the USB_MODE
+	 * lock and try to log to a card FatFs no longer has mounted. */
+	if (system_mode == system_modes::USB_MODE) {
+		last_error = mission_error_t::BUSY;
+		return false;
+	}
 	if (safe_index >= missionTableCount) {
 		last_error = mission_error_t::NO_SAFE_DISCHARGE_MISSION;
 		return false;
@@ -395,6 +445,7 @@ void MissionControl::Iter() {
 	switch (system_mode) {
 	case system_modes::IDLE:
 	case system_modes::FAULT:
+	case system_modes::USB_MODE:
 		break;
 
 	case system_modes::ARMED:

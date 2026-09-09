@@ -47,7 +47,8 @@ void usb_msc_poll()
 	if (!usb_msc_requested_flag) return;
 	usb_msc_requested_flag = false;
 
-	sd_release_for_usb();   /* app_loop() context -- safe to touch FatFs here */
+	sd_release_for_usb();      /* app_loop() context -- safe to touch FatFs here */
+	missionControl.EnterUsbMode();   /* locks system_mode -- see MissionControl.cpp */
 	usb_msc_ready_flag = true;
 	printf("USB MSC: SD card released, mount it from the host now\n\r");
 }
