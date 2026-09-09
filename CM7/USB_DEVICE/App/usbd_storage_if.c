@@ -22,7 +22,8 @@
 #include "usbd_storage_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-
+#include "bsp_driver_sd.h"
+#include "../../app/UsbMsc/UsbMsc.hpp"   /* usb_msc_ready(): extern-"C"-safe */
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,7 +68,15 @@
 #define STORAGE_BLK_SIZ                  0x200
 
 /* USER CODE BEGIN PRIVATE_DEFINES */
-
+/* Same fallback sd_diskio.c uses -- not exposed via a shared header, so
+ * redefined here rather than reaching into that file's private macro. */
+#if defined(SDMMC_DATATIMEOUT)
+#define STORAGE_SD_TIMEOUT SDMMC_DATATIMEOUT
+#elif defined(SD_DATATIMEOUT)
+#define STORAGE_SD_TIMEOUT SD_DATATIMEOUT
+#else
+#define STORAGE_SD_TIMEOUT (30 * 1000)
+#endif
 /* USER CODE END PRIVATE_DEFINES */
 
 /**
@@ -177,8 +186,13 @@ USBD_StorageTypeDef USBD_Storage_Interface_fops_FS =
 int8_t STORAGE_Init_FS(uint8_t lun)
 {
   /* USER CODE BEGIN 2 */
- UNUSED(lun);
+  UNUSED(lun);
 
+  /* The SD peripheral is already initialized by the normal boot sequence
+   * (sd_try_mount()/BSP_SD_Init(), long before a USBMSC command can even be
+   * issued -- GETLOG-style commands only work once idle). Nothing to do
+   * here; readiness is gated in STORAGE_IsReady_FS() instead, once
+   * usb_msc_poll() has actually released the card via sd_release_for_usb(). */
   return (USBD_OK);
   /* USER CODE END 2 */
 }
@@ -194,9 +208,14 @@ int8_t STORAGE_GetCapacity_FS(uint8_t lun, uint32_t *block_num, uint16_t *block_
 {
   /* USER CODE BEGIN 3 */
   UNUSED(lun);
+  BSP_SD_CardInfo CardInfo;
 
-  *block_num  = STORAGE_BLK_NBR;
-  *block_size = STORAGE_BLK_SIZ;
+  /* Real card geometry, same call sd_diskio.c's SD_ioctl() uses for
+   * GET_SECTOR_COUNT/GET_SECTOR_SIZE -- harmless to read even before
+   * usb_msc_ready(), it's just a capacity number, not a data access. */
+  BSP_SD_GetCardInfo(&CardInfo);
+  *block_num  = CardInfo.LogBlockNbr;
+  *block_size = (uint16_t)CardInfo.LogBlockSize;
   return (USBD_OK);
   /* USER CODE END 3 */
 }
@@ -211,7 +230,11 @@ int8_t STORAGE_IsReady_FS(uint8_t lun)
   /* USER CODE BEGIN 4 */
   UNUSED(lun);
 
-  return (USBD_OK);
+  /* "Not ready" is a normal, well-supported SCSI/BOT state (same as an
+   * empty card-reader slot) -- hosts handle it gracefully rather than
+   * erroring, so this is the gate: no media until usb_msc_poll() has
+   * actually released the card from the flight-logging path. */
+  return usb_msc_ready() ? USBD_OK : USBD_FAIL;
   /* USER CODE END 4 */
 }
 
@@ -241,10 +264,22 @@ int8_t STORAGE_Read_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
 {
   /* USER CODE BEGIN 6 */
   UNUSED(lun);
-  UNUSED(buf);
-  UNUSED(blk_addr);
-  UNUSED(blk_len);
 
+  /* Independent of STORAGE_IsReady_FS() -- a well-behaved host always
+   * checks ready first, but this must never touch the card on its own
+   * say-so if something skips that check. */
+  if (!usb_msc_ready()) {
+    return (USBD_FAIL);
+  }
+
+  /* Same call sd_diskio.c's SD_read() makes -- MSC operates at the raw
+   * block level, so this bypasses FatFs entirely (which is unmounted by
+   * the time usb_msc_ready() is true anyway). */
+  if (BSP_SD_ReadBlocks((uint32_t *)buf, blk_addr, blk_len, STORAGE_SD_TIMEOUT) != MSD_OK) {
+    return (USBD_FAIL);
+  }
+  while (BSP_SD_GetCardState() != MSD_OK) {
+  }
   return (USBD_OK);
   /* USER CODE END 6 */
 }
@@ -261,10 +296,16 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 {
   /* USER CODE BEGIN 7 */
   UNUSED(lun);
-  UNUSED(buf);
-  UNUSED(blk_addr);
-  UNUSED(blk_len);
 
+  if (!usb_msc_ready()) {
+    return (USBD_FAIL);
+  }
+
+  if (BSP_SD_WriteBlocks((uint32_t *)buf, blk_addr, blk_len, STORAGE_SD_TIMEOUT) != MSD_OK) {
+    return (USBD_FAIL);
+  }
+  while (BSP_SD_GetCardState() != MSD_OK) {
+  }
   return (USBD_OK);
   /* USER CODE END 7 */
 }

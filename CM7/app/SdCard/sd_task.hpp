@@ -19,6 +19,7 @@ enum class SdState : uint8_t {
     NotMounted,   /* no filesystem: retry f_mount()                     */
     NoFile,       /* mounted, but no log file open: create or reopen    */
     Logging,      /* file open, flushing full halves as they appear     */
+    UsbOwned,     /* card handed to USB MSC; sd_card_prep() stands down */
 };
 
 /* Slow path. Call on a timer (~500 ms): mounts, opens files, recovers from
@@ -39,5 +40,15 @@ SdState sd_card_state();
  * unlike most of this module it's safe from any context. Returns false if
  * nothing has been recorded yet this session. */
 bool sd_get_last_log_name(char *out, size_t outsz);
+
+/* Cleanly closes/truncates whatever's open (usually just the near-empty
+ * background file) and unmounts FatFs, then moves to SdState::UsbOwned so
+ * sd_card_prep()/sd_card_task_function() stand down and stop touching the
+ * card. One-way for this boot: there is no matching "give it back" call --
+ * resuming normal logging after a USB session requires a reset, since the
+ * in-memory FatFs state can't be trusted once a host has been writing raw
+ * blocks to the card. Touches FatFs, so app_loop() context only, same as
+ * the rest of this module. */
+void sd_release_for_usb();
 
 #endif /* SD_TASK_HPP_ */

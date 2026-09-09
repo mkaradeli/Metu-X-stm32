@@ -34,6 +34,7 @@
 
 #include "MissionControl.hpp"
 #include "../YModem/YModem.hpp"
+#include "../UsbMsc/UsbMsc.hpp"
 #include "stm32h7xx_hal.h"
 #include <string.h>
 #include <stdio.h>
@@ -253,6 +254,14 @@ bool MissionControl::Start() {
 	 * Start() through ServiceRequests()/Toggle() without ever going through
 	 * HandleCommand()) would start a mission mid-download. */
 	if (ymodem_active()) {
+		last_error = mission_error_t::BUSY;
+		return false;
+	}
+	/* Once USBMSC has even been requested, the SD card is on its way out
+	 * (or already gone) for the rest of this boot -- arming here would try
+	 * to log to a card that's either mid-handover or no longer FatFs's to
+	 * write to at all. */
+	if (usb_msc_active()) {
 		last_error = mission_error_t::BUSY;
 		return false;
 	}
@@ -555,6 +564,13 @@ bool MissionControl::HandleCommand(const char *cmd, char *reply, size_t n) {
 		 * RX, no more console commands reach here until it hands control
 		 * back, whether the transfer finishes or is cancelled. */
 		ymodem_request_transfer(reply, n);
+		return true;
+	}
+	if (ieq(verb, "USBMSC")) {
+		/* Same split as GETLOG: only cheap checks here (ISR context), the
+		 * actual FatFs unmount happens later from usb_msc_poll() in
+		 * app_loop(). One-way for this boot -- see sd_release_for_usb(). */
+		usb_msc_request(reply, n);
 		return true;
 	}
 	snprintf(reply, n, "unknown cmd '%s'\r\n", verb);

@@ -26,6 +26,7 @@
 
 #include "MissionControl.hpp"
 #include "YModem/YModem.hpp"
+#include "UsbMsc/UsbMsc.hpp"
 //#include "platformController.h"
 
 #include "BNO085.hpp"
@@ -551,6 +552,7 @@ void app_loop() {
 	 * otherwise exclusively driven from sd_card_prep()/sd_card_task_function()
 	 * right above, both called from this same app_loop() iteration. */
 	ymodem_poll();
+	usb_msc_poll();
 
 	if (task_ready(&nrf24_tx_task)) { // 20 ms, 50 Hz downlink
 		if (nrf24_link_tx_idle()) {

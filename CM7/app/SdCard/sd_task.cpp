@@ -454,7 +454,24 @@ void sd_card_prep()
         }
         prev_record = logData.record;
         break;
+
+    case SdState::UsbOwned:
+        break;   /* card belongs to the USB host now -- do nothing until reset */
     }
+}
+
+void sd_release_for_usb()
+{
+    if (state == SdState::Logging) {
+        sd_finalize_file();   /* closes/truncates whatever's open, tracks
+                                * last_completed_log_name if it wasn't just
+                                * the empty background file; leaves NoFile */
+    }
+    if (state != SdState::NotMounted) {
+        f_mount(NULL, "", 1);
+        disk.is_initialized[0] = 0;
+    }
+    state = SdState::UsbOwned;
 }
 
 void sd_card_task_function()
