@@ -8,6 +8,12 @@
  *  so any log file can be pulled off directly (drag-and-drop in Finder/
  *  Explorer) instead of one-at-a-time over GETLOG/YMODEM.
  *
+ *  Entered either by the console USBMSC command or automatically when the
+ *  OTG_FS connector's VBUS goes live (see usb_msc_check_vbus_auto() in the
+ *  .cpp) -- both funnel through usb_msc_request(). Auto-entry waits for the
+ *  vehicle to be idle rather than interrupting a mission, and only latches
+ *  once VBUS has been stably present for a short debounce window.
+ *
  *  One-way for the boot it's used in -- see sd_release_for_usb() in
  *  sd_task.hpp. Resuming normal flight logging needs a reset.
  */
