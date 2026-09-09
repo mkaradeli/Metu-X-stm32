@@ -193,6 +193,14 @@ int8_t STORAGE_Init_FS(uint8_t lun)
    * issued -- GETLOG-style commands only work once idle). Nothing to do
    * here; readiness is gated in STORAGE_IsReady_FS() instead, once
    * usb_msc_poll() has actually released the card via sd_release_for_usb(). */
+
+  /* This only runs when a real host just sent SET_CONFIGURATION (see
+   * MSC_BOT_Init() -> USBD_MSC_Init() -> USBD_SetConfig()), which needs
+   * genuine host traffic on D+/D- -- unlike OTG_FS VBUS sensing, which
+   * SB21 ties to the board's own 5V rail regardless of a real cable. This
+   * is the auto-entry trigger for USB_MODE; see UsbMsc.hpp. */
+  usb_msc_notify_configured();
+
   return (USBD_OK);
   /* USER CODE END 2 */
 }

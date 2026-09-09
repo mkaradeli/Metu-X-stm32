@@ -8,11 +8,15 @@
  *  so any log file can be pulled off directly (drag-and-drop in Finder/
  *  Explorer) instead of one-at-a-time over GETLOG/YMODEM.
  *
- *  Entered either by the console USBMSC command or automatically when the
- *  OTG_FS connector's VBUS goes live (see usb_msc_check_vbus_auto() in the
- *  .cpp) -- both funnel through usb_msc_request(). Auto-entry waits for the
- *  vehicle to be idle rather than interrupting a mission, and only latches
- *  once VBUS has been stably present for a short debounce window.
+ *  Entered either by the console USBMSC command or automatically once a
+ *  real host enumerates us as a mass-storage device (usb_msc_notify_
+ *  configured(), called from STORAGE_Init_FS() in usbd_storage_if.c) --
+ *  both funnel through usb_msc_request(). NOT triggered off OTG_FS VBUS:
+ *  this board's SB21 ties VBUS-sense to the on-board 5V rail, so it reads
+ *  "present" as soon as the board is powered, cable or no cable -- see
+ *  usb_msc_check_configured_auto() in the .cpp for the full reasoning.
+ *  Auto-entry waits for the vehicle to be idle rather than interrupting a
+ *  mission, retrying once a second until it is.
  *
  *  One-way for the boot it's used in -- see sd_release_for_usb() in
  *  sd_task.hpp. Resuming normal flight logging needs a reset.
@@ -49,6 +53,14 @@ bool usb_msc_ready();
  * run) through the rest of this boot -- broader than usb_msc_ready(), used
  * to gate MissionControl::Start() so arming can't race the card handover. */
 bool usb_msc_active();
+
+/* Called from STORAGE_Init_FS() (usbd_storage_if.c), itself invoked from
+ * MSC_BOT_Init() during USBD_SetConfig() -- USB-stack/ISR context, same
+ * cheap-only rule as usb_msc_request(). Marks that a real host has just
+ * enumerated us as mass storage, the auto-entry trigger polled from
+ * usb_msc_poll(). See the file header for why this is used instead of
+ * OTG_FS VBUS sensing. */
+void usb_msc_notify_configured();
 
 #ifdef __cplusplus
 }

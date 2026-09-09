@@ -22,46 +22,44 @@
 static volatile bool usb_msc_requested_flag = false;
 static volatile bool usb_msc_ready_flag     = false;
 
-/* Auto-detect: OTG_FS VBUS present (a real cable into a powered host on the
- * OTG_FS connector -- physically separate from the ST-LINK/UART USB port)
- * is treated the same as typing USBMSC by hand. Debounced and throttled
- * since the resulting move is one-way (EnterUsbMode() locks the mission
- * controller for the rest of the boot) -- a VBUS glitch or a cable plugged
- * in mid-mission must not trip it. */
-static bool     vbus_was_present      = false;
-static uint32_t vbus_present_since_ms = 0;
-static uint32_t vbus_last_attempt_ms  = 0;
-static const uint32_t VBUS_DEBOUNCE_MS = 200;   /* connector-mating bounce */
-static const uint32_t VBUS_RETRY_MS    = 1000;  /* re-check while not-idle */
+/* Auto-detect: NOT VBUS-based. This board's SB21 ties PA9/VBUS-sense to the
+ * on-board 5V rail, so USB_OTG_FS->GOTGCTL.BSESVLD reads "present" as soon
+ * as the board is powered, with nothing in CN13 at all -- raw VBUS can't
+ * tell "board is on" from "a real host is attached" here.
+ *
+ * Instead, trigger off actual enumeration: usb_msc_notify_configured() is
+ * called from STORAGE_Init_FS() (usbd_storage_if.c), which only runs when
+ * a real host sends SET_CONFIGURATION -- traced through MSC_BOT_Init() /
+ * USBD_MSC_Init() / USBD_SetConfig(). That requires genuine host traffic
+ * on D+/D-, which SB21 cannot fake. Runs from USB-stack (ISR) context, so
+ * it only sets a flag -- same cheap-context rule as usb_msc_request(). */
+static volatile bool usb_msc_host_configured = false;
 
-static bool usb_vbus_present()
+static bool     usb_msc_attempted_once  = false;
+static uint32_t usb_msc_last_attempt_ms = 0;
+static const uint32_t USB_MSC_RETRY_MS = 1000;   /* re-check while not-idle */
+
+void usb_msc_notify_configured()
 {
-	return (USB_OTG_FS->GOTGCTL & USB_OTG_GOTGCTL_BSESVLD) != 0;
+	usb_msc_host_configured = true;
 }
 
-static void usb_msc_check_vbus_auto()
+static void usb_msc_check_configured_auto()
 {
 	if (usb_msc_requested_flag || usb_msc_ready_flag) return;
+	if (!usb_msc_host_configured) return;
+	if (usb_msc_attempted_once && (uwTick - usb_msc_last_attempt_ms) < USB_MSC_RETRY_MS) return;
 
-	if (!usb_vbus_present()) {
-		vbus_was_present = false;
-		return;
-	}
-	if (!vbus_was_present) {
-		vbus_was_present      = true;
-		vbus_present_since_ms = uwTick;
-		vbus_last_attempt_ms  = vbus_present_since_ms - VBUS_RETRY_MS;
-	}
-	if ((uwTick - vbus_present_since_ms) < VBUS_DEBOUNCE_MS) return;
-	if ((uwTick - vbus_last_attempt_ms) < VBUS_RETRY_MS) return;
-	vbus_last_attempt_ms = uwTick;
+	usb_msc_attempted_once  = true;
+	usb_msc_last_attempt_ms = uwTick;
 
 	char reply[80];
 	if (usb_msc_request(reply, sizeof(reply))) {
-		printf("USB MSC: cable detected -- %s", reply);
+		printf("USB MSC: host enumerated the device -- %s", reply);
 	}
-	/* refused (busy / not idle): stay quiet and retry every VBUS_RETRY_MS
-	 * for as long as the cable stays plugged in, no console spam */
+	/* refused (busy / not idle): stay quiet and retry every
+	 * USB_MSC_RETRY_MS for as long as the host stays configured, no
+	 * console spam */
 }
 
 bool usb_msc_request(char *reply, size_t n)
@@ -87,7 +85,7 @@ bool usb_msc_request(char *reply, size_t n)
 
 void usb_msc_poll()
 {
-	usb_msc_check_vbus_auto();
+	usb_msc_check_configured_auto();
 
 	if (!usb_msc_requested_flag) return;
 	usb_msc_requested_flag = false;
