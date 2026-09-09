@@ -11,10 +11,10 @@
  *  Entered either by the console USBMSC command or automatically once a
  *  real host enumerates us as a mass-storage device (usb_msc_notify_
  *  configured(), called from STORAGE_Init_FS() in usbd_storage_if.c) --
- *  both funnel through usb_msc_request(). NOT triggered off OTG_FS VBUS:
- *  even with SB21 correctly ON (this board's shipped default for wiring
- *  PA9 to CN13's VBUS pin, per UM2408), PA9 floats with no cable in CN13
- *  and reads as "present" often enough to be useless -- see
+ *  both funnel through usb_msc_request(). NOT triggered off OTG_FS VBUS,
+ *  even though PA9/VBUS-sense now has an internal pull-down (usbd_conf.c)
+ *  so it no longer floats with nothing in CN13 -- enumeration is simply a
+ *  stronger guarantee than an analog threshold. See
  *  usb_msc_check_configured_auto() in the .cpp for the full reasoning.
  *  Auto-entry waits for the vehicle to be idle rather than interrupting a
  *  mission, retrying once a second until it is.

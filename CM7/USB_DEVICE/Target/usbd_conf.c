@@ -113,6 +113,23 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* pcdHandle)
     HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
   /* USER CODE BEGIN USB_OTG_FS_MspInit 1 */
 
+  /* CN13 (OTG_FS user connector) has no external pull-down on the VBUS-
+   * sense net -- with nothing plugged in, PA9 floats and the OTG core's
+   * analog comparator often reads that float as "VBUS present" (see
+   * UsbMsc.hpp for how USB_MODE auto-entry works around this in
+   * software). A weak internal pull-down gives the floating case a
+   * defined low instead; a real host drives VBUS hard enough that ~40k
+   * ohm of pull-down doesn't stop it reading high, so genuine detection
+   * is unaffected -- this only disambiguates the "nothing connected"
+   * case. CubeMX's own PA9 config above always emits GPIO_NOPULL for
+   * this pin (its "Activate_VBUS" mode doesn't expose Pull in the .ioc),
+   * so this re-init overrides it rather than editing that block.
+   */
+  GPIO_InitStruct.Pin  = GPIO_PIN_9;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /* USER CODE END USB_OTG_FS_MspInit 1 */
   }
 }

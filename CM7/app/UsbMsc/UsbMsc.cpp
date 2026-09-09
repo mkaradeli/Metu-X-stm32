@@ -22,20 +22,20 @@
 static volatile bool usb_msc_requested_flag = false;
 static volatile bool usb_msc_ready_flag     = false;
 
-/* Auto-detect: NOT VBUS-based. SB21 ON (this board's shipped default, per
- * UM2408 Table 13, correct for wiring PA9 to CN13's actual VBUS pin) still
- * left USB_OTG_FS->GOTGCTL.BSESVLD reading "present" with nothing in CN13
- * at all -- with no cable, PA9/VBUS-sense floats (no pull-down on this
- * net), and the OTG core's analog comparator reads that float as valid
- * often enough to be useless as a signal. No jumper fixes that.
+/* Auto-detect: NOT VBUS-based, even though PA9/VBUS-sense now has an
+ * internal pull-down (see HAL_PCD_MspInit() in usbd_conf.c) to stop it
+ * floating with nothing in CN13. SB21 ON is this board's correct, shipped
+ * wiring for using the USB connector (UM2408 Table 13) -- the pull-down
+ * just makes the "nothing connected" case read defined-low instead of
+ * floating; it doesn't turn VBUS sensing into a strong signal by itself.
  *
- * Instead, trigger off actual enumeration: usb_msc_notify_configured() is
+ * Trigger off actual enumeration instead: usb_msc_notify_configured() is
  * called from STORAGE_Init_FS() (usbd_storage_if.c), which only runs when
  * a real host sends SET_CONFIGURATION -- traced through MSC_BOT_Init() /
  * USBD_MSC_Init() / USBD_SetConfig(). That requires genuine host traffic
- * on D+/D-, which a floating sense pin cannot fake. Runs from USB-stack
- * (ISR) context, so it only sets a flag -- same cheap-context rule as
- * usb_msc_request(). */
+ * on D+/D-, so it's correct regardless of how PA9 behaves. Runs from
+ * USB-stack (ISR) context, so it only sets a flag -- same cheap-context
+ * rule as usb_msc_request(). */
 static volatile bool usb_msc_host_configured = false;
 
 static bool     usb_msc_attempted_once  = false;
