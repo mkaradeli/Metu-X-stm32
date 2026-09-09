@@ -504,16 +504,29 @@ void app_loop() {
 		main_loop_profiler.start();
 
 	if (uwTick - timeOfLastPrint >= 1000){
-
-		timeOfLastPrint+= 1000;
-		printf("timestamp = %ld\n\r", uwTick);
-		total_cpu_usage = 0;
-		for (int i=0; i<(sizeof(profilers)/sizeof(profilers[0])); i++){
-			profilers[i]->metrics();
-//			printf("%.4s cpu=%f, freq=%f\n\r",profilers[i]->name, profilers[i]->cpu_usage, profilers[i]->call_frequency);
-			total_cpu_usage += profilers[i]->cpu_usage;
+		if (ymodem_active()) {
+					/* This printf() block and GETLOG's binary YMODEM stream share
+					 * the same ring buffer (common_print_buffer) -- interleaving
+					 * them mid-transfer would corrupt blocks, not just add a
+					 * stray line the ground tool can skip past. Hold the 1Hz
+					 * timer at "now" instead of printing, so it resumes on a
+					 * clean 1s cadence once the transfer ends rather than
+					 * bursting out everything it missed. */
+					timeOfLastPrint = uwTick;
+				} else {
+					timeOfLastPrint+= 1000;
+					printf("timestamp = %ld\n\r", uwTick);
+					total_cpu_usage = 0;
+					for (int i=0; i<(sizeof(profilers)/sizeof(profilers[0])); i++){
+						profilers[i]->metrics();
+//						printf("%.4s cpu=%f, freq=%f\n\r",profilers[i]->name, profilers[i]->cpu_usage, profilers[i]->call_frequency);
+						total_cpu_usage += profilers[i]->cpu_usage;
+					}
+					HWIL_STEP_profiler.metrics();
+					printf("\ttotal cpu usage = %f\n\r", total_cpu_usage);
+					printf("battery voltage = %f\n\r", battery_voltage);
 		}
-		HWIL_STEP_profiler.metrics();
+//		HWIL_STEP_profiler.metrics();
 //		printf("total cpu usage = %f\n\r", total_cpu_usage);
 //		printf("battery voltage = %f\n\r", battery_voltage);
 

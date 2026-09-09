@@ -99,6 +99,8 @@ void AltitudeEstimator::reset()
 
     baroHeightBias_ = 0.0f;
     baroCalibrated_ = false;
+    lastBaroPressurePa_ = 0.0f;
+    lastBaroPressureValid_ = false;
 }
 
 void AltitudeEstimator::beginCalibration()
@@ -354,6 +356,14 @@ bool AltitudeEstimator::update(float range, const float q[4])
     ++status_.lidarAccepted;
     status_.lastUpdateAccepted = true;
 
+    /* Lidar just confirmed the truth -- re-anchor baro's bias to it so baro
+     * only ever contributes "change since lidar last agreed" rather than a
+     * drift-prone reading against the once-only pad calibration. No effect
+     * on this update's math; it only shapes the next pushBaroFrame(). */
+    if (baroCalibrated_ && lastBaroPressureValid_) {
+        baroHeightBias_ = pressureToHeight(lastBaroPressurePa_) - x_[0];
+    }
+
     anchorH_ = x_[0]; anchorV_ = x_[1]; anchorTau_ = 0.0f; anchorValid_ = true;
     return true;
 }
@@ -403,6 +413,9 @@ bool AltitudeEstimator::pushBaroFrame(float pressurePa)
 {
     if (phase_ == Phase::Idle)
         return false;
+
+    lastBaroPressurePa_ = pressurePa;
+    lastBaroPressureValid_ = true;
 
     const float h = pressureToHeight(pressurePa);
 

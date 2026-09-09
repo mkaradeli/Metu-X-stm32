@@ -32,6 +32,14 @@
  * tight, and take over automatically the moment lidar goes quiet or gets
  * rejected and P[0][0] grows. No explicit source-switching logic needed.
  *
+ * baroHeightBias_ isn't fixed at pad calibration and left alone, either:
+ * every accepted lidar update re-anchors it to the last raw baro sample
+ * (see update()), so baro's contribution is always "how much has pressure
+ * changed since lidar last confirmed the truth" rather than a drift-prone
+ * absolute reading against a calibration taken once on the pad. The moment
+ * lidar goes quiet or out of range, the bias simply stops refreshing and
+ * baro carries on from whatever the freshest anchor was.
+ *
  * Quaternion convention: q[4] = { w, x, y, z }, rotates BODY -> WORLD.
  * World Z is up and gravity aligned (BNO085 rotation vector frame).
  * Body frame as mounted: X+ right, Y+ front, Z+ up.
@@ -186,8 +194,11 @@ public:
     /* Call once per BMP581 reading (raw pressure, Pa). Phase-aware like
      * pushLidarFrame(): accumulates the pad baseline during Calibrating,
      * applies an ungated scalar correction during Running. No-op if baro
-     * wasn't part of the calibration window (see beginCalibration()).
-     * Returns true if the filter was corrected. */
+     * wasn't part of the calibration window (see beginCalibration()). The
+     * bias this correction is measured against is continuously re-anchored
+     * by accepted lidar updates (see update()), so in practice this ends up
+     * correcting on baro's *change* since lidar last agreed, not its raw
+     * absolute reading. Returns true if the filter was corrected. */
     bool pushBaroFrame(float pressurePa);
 
     /* Retune in flight, e.g. from your mission phase machine. */
@@ -263,8 +274,11 @@ private:
     uint32_t calNH_;
     uint32_t calNBaro_;
 
-    /* baro pad baseline, see pushBaroFrame() */
+    /* baro pad baseline, continuously re-anchored to lidar -- see
+     * pushBaroFrame() and update() */
     float    baroHeightBias_;
     bool     baroCalibrated_;
+    float    lastBaroPressurePa_;
+    bool     lastBaroPressureValid_;
 };
 #endif /* ALTITUDEESTIMATOR_HPP_ */
