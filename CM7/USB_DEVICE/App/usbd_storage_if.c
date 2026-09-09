@@ -248,7 +248,11 @@ int8_t STORAGE_IsWriteProtected_FS(uint8_t lun)
   /* USER CODE BEGIN 5 */
   UNUSED(lun);
 
-  return (USBD_OK);
+  /* Read-only by design: this is for pulling logs off, not editing the
+   * card's contents from the host. usbd_msc_scsi.c checks this as
+   * "!= 0 => write-protected" (see SCSI_ModeSense6/10 and SCSI_Write10),
+   * so USBD_FAIL (nonzero) here is what actually reports it, not USBD_OK. */
+  return (USBD_FAIL);
   /* USER CODE END 5 */
 }
 
@@ -296,17 +300,15 @@ int8_t STORAGE_Write_FS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t b
 {
   /* USER CODE BEGIN 7 */
   UNUSED(lun);
+  UNUSED(buf);
+  UNUSED(blk_addr);
+  UNUSED(blk_len);
 
-  if (!usb_msc_ready()) {
-    return (USBD_FAIL);
-  }
-
-  if (BSP_SD_WriteBlocks((uint32_t *)buf, blk_addr, blk_len, STORAGE_SD_TIMEOUT) != MSD_OK) {
-    return (USBD_FAIL);
-  }
-  while (BSP_SD_GetCardState() != MSD_OK) {
-  }
-  return (USBD_OK);
+  /* Read-only by design (see STORAGE_IsWriteProtected_FS) -- never touches
+   * the card. A conformant host won't send WRITE10 here at all once it's
+   * seen the write-protected report, but this must refuse independently of
+   * that, the same way STORAGE_Read_FS doesn't trust IsReady_FS alone. */
+  return (USBD_FAIL);
   /* USER CODE END 7 */
 }
 
