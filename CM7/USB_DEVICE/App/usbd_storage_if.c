@@ -197,7 +197,7 @@ int8_t STORAGE_Init_FS(uint8_t lun)
   /* This only runs when a real host just sent SET_CONFIGURATION (see
    * MSC_BOT_Init() -> USBD_MSC_Init() -> USBD_SetConfig()), which needs
    * genuine host traffic on D+/D- -- unlike OTG_FS VBUS sensing, which
-   * SB21 ties to the board's own 5V rail regardless of a real cable. This
+   * reads a floating PA9 as "present" with no cable in CN13 at all. This
    * is the auto-entry trigger for USB_MODE; see UsbMsc.hpp. */
   usb_msc_notify_configured();
 

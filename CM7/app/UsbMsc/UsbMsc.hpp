@@ -12,8 +12,9 @@
  *  real host enumerates us as a mass-storage device (usb_msc_notify_
  *  configured(), called from STORAGE_Init_FS() in usbd_storage_if.c) --
  *  both funnel through usb_msc_request(). NOT triggered off OTG_FS VBUS:
- *  this board's SB21 ties VBUS-sense to the on-board 5V rail, so it reads
- *  "present" as soon as the board is powered, cable or no cable -- see
+ *  even with SB21 correctly ON (this board's shipped default for wiring
+ *  PA9 to CN13's VBUS pin, per UM2408), PA9 floats with no cable in CN13
+ *  and reads as "present" often enough to be useless -- see
  *  usb_msc_check_configured_auto() in the .cpp for the full reasoning.
  *  Auto-entry waits for the vehicle to be idle rather than interrupting a
  *  mission, retrying once a second until it is.
