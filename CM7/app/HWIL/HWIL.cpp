@@ -410,6 +410,10 @@ namespace CFG {
       o.Omega   = Add(S.Omega, Scale(D.DOmega, H));
       o.GasMass = S.GasMass + D.DGasMass * H;
       if (o.GasMass < 0.0) o.GasMass = 0.0;
+      if (o.Position.Z < 0) {
+    	  o.Position.Z =0;
+    	  o.Velocity.Z = 0;
+      }
       return o;
   }
 

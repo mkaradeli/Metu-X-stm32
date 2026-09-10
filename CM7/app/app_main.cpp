@@ -8,6 +8,7 @@
 #include "globals.hpp"   // HWIL_ENABLED lives here now, shared with UserTask.cpp
 #define DISABLE_CRC false
 #define CHECK_TIMER_FREQUENCIES false
+#define BENCH_TEST true   // MUST be false before flight -- see its use below (AltitudeEstimator free-fall gate)
 
 #include <shared_memory.h>
 #include "app_main.hpp"
@@ -47,6 +48,11 @@ nrf24_link_stats_t nrf24_frame_stats;   /* per-frame: frames_sent, frames_droppe
 uint32_t           nrf24_uplink_rx_count   = 0u;   /* ACK-payload uplink packets drained, see tim7_trigger() */
 uint32_t           nrf24_uplink_bad_frames = 0u;   /* wrong length or CRC-16 mismatch, dropped                */
 uint32_t           nrf24_uplink_dup_drops  = 0u;   /* repeat of an already-processed seq, ignored              */
+
+/* Purely differentiated from AltitudeEstimator::lastProjectedHeight() -- no
+ * IMU, no Kalman. Set in onLidarFrame(), read by tim12_trigger() instead of
+ * g_altEst.velocity(). */
+float lidarDerivedVelocity = 0.0f;
 
 /* Go/no-go: bit set = subsystem currently healthy. Recomputed every 100 ms in
  * LED_Counter_Tick(); MissionControl::Start() ANDs this against
@@ -368,6 +374,18 @@ void app_init() {
 //	  motors[0].setDuty(1.0f);
       p.lever[2]   = 0.06f;
       p.sigmaAccel = 0.30f;
+#if BENCH_TEST
+      /* The free-fall gate assumes downward accel can never exceed -g, which
+       * only holds because this vehicle's thrust is one-directional (up).
+       * A hand-shake bench test violates that -- a hand can yank the sensor
+       * down faster than gravity, which the gate correctly (by its own
+       * logic) flags as physically impossible and rejects. Off here so
+       * ground testing doesn't fight a gate built for a constraint only the
+       * bench rig, not the vehicle, is breaking.
+       * MUST be back on (BENCH_TEST 0) before flight -- it's real obstruction/
+       * wedged-sensor protection there. */
+      p.freefallEnable = false;
+#endif
       g_altEst.configure(p);
 	  if (!imu.begin(&hspi1)) {
 //	          Error_Handler();
@@ -420,7 +438,7 @@ void app_init() {
 		printf("BMP581 baro: %s\r\n",
 		       baroHealthy ? "OK" : "NOT RESPONDING (check I2C4 wiring/address)");
 		if (!baroHealthy) i2c4_bus_scan();
-		if (baroHealthy) baro.startRead();  /* first read; re-armed from tim7_trigger()'s baro_task */
+//		if (baroHealthy) baro.startRead();  /* first read; re-armed from tim7_trigger()'s baro_task */
 //	  dummy_init();
 //	  printf(CLR_SCREEN);
 
@@ -485,19 +503,18 @@ extern "C" {
 extern bool pc8_active;
 
 }
+
+volatile AltitudeEstimator::Status s;
 bool selfTrigger = false;
 float total_cpu_usage = 0;
 bool altitudeEstimatorDone = false;
 extern Profiler HWIL_STEP_profiler;
 void app_loop() {
-
+//	s = g_altEst.status();
 	if (!altitudeEstimatorDone && (uwTick - calStartTick) >= 1500) {
 	    if (g_altEst.finishCalibration()) {
 	        altitudeEstimatorDone = true;
-	        const auto& st = g_altEst.status();
-	        printf("AltitudeEstimator calibrated: lidar=%s baro=%s\r\n",
-	               st.lidarCalibratedAtStart ? "OK" : "MISSING",
-	               st.baroCalibratedAtStart  ? "OK" : "MISSING");
+	        printf("AltitudeEstimator calibrated (lidar+IMU only, baro logged but not fused)\r\n");
 	    } else {
 	        calStartTick = uwTick;      // IMU not ready yet, keep collecting
 	    }
@@ -696,9 +713,8 @@ void tim7_trigger() { // 1 khz low priority
 		onLidarFrame(lidar.getDistance(), lidar.getStrength());
 		s_last_lidar_ok_tick = uwTick;
 	}
-	if (baro.hasNewReading()) {
-		g_altEst.pushBaroFrame(baro.getPressurePa());
-	}
+	// baro is logged (see local_sensor_data.baro_* below) but deliberately
+	// not fused into g_altEst -- lidar+IMU only, per request.
 //    float aw[3];
 //    for (int i = 0; i < 3; ++i)
 //        aw[i] = R[i][0]*a_b[0] + R[i][1]*a_b[1] + R[i][2]*a_b[2];
@@ -750,20 +766,29 @@ void tim12_trigger(){ // mid priority 1000hz platform control task
 	platform_controller.rtU.quaternion[3] = hwil.rtY.quaternion_sim[3];
 	platform_controller.rtU.Height = hwil.rtY.position;
 	platform_controller.rtU.Velocity = hwil.rtY.velocity;
-	platform_controller.rtU.angularVelocity[0] = hwil.rtY.angular_velocity[0];
-	platform_controller.rtU.angularVelocity[1] = hwil.rtY.angular_velocity[1];
-	platform_controller.rtU.angularVelocity[2] = hwil.rtY.angular_velocity[2];
+	platform_controller.rtU.gyro[0] = hwil.rtY.angular_velocity[0];
+	platform_controller.rtU.gyro[1] = hwil.rtY.angular_velocity[1];
+	platform_controller.rtU.gyro[2] = hwil.rtY.angular_velocity[2];
 
 #else
 	platform_controller.rtU.quaternion[0] = imu.gyroIntegratedRV.i;
 	platform_controller.rtU.quaternion[1] = imu.gyroIntegratedRV.j;
 	platform_controller.rtU.quaternion[2] = imu.gyroIntegratedRV.k;
 	platform_controller.rtU.quaternion[3] = imu.gyroIntegratedRV.real;
-	platform_controller.rtU.Height = g_altEst.height();
-	platform_controller.rtU.Velocity = g_altEst.velocity();
-	platform_controller.rtU.angularVelocity[0] = imu.gyroIntegratedRV.angVelX;
-	platform_controller.rtU.angularVelocity[1] = imu.gyroIntegratedRV.angVelY;
-	platform_controller.rtU.angularVelocity[2] = imu.gyroIntegratedRV.angVelZ;
+	// Bypassing the Kalman-fused height for now -- feed the controller the
+	// raw tilt-corrected lidar range directly (same geometry the filter
+	// itself uses pre-correction, see AltitudeEstimator::update()). Holds
+	// its last value rather than snapping to 0 if lidar hasn't produced a
+	// valid projection yet.
+	if (g_altEst.lastProjectedHeightValid()) {
+		platform_controller.rtU.Height = g_altEst.lastProjectedHeight();
+	}
+	// Pure derivative of the same raw lidar height above -- no IMU, no
+	// Kalman. See onLidarFrame().
+	platform_controller.rtU.Velocity = lidarDerivedVelocity;
+	platform_controller.rtU.gyro[0] = imu.gyroIntegratedRV.angVelX;
+	platform_controller.rtU.gyro[1] = imu.gyroIntegratedRV.angVelY;
+	platform_controller.rtU.gyro[2] = imu.gyroIntegratedRV.angVelZ;
 #endif
 //	platform_controller.rtU.T_alloc_total = T_alloc_total;
 
@@ -894,8 +919,8 @@ void pressure_adc_complete(){
 		local_sensor_data.kf_altitude = hwil.rtY.position;
 		local_sensor_data.kf_velocity = hwil.rtY.velocity;
 #else
-		local_sensor_data.kf_altitude = g_altEst.height();
-		local_sensor_data.kf_velocity = g_altEst.velocity();
+		local_sensor_data.kf_altitude = g_altEst.lastProjectedHeight();
+		local_sensor_data.kf_velocity = lidarDerivedVelocity;
 #endif
 
         local_sensor_data.actuator_mode = static_cast<uint8_t>(controller_mode);
@@ -993,8 +1018,26 @@ void onImuReport(const BNO085& r) {
 void onLidarFrame(uint16_t distMm, uint16_t strength) {
     const float q[4] = { imu.gyroIntegratedRV.real, imu.gyroIntegratedRV.i,
                          imu.gyroIntegratedRV.j,    imu.gyroIntegratedRV.k };
-//    g_altEst.pushLidarFrame(distMm, strength, q);
     g_altEst.pushLidarFrame(distMm, strength, q);
+
+    if (g_altEst.hasNewProjectedHeight()) {
+        static float    s_prevHeight = 0.0f;
+        static uint64_t s_prevTimeUs = 0;
+        static bool     s_havePrev   = false;
+
+        const float    h   = g_altEst.lastProjectedHeight();
+        const uint64_t now = micros();
+
+        if (s_havePrev) {
+            const float dt = static_cast<float>(now - s_prevTimeUs) * 1e-6f;
+            if (dt > 0.0f && dt < 0.1f) {   // sanity bound, same as pushImu()'s
+                lidarDerivedVelocity = (h - s_prevHeight) / dt;
+            }
+        }
+        s_prevHeight = h;
+        s_prevTimeUs = now;
+        s_havePrev   = true;
+    }
 }
 void LED_Counter_Tick(void)
 {

@@ -116,7 +116,7 @@ static void hoverTask(uint32_t time_ms) {
 		 * that preemption could hit mid-step() and reset rtX/rtDW out
 		 * from under the ODE3 sub-stepping. Mask TIM7 for the reset. */
 		HAL_NVIC_DisableIRQ(TIM7_IRQn);
-		hwil.rtU.X0 = 2.0f;
+		hwil.rtU.X0 = 0.0f;
 		hwil.rtU.V0 = 0.0f;
 		hwil.initialize();
 		HAL_NVIC_EnableIRQ(TIM7_IRQn);
@@ -261,7 +261,7 @@ extern const uint8_t missionTableCount =
 
 // HOVER 4
 // DROP 5
-extern const uint8_t defaultMissionIndex = 0;   // TF_OPEN
+extern const uint8_t defaultMissionIndex = 4;   // TF_OPEN
 
 /* The old global logHeader[] / logHeaderSize are gone: sd_task now takes the
  * header text from the selected mission row above. Delete their extern
