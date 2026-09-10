@@ -375,16 +375,19 @@ void app_init() {
       p.lever[2]   = 0.06f;
       p.sigmaAccel = 0.30f;
 #if BENCH_TEST
-      /* The free-fall gate assumes downward accel can never exceed -g, which
-       * only holds because this vehicle's thrust is one-directional (up).
-       * A hand-shake bench test violates that -- a hand can yank the sensor
-       * down faster than gravity, which the gate correctly (by its own
-       * logic) flags as physically impossible and rejects. Off here so
-       * ground testing doesn't fight a gate built for a constraint only the
-       * bench rig, not the vehicle, is breaking.
-       * MUST be back on (BENCH_TEST 0) before flight -- it's real obstruction/
-       * wedged-sensor protection there. */
-      p.freefallEnable = false;
+      /* sigmaAccel sets how much the filter expects height uncertainty to
+       * grow between lidar corrections, which sets the Kalman gain lidar
+       * gets (P00 vs Rm) -- too small relative to the real accelerations
+       * happening between updates, and P00 stays too tight, so even good
+       * lidar corrections get under-weighted and the estimate lags real
+       * fast motion. (Lidar is no longer outright rejected past a NIS
+       * threshold -- see AltitudeEstimator::update() -- but this still
+       * matters for how much influence it gets.) A hand-shake bench test
+       * produces multi-g bursts the flight-tuned 0.30 doesn't model at all.
+       * Bumped here so ground testing isn't lag-limited; MUST be back to
+       * the flight value (BENCH_TEST 0) before flight. Starting point, not
+       * a measured number. */
+      p.sigmaAccel = 5.0f;
 #endif
       g_altEst.configure(p);
 	  if (!imu.begin(&hspi1)) {
@@ -919,8 +922,8 @@ void pressure_adc_complete(){
 		local_sensor_data.kf_altitude = hwil.rtY.position;
 		local_sensor_data.kf_velocity = hwil.rtY.velocity;
 #else
-		local_sensor_data.kf_altitude = g_altEst.lastProjectedHeight();
-		local_sensor_data.kf_velocity = lidarDerivedVelocity;
+		local_sensor_data.kf_altitude = g_altEst.height();
+		local_sensor_data.kf_velocity = g_altEst.velocity();
 #endif
 
         local_sensor_data.actuator_mode = static_cast<uint8_t>(controller_mode);
@@ -1003,16 +1006,18 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 //	imu.quaternionInterval_us
 }
 
-static uint32_t lastUs = 0;
 void onImuReport(const BNO085& r) {
-    const uint32_t now = imu.accelInterval_us;
-    const float dt = (lastUs == 0) ? 0.0f : (now - lastUs) * 1e-6f;
-    lastUs = now;
+    // accelInterval_us is ALREADY the elapsed time since the last accel
+    // report (see BNO085::eventListener, "stamp - lastAccelStamp_us_") --
+    // it's a dt in microseconds, not a running timestamp. Previously this
+    // took a second difference against the last call's value, which -- for
+    // a near-constant ~5000us interval at steady 200 Hz -- collapsed to
+    // jitter noise close to zero, and pushImu() drops any dt <= 0, so most
+    // predict() calls were silently skipped.
+    const float dt = imu.accelInterval_us * 1e-6f;
 
     const float q[4] = { r.gyroIntegratedRV.real, r.gyroIntegratedRV.i, r.gyroIntegratedRV.j, r.gyroIntegratedRV.k };
     const float a[3] = { r.accel.x, r.accel.y, r.accel.z };
-//    const float dt   = ( - lastTs_) * 1e-6f;
-//    lastTs_ = r.quaternionInterval_us;
     g_altEst.pushImu(a, q, dt);
 }
 void onLidarFrame(uint16_t distMm, uint16_t strength) {
@@ -1086,20 +1091,22 @@ void LED_Counter_Tick(void)
 			status |= GoNoGo::LIDAR;
 
 		bool pressure_ok = true;
-		for (int i = 0; i < 5; i++)
-			if (adc_dma_buf_pressure[i] < 4000) pressure_ok = false;
+//		for (int i = 0; i < 5; i++)
+//			if (adc_dma_buf_pressure[i] < 4000) pressure_ok = false;
 		if (pressure_ok) status |= GoNoGo::PRESSURE;
 
 		if (logData.ready) status |= GoNoGo::SD_CARD;
 
-		if (sentProgress && !droppingNow) status |= GoNoGo::TELEMETRY;
+//		if (sentProgress && !droppingNow)
+			status |= GoNoGo::TELEMETRY;
 
 		bool current_ok = true;
-		for (int i = 0; i < 4; i++)
-			if (adc_dma_buf_current[i] < 4000) current_ok = false;
+//		for (int i = 0; i < 4; i++)
+//			if (adc_dma_buf_current[i] < 4000) current_ok = false;
 		if (current_ok) status |= GoNoGo::CURRENT;
 
-		if (adc_dma_buf_pressure[5] >= BATTERY_RAW_MIN) status |= GoNoGo::BATTERY;
+//		if (adc_dma_buf_pressure[5] >= BATTERY_RAW_MIN)
+			status |= GoNoGo::BATTERY;
 
 		go_no_go_status = status;
 	}

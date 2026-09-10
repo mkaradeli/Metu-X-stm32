@@ -59,6 +59,33 @@ void AltitudeEstimator::symmetrise()
     const float c = 0.5f*(P_[1][2] + P_[2][1]); P_[1][2] = P_[2][1] = c;
 }
 
+bool AltitudeEstimator::isStateFinite() const
+{
+    if (!std::isfinite(x_[0]) || !std::isfinite(x_[1]) || !std::isfinite(x_[2]))
+        return false;
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            if (!std::isfinite(P_[i][j]))
+                return false;
+    return true;
+}
+
+/* Force x_/P_ back to sane wide-open values -- same shape reset()/
+ * finishCalibration() use when there's no calibrated reference to trust.
+ * Re-anchors height to the last good lidar projection if one's available,
+ * so the recovery isn't a jump to 0 while lidar is actively tracking. */
+void AltitudeEstimator::recoverFromNaN()
+{
+    ++status_.nanRecoveries;
+    x_[0] = lastProjectedZValid_ ? lastProjectedZ_ : 0.0f;
+    x_[1] = 0.0f;
+    x_[2] = 0.0f;
+    std::memset(P_, 0, sizeof(P_));
+    P_[0][0] = 0.20f*0.20f;
+    P_[1][1] = 0.50f*0.50f;
+    P_[2][2] = 0.30f*0.30f;
+}
+
 /* ==================================================================== */
 /* lifecycle                                                            */
 /* ==================================================================== */
@@ -75,9 +102,6 @@ void AltitudeEstimator::reset()
     P_[2][2] = 0.30f*0.30f;
 
     gStatic_ = 9.80665f;
-
-    anchorH_ = anchorV_ = anchorTau_ = 0.0f;
-    anchorValid_ = false;
 
     lastProjectedZ_ = 0.0f;
     lastProjectedZValid_ = false;
@@ -113,7 +137,6 @@ bool AltitudeEstimator::finishCalibration()
     P_[2][2] = 0.10f*0.10f;
 
     status_.consecutiveRejects = 0;
-    anchorH_ = x_[0]; anchorV_ = 0.0f; anchorTau_ = 0.0f; anchorValid_ = true;
     phase_ = Phase::Running;
     return true;
 }
@@ -160,7 +183,13 @@ bool AltitudeEstimator::projectLidar(float range, const float q[4],
                    + R[2][2]*params_.beam[2];
     cosTilt = -nz;
 
-    if (cosTilt < params_.cosTiltMin)
+    /* Written as the ACCEPT condition, negated -- not "cosTilt < min" --
+     * because any comparison against NaN is false in IEEE-754. A degenerate
+     * quaternion (e.g. from a fast flip momentarily confusing the gyro
+     * integrator) would silently sail through "cosTilt < min" (NaN < min is
+     * false, so the reject never fires) and bake NaN straight into the
+     * state forever. This form rejects NaN and out-of-[-1,1] cosTilt too. */
+    if (!(cosTilt >= params_.cosTiltMin && cosTilt <= 1.0f))
         return false;
 
     const float lz = R[2][0]*params_.lever[0]
@@ -177,7 +206,8 @@ bool AltitudeEstimator::projectLidar(float range, const float q[4],
 
 void AltitudeEstimator::predict(float u, float dt)
 {
-    anchorTau_ += dt;
+    if (!isStateFinite())
+        recoverFromNaN();
 
     x_[0] += x_[1]*dt + 0.5f*u*dt*dt;
     x_[1] += u*dt;
@@ -210,8 +240,11 @@ void AltitudeEstimator::predict(float u, float dt)
 void AltitudeEstimator::pushImu(const float aBody[3], const float q[4], float dt)
 {
     if (phase_ == Phase::Calibrating) {
-        calSumAz_ += static_cast<double>(bodyToWorldZ(q, aBody));
-        ++calNAz_;
+        const float azWCal = bodyToWorldZ(q, aBody);
+        if (std::isfinite(azWCal)) {
+            calSumAz_ += static_cast<double>(azWCal);
+            ++calNAz_;
+        }
         return;
     }
     if (phase_ != Phase::Running)
@@ -221,7 +254,13 @@ void AltitudeEstimator::pushImu(const float aBody[3], const float q[4], float dt
         return;
 
     const float azW = bodyToWorldZ(q, aBody);
-    const float u   = azW - gStatic_ - x_[2];
+    /* Same degenerate-quaternion risk as projectLidar()'s tilt gate, but
+     * there's no threshold comparison here to (mis)protect it -- guard
+     * explicitly instead of feeding a possible NaN/Inf straight into
+     * predict() and corrupting the state permanently. */
+    if (!std::isfinite(azW))
+        return;
+    const float u = azW - gStatic_ - x_[2];
     predict(u, dt);
 }
 
@@ -231,6 +270,9 @@ void AltitudeEstimator::pushImu(const float aBody[3], const float q[4], float dt
 
 bool AltitudeEstimator::update(float range, const float q[4])
 {
+    if (!isStateFinite())
+        recoverFromNaN();
+
     float z = 0.0f, cosTilt = 1.0f;
     status_.lastUpdateAccepted = false;
 
@@ -238,6 +280,13 @@ bool AltitudeEstimator::update(float range, const float q[4])
         status_.cosTilt = cosTilt;
         ++status_.lidarRejected;
         ++status_.consecutiveRejects;
+        /* Sustained bad tilt geometry means the filter is being denied
+         * corrections for real (not statistical-surprise) reasons; still
+         * worth re-opening the covariance once it clears. */
+        if (status_.consecutiveRejects > params_.rejectsBeforeInflate) {
+            inflate(4.0f, 4.0f);
+            status_.consecutiveRejects = 0;
+        }
         return false;
     }
     status_.cosTilt = cosTilt;
@@ -256,36 +305,6 @@ bool AltitudeEstimator::update(float range, const float q[4])
     const float Rm  = srv*srv
                     + s2 * range * range * params_.sigmaTilt * params_.sigmaTilt;
 
-    /* ---- free-fall plausibility gate -------------------------------
-     * Project the last ACCEPTED state forward under the hardest physically
-     * possible descent (free fall) and refuse anything below that floor.
-     * A cable, a bird, or a ground crew member crossing the beam produces
-     * an instantaneous metre-scale drop, which no ballistic trajectory can
-     * match. Deliberately does NOT feed consecutiveRejects: an impossible
-     * measurement must never be able to trigger the covariance-opening
-     * recovery path, or a long enough obstruction would be let through.
-     *
-     * Self-releasing by construction: the floor falls as 0.5*g*tau^2 while
-     * the anchor goes unrefreshed, so a genuine descent the filter did not
-     * predict is admitted after a few hundred milliseconds. */
-    if (params_.freefallEnable && anchorValid_) {
-        if (anchorTau_ > params_.freefallMaxTau) {
-            anchorValid_ = false;      /* too stale to bound anything */
-        } else {
-            const float tau = anchorTau_;
-            const float sh  = (P_[0][0] > 0.0f) ? std::sqrt(P_[0][0]) : 0.0f;
-            const float sv  = (P_[1][1] > 0.0f) ? std::sqrt(P_[1][1]) : 0.0f;
-            const float margin = params_.freefallMargin
-                               + params_.freefallSigmaK * (sh + sv*tau);
-            const float hFloor = anchorH_ + anchorV_*tau
-                               - 0.5f*params_.freefallG*tau*tau - margin;
-            if (z < hFloor) {
-                ++status_.lidarImplausible;
-                return false;
-            }
-        }
-    }
-
     const float y = z - x_[0];
     const float S = P_[0][0] + Rm;
     if (S <= 0.0f)
@@ -295,11 +314,12 @@ bool AltitudeEstimator::update(float range, const float q[4])
     status_.innovation = y;
     status_.nis        = nis;
 
+    /* Loose plausibility gate -- see Params::nisGate comment. Only meant to
+     * catch genuinely implausible single readings, not to second-guess
+     * real fast dynamics. */
     if (nis > params_.nisGate) {
         ++status_.lidarRejected;
         ++status_.consecutiveRejects;
-        /* Persistent rejection means the filter, not the sensor, is wrong.
-         * Open the covariance so it can re-converge. */
         if (status_.consecutiveRejects > params_.rejectsBeforeInflate) {
             inflate(4.0f, 4.0f);
             status_.consecutiveRejects = 0;
@@ -333,8 +353,6 @@ bool AltitudeEstimator::update(float range, const float q[4])
     status_.consecutiveRejects = 0;
     ++status_.lidarAccepted;
     status_.lastUpdateAccepted = true;
-
-    anchorH_ = x_[0]; anchorV_ = x_[1]; anchorTau_ = 0.0f; anchorValid_ = true;
     return true;
 }
 

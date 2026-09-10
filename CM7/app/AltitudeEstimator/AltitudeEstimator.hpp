@@ -59,19 +59,21 @@ public:
         float sigmaRangeK = 0.004f;   /* range-proportional term      [-]   */
         float sigmaTilt   = 0.0175f;  /* attitude 1s                  [rad] */
 
-        /* gating */
+        /* gating -- tilt rejects lidar past a geometry limit (genuinely
+         * unusable reading, not a judgment call). nisGate is back too, but
+         * deliberately loose: a tight (~3-sigma) gate previously rejected
+         * ordinary fast motion as "too surprising" whenever the filter's
+         * own uncertainty model (sigmaAccel, and a since-fixed dt bug) was
+         * even slightly too tight, and a diverged filter would then keep
+         * rejecting the very corrections that would fix it -- visible as a
+         * sawtooth in the fused output. With dt and sigmaAccel now honest,
+         * this is meant to catch genuinely implausible single readings
+         * (obstruction, specular return, sensor glitch), not to second-
+         * guess real dynamics. Tune down cautiously, and only against real
+         * flight/test data, not a hunch. */
         float cosTiltMin  = 0.819f;   /* reject lidar past 35 deg           */
-        float nisGate     = 9.0f;     /* 3s chi-square on 1-D innovation    */
+        float nisGate     = 25.0f;    /* ~5s chi-square on 1-D innovation   */
         uint32_t rejectsBeforeInflate = 40;
-
-        /* free-fall plausibility gate: the vehicle cannot lose altitude
-         * faster than gravity, so anything below that floor is a foreign
-         * object in the beam rather than the ground. */
-        bool  freefallEnable = true;
-        float freefallG      = 9.81f;  /* downward accel bound   [m/s^2]    */
-        float freefallMargin = 0.05f;  /* fixed slack            [m]        */
-        float freefallSigmaK = 3.0f;   /* sigma multiplier on the margin    */
-        float freefallMaxTau = 2.0f;   /* stale anchor -> disarm  [s]       */
 
         /* geometry, from your mount survey */
         float beam[3]  = { 0.0f, 0.0f, -1.0f }; /* beam unit vec, body frame */
@@ -85,10 +87,14 @@ public:
         float    cosTilt             = 1.0f;  /* vertical fraction     [-] */
         uint32_t lidarAccepted       = 0;
         uint32_t lidarRejected       = 0;     /* gate or tilt failures     */
-        uint32_t lidarImplausible    = 0;     /* free-fall gate rejections */
         uint32_t lidarBlocksDropped  = 0;     /* too few valid raw frames  */
         uint32_t consecutiveRejects  = 0;
         bool     lastUpdateAccepted  = false;
+        uint32_t nanRecoveries       = 0;     /* state was non-finite and
+                                                  got force-reset -- should
+                                                  stay 0; if it's climbing,
+                                                  something is still feeding
+                                                  bad values in */
     };
 
     AltitudeEstimator() { reset(); }
@@ -167,6 +173,16 @@ private:
     void predict(float u, float dt);
     bool update(float range, const float q[4]);
 
+    /* Self-healing against a NaN/Inf state, which nothing else here can
+     * ever clear on its own once it happens (NaN - anything = NaN, forever).
+     * isStateFinite() is checked at the top of predict() and update(); if
+     * it fails, recoverFromNaN() force-resets x_/P_ to sane wide-open
+     * values (same shape as the no-calibrated-reference fallback) and
+     * counts it in status().nanRecoveries, then the caller's own work for
+     * that tick proceeds normally against the now-clean state. */
+    bool isStateFinite() const;
+    void recoverFromNaN();
+
     Params  params_;
     Status  status_;
     Phase   phase_;
@@ -174,12 +190,6 @@ private:
     float   x_[3];
     float   P_[3][3];
     float   gStatic_;
-
-    /* free-fall gate anchor: last accepted state and its age */
-    float    anchorH_;
-    float    anchorV_;
-    float    anchorTau_;
-    bool     anchorValid_;
 
     /* see lastProjectedHeight() */
     float    lastProjectedZ_;
