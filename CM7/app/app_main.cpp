@@ -8,7 +8,7 @@
 #include "globals.hpp"   // HWIL_ENABLED lives here now, shared with UserTask.cpp
 #define DISABLE_CRC false
 #define CHECK_TIMER_FREQUENCIES false
-#define BENCH_TEST true   // MUST be false before flight -- see its use below (AltitudeEstimator free-fall gate)
+#define BENCH_TEST true   // MUST be false before flight -- see its use below (AltitudeEstimator sigmaAccel bump)
 
 #include <shared_memory.h>
 #include "app_main.hpp"
@@ -517,7 +517,10 @@ void app_loop() {
 	if (!altitudeEstimatorDone && (uwTick - calStartTick) >= 1500) {
 	    if (g_altEst.finishCalibration()) {
 	        altitudeEstimatorDone = true;
-	        printf("AltitudeEstimator calibrated (lidar+IMU only, baro logged but not fused)\r\n");
+	        const auto& st = g_altEst.status();
+	        printf("AltitudeEstimator calibrated: lidar=%s baro=%s\r\n",
+	               st.lidarCalibratedAtStart ? "OK" : "MISSING",
+	               st.baroCalibratedAtStart  ? "OK" : "MISSING");
 	    } else {
 	        calStartTick = uwTick;      // IMU not ready yet, keep collecting
 	    }
@@ -716,8 +719,9 @@ void tim7_trigger() { // 1 khz low priority
 		onLidarFrame(lidar.getDistance(), lidar.getStrength());
 		s_last_lidar_ok_tick = uwTick;
 	}
-	// baro is logged (see local_sensor_data.baro_* below) but deliberately
-	// not fused into g_altEst -- lidar+IMU only, per request.
+	if (baro.hasNewReading()) {
+		g_altEst.pushBaroFrame(baro.getPressurePa());
+	}
 //    float aw[3];
 //    for (int i = 0; i < 3; ++i)
 //        aw[i] = R[i][0]*a_b[0] + R[i][1]*a_b[1] + R[i][2]*a_b[2];
@@ -778,17 +782,12 @@ void tim12_trigger(){ // mid priority 1000hz platform control task
 	platform_controller.rtU.quaternion[1] = imu.gyroIntegratedRV.j;
 	platform_controller.rtU.quaternion[2] = imu.gyroIntegratedRV.k;
 	platform_controller.rtU.quaternion[3] = imu.gyroIntegratedRV.real;
-	// Bypassing the Kalman-fused height for now -- feed the controller the
-	// raw tilt-corrected lidar range directly (same geometry the filter
-	// itself uses pre-correction, see AltitudeEstimator::update()). Holds
-	// its last value rather than snapping to 0 if lidar hasn't produced a
-	// valid projection yet.
-	if (g_altEst.lastProjectedHeightValid()) {
-		platform_controller.rtU.Height = g_altEst.lastProjectedHeight();
-	}
-	// Pure derivative of the same raw lidar height above -- no IMU, no
-	// Kalman. See onLidarFrame().
-	platform_controller.rtU.Velocity = lidarDerivedVelocity;
+	// Full Kalman fusion (lidar + baro + IMU, with tilt/obstruction/NIS
+	// gating) -- see AltitudeEstimator. Was a raw lidar-only bypass while
+	// the filter itself was still being debugged; switched back now that
+	// it's dependable.
+	platform_controller.rtU.Height = g_altEst.height();
+	platform_controller.rtU.Velocity = g_altEst.velocity();
 	platform_controller.rtU.gyro[0] = imu.gyroIntegratedRV.angVelX;
 	platform_controller.rtU.gyro[1] = imu.gyroIntegratedRV.angVelY;
 	platform_controller.rtU.gyro[2] = imu.gyroIntegratedRV.angVelZ;
@@ -1091,22 +1090,20 @@ void LED_Counter_Tick(void)
 			status |= GoNoGo::LIDAR;
 
 		bool pressure_ok = true;
-//		for (int i = 0; i < 5; i++)
-//			if (adc_dma_buf_pressure[i] < 4000) pressure_ok = false;
+		for (int i = 0; i < 5; i++)
+			if (adc_dma_buf_pressure[i] < 4000) pressure_ok = false;
 		if (pressure_ok) status |= GoNoGo::PRESSURE;
 
 		if (logData.ready) status |= GoNoGo::SD_CARD;
 
-//		if (sentProgress && !droppingNow)
-			status |= GoNoGo::TELEMETRY;
+		if (sentProgress && !droppingNow) status |= GoNoGo::TELEMETRY;
 
 		bool current_ok = true;
-//		for (int i = 0; i < 4; i++)
-//			if (adc_dma_buf_current[i] < 4000) current_ok = false;
+		for (int i = 0; i < 4; i++)
+			if (adc_dma_buf_current[i] < 4000) current_ok = false;
 		if (current_ok) status |= GoNoGo::CURRENT;
 
-//		if (adc_dma_buf_pressure[5] >= BATTERY_RAW_MIN)
-			status |= GoNoGo::BATTERY;
+		if (adc_dma_buf_pressure[5] >= BATTERY_RAW_MIN) status |= GoNoGo::BATTERY;
 
 		go_no_go_status = status;
 	}
