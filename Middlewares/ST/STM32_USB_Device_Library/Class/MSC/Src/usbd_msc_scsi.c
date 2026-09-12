@@ -280,6 +280,10 @@ static int8_t SCSI_Inquiry(USBD_HandleTypeDef *pdev, uint8_t lun, uint8_t *param
     {
       (void)SCSI_UpdateBotData(hmsc, MSC_Page80_Inquiry_Data, LENGTH_INQUIRY_PAGE80);
     }
+    else if (params[2] == 0xB0U) /* Request for VPD page 0xB0 Block Limits */
+    {
+      (void)SCSI_UpdateBotData(hmsc, MSC_PageB0_Inquiry_Data, LENGTH_INQUIRY_PAGEB0);
+    }
     else /* Request Not supported */
     {
       SCSI_SenseCode(pdev, hmsc->cbw.bLUN, ILLEGAL_REQUEST,
