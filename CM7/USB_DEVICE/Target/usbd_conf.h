@@ -75,7 +75,17 @@
 /*---------- -----------*/
 #define USBD_SELF_POWERED     1U
 /*---------- -----------*/
-#define MSC_MEDIA_PACKET     512U
+/* CubeMX's own template default (512U == one SD block) forces the BOT/SCSI
+ * layer (usbd_msc_scsi.c: SCSI_ProcessRead/Write) to call STORAGE_Read_FS/
+ * Write_FS once per 512-byte block no matter how large the host's SCSI
+ * command is -- 100MB is ~205k single-block round trips, each paying full
+ * SD command overhead (and our own BSP_SD_GetCardState() poll in
+ * usbd_storage_if.c) twice per block. Bumped to 8192U (16 blocks/cycle,
+ * same value ST's own MSC examples use) to cut that ~16x. This line has
+ * no USER CODE marker and no .ioc parameter behind it -- CubeMX
+ * regenerates it as 512U verbatim, so re-apply this after any "Generate
+ * Code" run. */
+#define MSC_MEDIA_PACKET     8192U
 
 /****************************************/
 /* #define for FS and HS identification */
