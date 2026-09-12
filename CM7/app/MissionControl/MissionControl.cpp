@@ -39,6 +39,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "platformController.h"
+extern PlatformController platform_controller;
 
 /* ---------------- small local string helpers (no <ctype.h> locale) ------- */
 static char up(char c) { return (c >= 'a' && c <= 'z') ? (char)(c - 32) : c; }
@@ -198,6 +200,7 @@ void MissionControl::SetActuatorMode(controller_modes m) {
 }
 
 bool MissionControl::SafetyReleasedDebounced() {
+	if (safety_override_active) return true;   // telemetry fire override
 	if (!safetyConnectorReleased()) {
 		safety_release_pending = false;
 		return false;
@@ -246,8 +249,24 @@ void MissionControl::BeginShutdown() {
 
 /* ---------------- start / stop ------------------------------------------ */
 
-bool MissionControl::Start() {
+bool MissionControl::Start(bool telemetryFire) {
 	last_error = mission_error_t::NONE;
+
+	/* Telemetry re-sending START/ARM while already ARMED and waiting on
+	 * the pin: the operator's fire confirmation, same effect as pulling
+	 * the safety connector. Button/UART never pass telemetryFire=true, so
+	 * this branch is unreachable for them -- a repeat Start() from either
+	 * of those falls through to the running/NOT_IDLE check below exactly
+	 * as before. Sets safety_override_active, which SafetyReleasedDebounced()
+	 * and the abort_on_safety_connect check in Iter() both then treat as
+	 * "pin released" for the rest of this run, whatever the connector
+	 * actually does. Firing itself still happens through the normal
+	 * ARMED -> BeginOps() path in Iter() on the next tick, not directly
+	 * here. */
+	if (telemetryFire && system_mode == system_modes::ARMED) {
+		safety_override_active = true;
+		return true;
+	}
 
 	/* USB_MODE is terminal for this boot -- see EnterUsbMode(). */
 	if (system_mode == system_modes::USB_MODE) {
@@ -294,6 +313,7 @@ bool MissionControl::Start() {
 	}
 
 	active = m;
+	safety_override_active = false;
 
 	/* logging starts here, at the trigger, for every mission. The file was
 	 * already created and pre-allocated by sd_task for this mission. */
@@ -320,6 +340,11 @@ bool MissionControl::Start() {
 		firing                 = false;
 		safety_release_pending = false;
 		SetActuatorMode(controller_modes::DISABLE);
+		platform_controller.rtU.quaternion_bias[0] = platform_controller.rtU.quaternion[0];
+		platform_controller.rtU.quaternion_bias[1] = platform_controller.rtU.quaternion[1];
+		platform_controller.rtU.quaternion_bias[2] = platform_controller.rtU.quaternion[2];
+		platform_controller.rtU.quaternion_bias[3] = platform_controller.rtU.quaternion[3];
+
 
 		__DMB();
 		system_mode = system_modes::ARMED;
@@ -328,6 +353,7 @@ bool MissionControl::Start() {
 	}
 	return true;
 }
+
 
 void MissionControl::End() {
 	/* USB_MODE is terminal for this boot -- see EnterUsbMode(). Nothing
@@ -342,6 +368,7 @@ void MissionControl::End() {
 	active  = nullptr;
 	*log_recording = false;
 	safety_release_pending = false;
+	safety_override_active = false;
 	req_shutdown = false;
 
 	__DMB();
@@ -469,7 +496,7 @@ void MissionControl::Iter() {
 		if (m == nullptr) { BeginShutdown(); break; }
 		ops_time_counter_ms = uwTick - ops_start_ms;
 
-		if (m->abort_on_safety_connect && !safetyConnectorReleased()) {
+		if (m->abort_on_safety_connect && !safety_override_active && !safetyConnectorReleased()) {
 			last_error = mission_error_t::SAFETY_REINSERTED;
 			BeginShutdown();
 		} else if (req_shutdown) {

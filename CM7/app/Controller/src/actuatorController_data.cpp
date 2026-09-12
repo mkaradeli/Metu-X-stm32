@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'actuatorController'.
 //
-// Model version                  : 1.78
+// Model version                  : 1.80
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Sep  6 13:11:33 2026
+// C/C++ source code generated on : Fri Sep 11 22:45:47 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -253,6 +253,16 @@ controller::actuatorController::P controller::actuatorController::rtP{
 
   0.0174532924F,
 
+  // Computed Parameter: Saturation_UpperSat_k
+  //  Referenced by: '<S1>/Saturation'
+
+  1800.0F,
+
+  // Computed Parameter: Saturation_LowerSat_n
+  //  Referenced by: '<S1>/Saturation'
+
+  0.0F,
+
   // Computed Parameter: Saturation1_UpperSat_k
   //  Referenced by: '<S15>/Saturation1'
 
@@ -273,7 +283,7 @@ controller::actuatorController::P controller::actuatorController::rtP{
 
   188.49556F,
 
-  // Computed Parameter: Saturation_UpperSat_k
+  // Computed Parameter: Saturation_UpperSat_kk
   //  Referenced by: '<S73>/Saturation'
 
   2400.0F,

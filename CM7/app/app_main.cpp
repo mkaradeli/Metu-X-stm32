@@ -8,7 +8,7 @@
 #include "globals.hpp"   // HWIL_ENABLED lives here now, shared with UserTask.cpp
 #define DISABLE_CRC false
 #define CHECK_TIMER_FREQUENCIES false
-#define BENCH_TEST true   // MUST be false before flight -- see its use below (AltitudeEstimator sigmaAccel bump)
+#define BENCH_TEST false   // MUST be false before flight -- see its use below (AltitudeEstimator sigmaAccel bump)
 
 #include <shared_memory.h>
 #include "app_main.hpp"
@@ -135,7 +135,12 @@ static void uplink_cmd_dispatch(uint8_t cmd, uint16_t arg)
 			       (unsigned)arg, (unsigned)missionControl.SelectedIndex());
 			return;
 		}
-		bool ok = missionControl.Start();
+		/* Start(true): arms normally from IDLE, same as button/UART; if
+		 * already ARMED and waiting on the pin, this repeat of the same
+		 * confirmed command instead fires it over telemetry -- the
+		 * software equivalent of pulling the safety connector. See
+		 * MissionControl::Start()'s telemetryFire parameter. */
+		bool ok = missionControl.Start(true);
 		if (ok) printf("ARM %s OK\r\n", missionControl.SelectedName());
 		else    printf("ARM %s FAIL: %s\r\n", missionControl.SelectedName(),
 		                MissionControl::ErrorText(missionControl.last_error));
@@ -805,7 +810,8 @@ void tim12_trigger(){ // mid priority 1000hz platform control task
 
 	// TODO: add drop, and force relationships.
 //	platform_controller.rtU.Dropped = ;
-	platform_controller.step();
+	if (missionControl.firing)
+		platform_controller.step();
 	tim12_profiler.end();
 }
 
@@ -1091,7 +1097,7 @@ void LED_Counter_Tick(void)
 
 		bool pressure_ok = true;
 		for (int i = 0; i < 5; i++)
-			if (adc_dma_buf_pressure[i] < 4000) pressure_ok = false;
+			if (adc_dma_buf_pressure[i] < 4000 or adc_dma_buf_pressure[i]>60000) pressure_ok = false;
 		if (pressure_ok) status |= GoNoGo::PRESSURE;
 
 		if (logData.ready) status |= GoNoGo::SD_CARD;
@@ -1100,7 +1106,7 @@ void LED_Counter_Tick(void)
 
 		bool current_ok = true;
 		for (int i = 0; i < 4; i++)
-			if (adc_dma_buf_current[i] < 4000) current_ok = false;
+			if (adc_dma_buf_current[i] < 4000 or adc_dma_buf_current[i] > 60000) current_ok = false;
 		if (current_ok) status |= GoNoGo::CURRENT;
 
 		if (adc_dma_buf_pressure[5] >= BATTERY_RAW_MIN) status |= GoNoGo::BATTERY;

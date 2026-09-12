@@ -77,4 +77,11 @@ static_assert(encoderSigns[3]==1 or encoderSigns[3]==-1,"degerler sadece +1 ve -
 PlatformController platform_controller;
 HWIL hwil;
 
-const float nozzle_gain[4] = {1/0.1699, 1/0.1723, 1/0.1730, 1/0.1763};
+//const float nozzle_gain[4] = {1/0.1699, 1/0.1723, 1/0.1730, 1/0.1763};
+// yeni gain degerleri
+// 1. act 1. lule
+// 2. act 3. lule
+// 3. act 2. lule
+// 4. act 4. lule
+const float nozzle_gain[4] = {1 / 0.16660695325242125, 1 / 0.1709078324501919, 1 / 0.1699346804015967, 1 / 0.17090348312416986};
+

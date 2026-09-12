@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'platformController'.
 //
-// Model version                  : 1.77
+// Model version                  : 1.83
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Wed Sep  9 22:27:19 2026
+// C/C++ source code generated on : Fri Sep 11 22:45:56 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -143,9 +143,9 @@ class PlatformController final
   struct DW {
     real_T RateTransition1[3];         // '<S5>/Rate Transition1'
     real_T Integrator_DSTATE[3];       // '<S165>/Integrator'
+    real_T RateTransition6_Buffer[4];  // '<S5>/Rate Transition6'
     real_T RateTransition1_Buffer0[3]; // '<S5>/Rate Transition1'
-    real_T RateTransition6_Buffer[4];  // '<S2>/Rate Transition6'
-    real_T RateTransition6_Buffer_h[4];// '<S5>/Rate Transition6'
+    real_T RateTransition6_Buffer_n[4];// '<S2>/Rate Transition6'
     real_T Gain;                       // '<S2>/Gain'
     real_T Integrator_DSTATE_g;        // '<S108>/Integrator'
     real_T Integrator_DSTATE_p;        // '<S49>/Integrator'
@@ -154,7 +154,8 @@ class PlatformController final
     real_T RateTransition3_Buffer;     // '<S2>/Rate Transition3'
     real_T RateTransition2_Buffer;     // '<S2>/Rate Transition2'
     real_T RateTransition1_Buffer;     // '<S2>/Rate Transition1'
-    int8_T Integrator_PrevResetState;  // '<S108>/Integrator'
+    int8_T Integrator_PrevResetState;  // '<S165>/Integrator'
+    int8_T Integrator_PrevResetState_g;// '<S108>/Integrator'
     int8_T Integrator_PrevResetState_n;// '<S49>/Integrator'
     boolean_T RateTransition5_Buffer;  // '<S2>/Rate Transition5'
   };
@@ -169,6 +170,7 @@ class PlatformController final
     real_T T_max_allowed;              // '<Root>/T_max_allowed'
     real_T T_alloc_total;              // '<Root>/T_alloc_total'
     real_T gyro[3];                    // '<Root>/gyro'
+    real_T quaternion_bias[4];         // '<Root>/quaternion_bias'
   };
 
   // External outputs (root outports fed by signals with default storage)
@@ -486,7 +488,7 @@ class PlatformController final
 //  '<S168>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/N Gain/Disabled'
 //  '<S169>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/P Copy/Disabled'
 //  '<S170>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Parallel P Gain/Internal Parameters'
-//  '<S171>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Reset Signal/Disabled'
+//  '<S171>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Reset Signal/External Reset'
 //  '<S172>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Saturation/Enabled'
 //  '<S173>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Saturation Fdbk/Disabled'
 //  '<S174>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Sum/Sum_PI'

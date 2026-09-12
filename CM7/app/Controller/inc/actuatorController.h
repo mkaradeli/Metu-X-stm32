@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'actuatorController'.
 //
-// Model version                  : 1.78
+// Model version                  : 1.80
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Sep  6 13:11:33 2026
+// C/C++ source code generated on : Fri Sep 11 22:45:47 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -336,6 +336,14 @@ namespace controller
       real32_T Gain1_Gain_p;           // Computed Parameter: Gain1_Gain_p
                                           //  Referenced by: '<S11>/Gain1'
 
+      real32_T Saturation_UpperSat_k;
+                                    // Computed Parameter: Saturation_UpperSat_k
+                                       //  Referenced by: '<S1>/Saturation'
+
+      real32_T Saturation_LowerSat_n;
+                                    // Computed Parameter: Saturation_LowerSat_n
+                                       //  Referenced by: '<S1>/Saturation'
+
       real32_T Saturation1_UpperSat_k;
                                    // Computed Parameter: Saturation1_UpperSat_k
                                       //  Referenced by: '<S15>/Saturation1'
@@ -350,9 +358,9 @@ namespace controller
       real32_T Gain_Gain_h;            // Computed Parameter: Gain_Gain_h
                                           //  Referenced by: '<S73>/Gain'
 
-      real32_T Saturation_UpperSat_k;
-                                    // Computed Parameter: Saturation_UpperSat_k
-                                       //  Referenced by: '<S73>/Saturation'
+      real32_T Saturation_UpperSat_kk;
+                                   // Computed Parameter: Saturation_UpperSat_kk
+                                      //  Referenced by: '<S73>/Saturation'
 
       real32_T Saturation_LowerSat_kk;
                                    // Computed Parameter: Saturation_LowerSat_kk

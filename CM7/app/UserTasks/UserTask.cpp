@@ -130,8 +130,8 @@ static void hoverTask(uint32_t time_ms) {
 		 * Front=+X, Back=-X, Right=+Y, Left=-Y. */
 		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_pos;	// +X
 		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_neg;	// -Y
-		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_pos;	// +Y
-		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_neg;	// -X
+		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_neg;	// -X
+		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_pos;	// +Y
 	}
 }
 
@@ -166,10 +166,10 @@ static void dropTask(uint32_t time_ms) {
 //				}
 		if (SAFETY_CHECK){
 
-		actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_pos;	// +X
-		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_neg;	// -Y
-		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_pos;	// +Y
-		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_neg;	// -X
+			actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_pos;	// +X
+			actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_neg;	// -Y
+			actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_neg;	// -X
+			actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_pos;	// +Y
 		} else {
 			actuator[0].actuatorController.rtU.F_demand = 0;	// +X
 			actuator[1].actuatorController.rtU.F_demand = 0;	// +X
@@ -261,7 +261,7 @@ extern const uint8_t missionTableCount =
 
 // HOVER 4
 // DROP 5
-extern const uint8_t defaultMissionIndex = 0;   // TF_OPEN
+extern const uint8_t defaultMissionIndex = 4;   // TF_OPEN
 
 /* The old global logHeader[] / logHeaderSize are gone: sd_task now takes the
  * header text from the selected mission row above. Delete their extern

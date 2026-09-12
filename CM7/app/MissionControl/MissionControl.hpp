@@ -137,7 +137,15 @@ public:
 
 	/* --- control. Start()/End() act immediately, call them from task
 	 *     context. From an ISR use the Request* variants below.      --- */
-	bool Start();
+	/* telemetryFire: telemetry-only. If already ARMED and waiting on the
+	 * physical safety pin, this is the software equivalent of pulling it --
+	 * fires on the next Iter() tick and keeps running even if the
+	 * connector stays (or gets re-)connected for the rest of the flight.
+	 * If not yet armed, behaves exactly like a normal Start(). Button/UART
+	 * must never pass true -- those paths must keep requiring the real
+	 * pin. See MissionControl.cpp for how this interacts with
+	 * SafetyReleasedDebounced() and abort_on_safety_connect. */
+	bool Start(bool telemetryFire = false);
 	void End();
 	void Toggle();
 
@@ -211,6 +219,7 @@ private:
 	const MissionDef *active = nullptr;     // != Selected() during a discharge
 	uint32_t    safety_release_first_ms = 0;
 	bool        safety_release_pending = false;
+	bool        safety_override_active = false; // Start(telemetryFire=true) fired us; treat pin as released
 
 	volatile bool req_start = false;
 	volatile bool req_stop = false;

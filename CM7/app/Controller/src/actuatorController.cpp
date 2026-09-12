@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'actuatorController'.
 //
-// Model version                  : 1.78
+// Model version                  : 1.80
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Sep  6 13:11:33 2026
+// C/C++ source code generated on : Fri Sep 11 22:45:47 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -160,7 +160,7 @@ namespace controller
     real_T tmp;
     real32_T rtb_Gain1;
     real32_T rtb_Gain_n;
-    real32_T rtb_Switch2;
+    real32_T rtb_Saturation;
     real32_T rtb_TSamp;
 
     // Outputs for Enabled SubSystem: '<S1>/Position Controller' incorporates:
@@ -280,12 +280,12 @@ namespace controller
       }
 
       // RateLimiter: '<S13>/Rate Limiter'
-      rtb_Switch2 = rtb_Gain1 - rtDW.PrevY_h;
+      rtb_Saturation = rtb_Gain1 - rtDW.PrevY_h;
       rtb_Gain_n = static_cast<real32_T>
         (currentControllerGains.speed.RateLimiterMax * period);
-      if (rtb_Switch2 > rtb_Gain_n) {
+      if (rtb_Saturation > rtb_Gain_n) {
         rtb_Gain1 = rtb_Gain_n + rtDW.PrevY_h;
-      } else if (rtb_Switch2 < static_cast<real32_T>
+      } else if (rtb_Saturation < static_cast<real32_T>
                  (currentControllerGains.speed.RateLimiterMin * period)) {
         rtb_Gain1 = static_cast<real32_T>
           (currentControllerGains.speed.RateLimiterMin * period) + rtDW.PrevY_h;
@@ -423,12 +423,21 @@ namespace controller
     //   RelationalOperator: '<S9>/Compare'
 
     if (controller_mode == rtP.CompareToConstant6_const) {
-      rtb_Switch2 = rtU.P_nozzle_demand;
+      rtb_Saturation = rtU.P_nozzle_demand;
     } else {
-      rtb_Switch2 = rtDW.Product;
+      rtb_Saturation = rtDW.Product;
     }
 
-    // End of Switch: '<S1>/Switch2'
+    // Saturate: '<S1>/Saturation' incorporates:
+    //   Switch: '<S1>/Switch2'
+
+    if (rtb_Saturation > rtP.Saturation_UpperSat_k) {
+      rtb_Saturation = rtP.Saturation_UpperSat_k;
+    } else if (rtb_Saturation < rtP.Saturation_LowerSat_n) {
+      rtb_Saturation = rtP.Saturation_LowerSat_n;
+    }
+
+    // End of Saturate: '<S1>/Saturation'
 
     // Outputs for Enabled SubSystem: '<S1>/1D Valve Lookup Controller External Table' incorporates:
     //   EnablePort: '<S2>/Enable'
@@ -455,15 +464,15 @@ namespace controller
       // Switch: '<S18>/Switch2' incorporates:
       //   RelationalOperator: '<S18>/LowerRelop1'
 
-      if (rtb_Switch2 <= rtb_Gain1) {
+      if (rtb_Saturation <= rtb_Gain1) {
         // Switch: '<S18>/Switch' incorporates:
         //   Constant: '<S2>/Constant'
         //   RelationalOperator: '<S18>/UpperRelop'
 
-        if (rtb_Switch2 < rtP.Constant_Value) {
+        if (rtb_Saturation < rtP.Constant_Value) {
           rtb_Gain1 = static_cast<real32_T>(rtP.Constant_Value);
         } else {
-          rtb_Gain1 = rtb_Switch2;
+          rtb_Gain1 = rtb_Saturation;
         }
 
         // End of Switch: '<S18>/Switch'
@@ -579,7 +588,7 @@ namespace controller
     rtY.position_demand = rtb_Gain_n;
 
     // Outport: '<Root>/P_nozzle_demand1'
-    rtY.P_nozzle_demand1 = rtb_Switch2;
+    rtY.P_nozzle_demand1 = rtb_Saturation;
 
     // Outport: '<Root>/speedDemand'
     rtY.speedDemand = rtb_TSamp;
@@ -621,8 +630,8 @@ namespace controller
       * rtP.Gain_Gain_h;
 
     // Saturate: '<S73>/Saturation'
-    if (rtb_Gain1 > rtP.Saturation_UpperSat_k) {
-      rtb_Gain1 = rtP.Saturation_UpperSat_k;
+    if (rtb_Gain1 > rtP.Saturation_UpperSat_kk) {
+      rtb_Gain1 = rtP.Saturation_UpperSat_kk;
     } else if (rtb_Gain1 < rtP.Saturation_LowerSat_kk) {
       rtb_Gain1 = rtP.Saturation_LowerSat_kk;
     }
