@@ -6,12 +6,12 @@
  *
  *  USBMSC: hands the SD card over to the USB host as a Mass Storage device,
  *  so any log file can be pulled off directly (drag-and-drop in Finder/
- *  Explorer) instead of one-at-a-time over GETLOG/YMODEM.
+ *  Explorer).
  *
- *  Entered either by the console USBMSC command or automatically once a
- *  real host enumerates us as a mass-storage device (usb_msc_notify_
- *  configured(), called from STORAGE_Init_FS() in usbd_storage_if.c) --
- *  both funnel through usb_msc_request(). NOT triggered off OTG_FS VBUS,
+ *  Entered automatically once a real host enumerates us as a mass-storage
+ *  device (usb_msc_notify_configured(), called from STORAGE_Init_FS() in
+ *  usbd_storage_if.c), which funnels into usb_msc_request(). NOT triggered
+ *  off OTG_FS VBUS,
  *  even though PA9/VBUS-sense now has an internal pull-down (usbd_conf.c)
  *  so it no longer floats with nothing in CN13 -- enumeration is simply a
  *  stronger guarantee than an analog threshold. See
@@ -35,14 +35,13 @@
 extern "C" {
 #endif
 
-/* Called from MissionControl::HandleCommand() (TIM7 ISR context, same as
- * every other console verb). Only cheap state checks -- no FatFs, nothing
- * blocking. The actual card release happens later from usb_msc_poll(). */
+/* Only cheap state checks -- no FatFs, nothing blocking. Called from
+ * usb_msc_check_configured_auto() below; the actual card release happens
+ * later from usb_msc_poll(). */
 bool usb_msc_request(char *reply, size_t n);
 
 /* Call once per app_loop() iteration. This is the only context allowed to
- * touch FatFs for this feature (sd_release_for_usb()) -- see the same
- * constraint already documented for ymodem_poll() in YModem.hpp. */
+ * touch FatFs for this feature (sd_release_for_usb()). */
 void usb_msc_poll();
 
 /* True once the SD card has actually been handed to the USB host --

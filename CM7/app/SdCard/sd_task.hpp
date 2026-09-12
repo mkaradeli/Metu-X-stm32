@@ -32,15 +32,6 @@ void sd_card_task_function();
 
 SdState sd_card_state();
 
-/* Name of the last log file actually closed with data in it -- NOT
- * necessarily "the most recent log%04u.bin on disk", since a file is open
- * here almost continuously (one is created at boot and another right after
- * every mission ends) and that background file is nearly always the most
- * recent one that exists. A plain cached-string read, no FatFs involved, so
- * unlike most of this module it's safe from any context. Returns false if
- * nothing has been recorded yet this session. */
-bool sd_get_last_log_name(char *out, size_t outsz);
-
 /* Cleanly closes/truncates whatever's open (usually just the near-empty
  * background file) and unmounts FatFs, then moves to SdState::UsbOwned so
  * sd_card_prep()/sd_card_task_function() stand down and stop touching the

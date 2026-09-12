@@ -4,10 +4,11 @@
  *  Created on: Sep 9, 2026
  *      Author: karadeli
  *
- *  Context split (do not move work across this line -- same reasoning as
- *  YModem.cpp):
- *    - usb_msc_request() runs from ISR context (TIM7, via
- *      MissionControl::HandleCommand()). Must stay cheap: no FatFs.
+ *  Context split (do not move work across this line):
+ *    - usb_msc_request() only does cheap state checks, no FatFs -- it runs
+ *      both from usb_msc_check_configured_auto() below and, historically,
+ *      from the UART console (removed; USB MSC and remote telemetry now
+ *      cover what that gave an operator).
  *    - usb_msc_poll() runs from app_loop() (the base-level main loop). All
  *      FatFs calls (sd_release_for_usb()) live here.
  */
@@ -15,7 +16,6 @@
 #include "UsbMsc.hpp"
 #include "MissionControl.hpp"
 #include "../SdCard/sd_task.hpp"
-#include "../YModem/YModem.hpp"
 #include "main.h"
 #include <stdio.h>
 
@@ -69,10 +69,6 @@ bool usb_msc_request(char *reply, size_t n)
 {
 	if (usb_msc_requested_flag || usb_msc_ready_flag) {
 		snprintf(reply, n, "USBMSC: already active\r\n");
-		return false;
-	}
-	if (ymodem_active()) {
-		snprintf(reply, n, "USBMSC FAIL: log transfer in progress\r\n");
 		return false;
 	}
 	if (missionControl.system_mode != system_modes::IDLE || missionControl.running) {

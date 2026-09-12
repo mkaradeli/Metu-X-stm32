@@ -169,11 +169,6 @@ public:
 	 *     leave -- see the guard at the top of each. --- */
 	void EnterUsbMode();
 
-	/* --- UART helpers. Call from the main loop, not from an ISR (snprintf) --- */
-	int  ListMissions(char *out, size_t n) const;
-	int  Report(char *out, size_t n) const;
-	bool HandleCommand(const char *cmd, char *reply, size_t n);
-
 	/* --- state --- */
 	controller_modes actuator_mode;
 	system_modes     system_mode;

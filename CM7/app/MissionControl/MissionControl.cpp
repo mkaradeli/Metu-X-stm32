@@ -25,15 +25,14 @@
  *
  *  ISR notes
  *  ---------
- *  Iter() runs in the pressure-loop ISR while Start()/End()/HandleCommand()
- *  run in task context. Every transition therefore writes its timestamps
+ *  Iter() runs in the pressure-loop ISR while Start()/End() run in task
+ *  context. Every transition therefore writes its timestamps
  *  first and publishes `system_mode` last, behind a barrier: an ISR that
  *  preempts mid-transition sees either the old state or a fully consistent
  *  new one, never a new mode with a stale ops_start_ms.
  */
 
 #include "MissionControl.hpp"
-#include "../YModem/YModem.hpp"
 #include "../UsbMsc/UsbMsc.hpp"
 #include "stm32h7xx_hal.h"
 #include <string.h>
@@ -51,25 +50,6 @@ static bool ieq(const char *a, const char *b) {
 		++a; ++b;
 	}
 	return *a == 0 && *b == 0;
-}
-
-/* first token of `s`, copied into buf; returns pointer to the rest */
-static const char* token(const char *s, char *buf, size_t n) {
-	while (*s == ' ' || *s == '\t') ++s;
-	size_t i = 0;
-	while (*s && *s != ' ' && *s != '\t' && *s != '\r' && *s != '\n') {
-		if (i + 1 < n) buf[i++] = *s;
-		++s;
-	}
-	buf[i] = 0;
-	while (*s == ' ' || *s == '\t') ++s;
-	return s;
-}
-
-static bool all_digits(const char *s) {
-	if (*s == 0) return false;
-	for (; *s; ++s) if (*s < '0' || *s > '9') return false;
-	return true;
 }
 /* ------------------------------------------------------------------------ */
 
@@ -270,15 +250,6 @@ bool MissionControl::Start(bool telemetryFire) {
 
 	/* USB_MODE is terminal for this boot -- see EnterUsbMode(). */
 	if (system_mode == system_modes::USB_MODE) {
-		last_error = mission_error_t::BUSY;
-		return false;
-	}
-	/* A GETLOG transfer only ever runs on the ground, but it still owns one
-	 * of FatFs's two open-file slots and holds the console UART's RX in raw
-	 * mode -- arming here (console ARM or the physical button, which reaches
-	 * Start() through ServiceRequests()/Toggle() without ever going through
-	 * HandleCommand()) would start a mission mid-download. */
-	if (ymodem_active()) {
 		last_error = mission_error_t::BUSY;
 		return false;
 	}
@@ -533,124 +504,4 @@ void MissionControl::Iter() {
 		system_mode = system_modes::FAULT;
 		break;
 	}
-}
-
-/* ---------------- UART front-end ---------------------------------------- */
-
-int MissionControl::ListMissions(char *out, size_t n) const {
-	int w = 0;
-	w += snprintf(out + w, (w < (int)n) ? n - w : 0,
-	              "idx  name              ops[ms]  sd[ms]  safety\r\n");
-	for (uint8_t i = 0; i < missionTableCount && w < (int)n; ++i) {
-		const MissionDef &d = missionTable[i];
-		w += snprintf(out + w, (w < (int)n) ? n - w : 0,
-		              "%c%2u  %-16s %8lu %7lu  %s%s\r\n",
-		              (i == selected_index) ? '*' : ' ', (unsigned)i,
-		              d.name ? d.name : "?",
-		              (unsigned long)d.ops_duration_ms,
-		              (unsigned long)d.shutdown_duration_ms,
-		              d.wait_safety_release ? "yes" : "no",
-		              (i == safe_index) ? "  <- DISCHARGE" : "");
-	}
-	return w;
-}
-
-int MissionControl::Report(char *out, size_t n) const {
-	return snprintf(out, n,
-	    "state=%s sel=%u:%s active=%s log=%s t_ops=%lu t_arm=%lu safety=%s err=%s\r\n",
-	    StateName(), (unsigned)selected_index, SelectedName(), ActiveName(),
-	    (*log_recording) ? "REC" : "off",
-	    (unsigned long)ops_time_counter_ms,
-	    (unsigned long)armed_time_counter_ms,
-	    safetyConnectorReleased() ? "OUT" : "IN",
-	    ErrorText(last_error));
-}
-
-/*  Commands (case insensitive):
- *      LIST                 list compile-time missions
- *      SEL <idx|name>       select the armed mission (idle only)
- *      ARM <name>           trigger (same as the button), name must match
- *      STOP | ABORT | END   stop / disarm
- *      SHUTDOWN             graceful early shutdown of a running mission
- *      DISCHARGE | VENT     safe discharge, valid in any state
- *      STATUS               one-line report
- *  Returns true if the command was recognised.
- */
-bool MissionControl::HandleCommand(const char *cmd, char *reply, size_t n) {
-	char verb[16];
-	char arg[32];
-	const char *rest = token(cmd, verb, sizeof(verb));
-	token(rest, arg, sizeof(arg));
-
-	if (verb[0] == 0) return false;
-
-	/* checked before anything else so it still answers in FAULT */
-	if (ieq(verb, "DISCHARGE") || ieq(verb, "VENT") || ieq(verb, "SAFE")) {
-		if (safe_index >= missionTableCount) {
-			snprintf(reply, n, "DISCHARGE FAIL: no SAFE_DISCHARGE mission\r\n");
-		} else {
-			RequestSafeDischarge();
-			snprintf(reply, n, "DISCHARGE requested (%s)\r\n",
-			         missionTable[safe_index].name);
-		}
-		return true;
-	}
-	if (ieq(verb, "LIST")) {
-		ListMissions(reply, n);
-		return true;
-	}
-	if (ieq(verb, "SEL") || ieq(verb, "MISSION")) {
-		bool ok = all_digits(arg) ? Select((uint8_t)atoi(arg)) : Select(arg);
-		snprintf(reply, n, "%s -> %u:%s%s%s\r\n", ok ? "SEL OK" : "SEL FAIL",
-		         (unsigned)selected_index, SelectedName(),
-		         ok ? "" : " : ", ok ? "" : ErrorText(last_error));
-		return true;
-	}
-	if (ieq(verb, "ARM") || ieq(verb, "START") || ieq(verb, "GO")) {
-		/* The mission name has to be repeated. A stray byte burst on the link
-		 * must never be able to fire a testfire, which starts the instant
-		 * Start() returns. */
-		if (arg[0] == 0 || !ieq(arg, SelectedName())) {
-			snprintf(reply, n, "START FAIL: send 'ARM %s' to confirm\r\n",
-			         SelectedName());
-			return true;
-		}
-		bool ok = Start();
-		snprintf(reply, n, "%s %s state=%s%s%s\r\n", ok ? "START OK" : "START FAIL",
-		         SelectedName(), StateName(), ok ? "" : " : ", ok ? "" : ErrorText(last_error));
-		return true;
-	}
-	if (ieq(verb, "STOP") || ieq(verb, "ABORT") || ieq(verb, "END")) {
-		End();
-		snprintf(reply, n, "STOPPED state=%s\r\n", StateName());
-		return true;
-	}
-	if (ieq(verb, "SHUTDOWN")) {
-		RequestShutdown();
-		snprintf(reply, n, "SHUTDOWN requested\r\n");
-		return true;
-	}
-	if (ieq(verb, "STATUS") || ieq(verb, "?")) {
-		Report(reply, n);
-		return true;
-	}
-	if (ieq(verb, "GETLOG")) {
-		/* ymodem_request_transfer() only does cheap state checks here (this
-		 * runs from the same ISR context as the rest of HandleCommand()) --
-		 * the actual transfer, including every FatFs call, happens later
-		 * from ymodem_poll() in app_loop(). Once it takes over this UART's
-		 * RX, no more console commands reach here until it hands control
-		 * back, whether the transfer finishes or is cancelled. */
-		ymodem_request_transfer(reply, n);
-		return true;
-	}
-	if (ieq(verb, "USBMSC")) {
-		/* Same split as GETLOG: only cheap checks here (ISR context), the
-		 * actual FatFs unmount happens later from usb_msc_poll() in
-		 * app_loop(). One-way for this boot -- see sd_release_for_usb(). */
-		usb_msc_request(reply, n);
-		return true;
-	}
-	snprintf(reply, n, "unknown cmd '%s'\r\n", verb);
-	return false;
 }

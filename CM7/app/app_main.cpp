@@ -23,10 +23,8 @@
 #include "Button.hpp"
 #include "string.h"
 #include "UserTask.hpp"
-#include "MissionUart.hpp"
 
 #include "MissionControl.hpp"
-#include "YModem/YModem.hpp"
 #include "UsbMsc/UsbMsc.hpp"
 //#include "platformController.h"
 
@@ -59,7 +57,7 @@ float lidarDerivedVelocity = 0.0f;
  * missionControl.go_no_go_enabled to decide whether arming is allowed. */
 uint8_t  go_no_go_status = 0u;
 #define IMU_STALE_MS    200u   /* IMU reports at 200-400 Hz; way past one period if stale */
-#define LIDAR_STALE_MS  300u   /* lidar repeats ~100/s per MissionUart.cpp's own estimate  */
+#define LIDAR_STALE_MS  300u   /* lidar repeats ~100/s, empirically measured  */
 static uint32_t s_last_imu_ok_tick   = 0u;
 static uint32_t s_last_lidar_ok_tick = 0u;
 
@@ -495,7 +493,6 @@ void app_init() {
 
     missionControl.Init();        // or Init();
     missionControl.Select(defaultMissionIndex);
-    mission_uart_init(&huart3);       // whichever UART your ground link is on
     HilNavInit(&g_denizNav);   // alternate filter, logged only -- see globals.hpp
 
 
@@ -540,30 +537,19 @@ void app_loop() {
 		main_loop_profiler.start();
 
 	if (uwTick - timeOfLastPrint >= 1000){
-		if (ymodem_active()) {
-					/* This printf() block and GETLOG's binary YMODEM stream share
-					 * the same ring buffer (common_print_buffer) -- interleaving
-					 * them mid-transfer would corrupt blocks, not just add a
-					 * stray line the ground tool can skip past. Hold the 1Hz
-					 * timer at "now" instead of printing, so it resumes on a
-					 * clean 1s cadence once the transfer ends rather than
-					 * bursting out everything it missed. */
-					timeOfLastPrint = uwTick;
-				} else {
-					timeOfLastPrint+= 1000;
-					printf("timestamp = %ld\n\r", uwTick);
-					total_cpu_usage = 0;
-					for (int i=0; i<(sizeof(profilers)/sizeof(profilers[0])); i++){
-						profilers[i]->metrics();
-//						printf("%.4s cpu=%f, freq=%f\n\r",profilers[i]->name, profilers[i]->cpu_usage, profilers[i]->call_frequency);
-						total_cpu_usage += profilers[i]->cpu_usage;
-					}
-					printf("%.4s cpu=%f, freq=%f\n\r",nrf24_profiler.name, nrf24_profiler.cpu_usage, nrf24_profiler.call_frequency);
-					printf("%.4s cpu=%f, freq=%f\n\r",sd_card_profiler.name, sd_card_profiler.cpu_usage, sd_card_profiler.call_frequency);
-					HWIL_STEP_profiler.metrics();
-					printf("\ttotal cpu usage = %f\n\r", total_cpu_usage);
-					printf("battery voltage = %f\n\r", battery_voltage);
+		timeOfLastPrint+= 1000;
+		printf("timestamp = %ld\n\r", uwTick);
+		total_cpu_usage = 0;
+		for (int i=0; i<(sizeof(profilers)/sizeof(profilers[0])); i++){
+			profilers[i]->metrics();
+//			printf("%.4s cpu=%f, freq=%f\n\r",profilers[i]->name, profilers[i]->cpu_usage, profilers[i]->call_frequency);
+			total_cpu_usage += profilers[i]->cpu_usage;
 		}
+		printf("%.4s cpu=%f, freq=%f\n\r",nrf24_profiler.name, nrf24_profiler.cpu_usage, nrf24_profiler.call_frequency);
+		printf("%.4s cpu=%f, freq=%f\n\r",sd_card_profiler.name, sd_card_profiler.cpu_usage, sd_card_profiler.call_frequency);
+		HWIL_STEP_profiler.metrics();
+		printf("\ttotal cpu usage = %f\n\r", total_cpu_usage);
+		printf("battery voltage = %f\n\r", battery_voltage);
 //		HWIL_STEP_profiler.metrics();
 //		printf("total cpu usage = %f\n\r", total_cpu_usage);
 //		printf("battery voltage = %f\n\r", battery_voltage);
@@ -572,9 +558,7 @@ void app_loop() {
 		main_loop_profiler.end();
 	if (task_ready(&printf_task)) { // 1000 ms
 		printf_profiler.start();
-//		if (!ymodem_active()) {
 		rb_flush();
-//		}
 		printf_profiler.end();
 	  }
 
@@ -588,7 +572,6 @@ void app_loop() {
 	/* Only safe context for this: FatFs has no reentrancy support and is
 	 * otherwise exclusively driven from sd_card_prep()/sd_card_task_function()
 	 * right above, both called from this same app_loop() iteration. */
-	ymodem_poll();
 	usb_msc_poll();
 
 	if (task_ready(&nrf24_tx_task)) { // 20 ms, 50 Hz downlink
@@ -648,9 +631,6 @@ void tim7_trigger() { // 1 khz low priority
 //			missionControl.Toggle();
 //		}
 //	}
-    mission_uart_poll();              // one DMA counter read when idle
-
-
 
 //	rb_flush();
 	if (task_ready(&IMU_task)) { // 1 ms
@@ -745,7 +725,6 @@ void tim7_trigger() { // 1 khz low priority
 
     if (task_ready(&heartbeat_task))
     	  		LED_Counter_Tick();
-//    missionControl.HandleCommand(rx_line, reply, sizeof(reply))
     // TODO: recive handling
 
 #if HWIL_ENABLED
@@ -966,9 +945,7 @@ void pressure_adc_complete(){
 
 		if(task_ready(&uart_logging)){
 #if not ENABLE_PRINT
-			if (!ymodem_active()) {
-				rb_write(&common_print_buffer, &local_sensor_data, (size_t)sizeof(SensorData_t));
-			}
+			rb_write(&common_print_buffer, &local_sensor_data, (size_t)sizeof(SensorData_t));
 #endif
 		}
 
@@ -1019,7 +996,6 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef* huart) {
     if (huart == s_huart) {
         rb_tx_error_isr();
     }
-    mission_uart_error(huart);        // no-op unless it is the command UART
 }
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
