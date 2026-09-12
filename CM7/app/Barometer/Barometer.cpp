@@ -12,6 +12,8 @@
 namespace {
     constexpr uint8_t REG_CHIP_ID        = 0x01;
     constexpr uint8_t REG_TEMP_DATA_XLSB = 0x1D; /* burst: temp(3) + press(3) */
+    constexpr uint8_t REG_INT_STATUS     = 0x27;
+    constexpr uint8_t REG_STATUS         = 0x28;
     constexpr uint8_t REG_OSR_CONFIG     = 0x36;
     constexpr uint8_t REG_ODR_CONFIG     = 0x37;
     constexpr uint8_t REG_CMD            = 0x7E;
@@ -19,6 +21,27 @@ namespace {
     constexpr uint8_t CHIP_ID_PRIM    = 0x50;
     constexpr uint8_t CHIP_ID_SEC     = 0x51;
     constexpr uint8_t CMD_SOFT_RESET  = 0xB6;
+
+    /* STATUS (0x28): status_nvm_rdy[1], status_nvm_err[2].
+     * INT_STATUS (0x27): por[4] -- set once power-on/soft-reset has
+     * actually completed. Datasheet's own recommended post-power-up
+     * checklist (Sec 4.3.9): CHIP_ID non-zero, nvm_rdy && !nvm_err, por==1
+     * -- our init() used to check none of this. */
+    constexpr uint8_t STATUS_NVM_RDY_BIT  = 0x02;
+    constexpr uint8_t STATUS_NVM_ERR_BIT  = 0x04;
+    constexpr uint8_t INT_STATUS_POR_BIT  = 0x10;
+
+    /* Datasheet t_powup max is 2 ms (time from VDD/VDDIO crossing their
+     * minimums to first-communication-ready) -- but that's measured from
+     * the rail, not from whenever our own init() happens to run. On a
+     * debugger-attached bench boot there's always incidental delay before
+     * init() fires (flash programming, enumeration) that accidentally
+     * clears this. On a cold battery power-up there is no such delay: the
+     * MCU can reach init()'s first I2C byte within microseconds of the
+     * rail coming up, genuinely racing the sensor's own power-on sequence.
+     * This margin is deliberately generous, not just t_powup + a little. */
+    constexpr uint32_t kPowerUpDelayMs    = 5;
+    constexpr uint32_t kNvmReadyTimeoutMs = 10;
 
     /* OSR_CONFIG (0x36): osr_t[2:0], osr_p[5:3], press_en[6] */
     constexpr uint8_t OSR_TEMP_1X   = 0x00;
@@ -56,9 +79,31 @@ bool Barometer::readReg(uint8_t reg, uint8_t* value) {
 }
 
 bool Barometer::init() {
+    HAL_Delay(kPowerUpDelayMs); /* let VDD/VDDIO settle past t_powup before
+                                   any communication -- see kPowerUpDelayMs */
+
     if (!writeReg(REG_CMD, CMD_SOFT_RESET))
         return false;
     HAL_Delay(3); /* datasheet: soft reset takes ~2 ms */
+
+    uint8_t intStatus = 0;
+    if (!readReg(REG_INT_STATUS, &intStatus))
+        return false;
+    if (!(intStatus & INT_STATUS_POR_BIT))
+        return false; /* reset never actually completed */
+
+    uint8_t status = 0;
+    const uint32_t nvmWaitStart = HAL_GetTick();
+    for (;;) {
+        if (!readReg(REG_STATUS, &status))
+            return false;
+        if (status & STATUS_NVM_ERR_BIT)
+            return false; /* NVM failed to load -- dead or damaged part */
+        if (status & STATUS_NVM_RDY_BIT)
+            break;
+        if (HAL_GetTick() - nvmWaitStart >= kNvmReadyTimeoutMs)
+            return false;
+    }
 
     uint8_t chipId = 0;
     if (!readReg(REG_CHIP_ID, &chipId))
@@ -78,6 +123,7 @@ bool Barometer::init() {
     if (!writeReg(REG_ODR_CONFIG, odr))
         return false;
 
+    bootPressureCaptured_ = false;
     readInProgress_ = false;
     newReading_ = false;
     return true;
@@ -125,6 +171,10 @@ void Barometer::onReadComplete() {
     heightM_   = bootPressureCaptured_
                ? altitudeM_ - pressureToAltitude(bootPressurePa_, referencePa_)
                : 0.0f;
+
+    if (heightM_ > 1000.0f or heightM_ < -1000.0f){
+    	bootPressureCaptured_ = false;
+    }
 }
 
 void Barometer::onReadError() {

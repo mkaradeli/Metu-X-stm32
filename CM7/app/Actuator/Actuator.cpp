@@ -58,6 +58,22 @@ void Actuator::actuator_controller_step() {
 
 void Actuator::updateHallEffect() {
 	this->hallEffect.update_subBuffer();
+	if (!(hallEffect.sign_validated())){
+		if (this->getDutyCycle() != 0.0f){
+			float valve = this->hallEffect.valveAngle;
+			float ref = this->actuatorController.rtY.pos_ref_rate_limited;
+			if (valve > 10 or valve < -10){
+				if (true) {
+					if (valve<0.0){
+						this->hallEffect.InvertSign();
+						this->hallEffect.set_sign_valid();
+					} else {
+						this->hallEffect.set_sign_valid();
+					}
+				}
+			}
+		}
+	}
 }
 void Actuator::setDuty(float normalValue) {
 #if ENABLE_MOTORS

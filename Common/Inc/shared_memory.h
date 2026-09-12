@@ -83,6 +83,8 @@ typedef struct __attribute__((packed)) {
 	float acceleration_command;
 	float vertical_thrust_command;
 
+	float denizHeight;
+	float denizVelocity;
 
 	float battery_voltage;
 	uint16_t crc;

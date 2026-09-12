@@ -23,6 +23,7 @@
 #include "Barometer.hpp"
 
 #include "AltitudeEstimator.hpp"
+#include "HilNav.h"
 
 #include "platformController.h"
 #include "app_main.hpp"
@@ -61,6 +62,10 @@ extern PlatformController platform_controller;
 extern const float nozzle_gain[4];
 extern AltitudeEstimator::Params p;
 extern AltitudeEstimator g_altEst;
+/* Deniz's HilNav filter, run alongside g_altEst purely for logging and
+ * offline comparison -- see onImuReport()/onLidarFrame()/pressure_adc_complete()
+ * in app_main.cpp. Nothing reads its output for control. */
+extern HilNav g_denizNav;
 extern HWIL hwil;
 extern BNO085 imu;
 /*

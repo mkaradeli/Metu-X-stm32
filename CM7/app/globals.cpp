@@ -44,7 +44,7 @@ PressureSensor* Actuator::manifold = &psSensors[4];
 LoadCell loadCell(&adc_dma_buf_pressure[3]);
 
 
-const uint16_t logFormatId = 19;
+const uint16_t logFormatId = 21;   // bumped: SensorData_t grew denizHeight/denizVelocity
 
 
 const uint16_t sensorDataLength = sizeof(SensorData_t);
@@ -66,6 +66,7 @@ const float ValveFitPressureRatios[4][11] = {{0, 0.08017, 0.18849, 0.27854, 0.37
 //gnc::AltitudeEstimator altEstimator;
 AltitudeEstimator::Params p;
 AltitudeEstimator g_altEst;
+HilNav g_denizNav;
 
 
 

@@ -44,10 +44,19 @@ public:
 	void calibrate();
 //	void update();
 	void update_subBuffer();
-
+	void InvertSign(){
+		sign = -sign;
+	}
+	bool sign_validated(){
+		return sign_valid;
+	}
+	void set_sign_valid(){
+		sign_valid = true;
+	}
 
 private:
 	int sign;
+	bool sign_valid=false;
 	bool wasInMiddle;
 	bool wasInMiddle_subBuffer;
 	int32_t shifter;

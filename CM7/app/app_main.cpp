@@ -496,6 +496,13 @@ void app_init() {
     missionControl.Init();        // or Init();
     missionControl.Select(defaultMissionIndex);
     mission_uart_init(&huart3);       // whichever UART your ground link is on
+    HilNavInit(&g_denizNav);   // alternate filter, logged only -- see globals.hpp
+
+
+     baroHealthy = baro.init();
+    printf("BMP581 baro: %s\r\n",
+    		       baroHealthy ? "OK" : "NOT RESPONDING (check I2C4 wiring/address)");
+
     g_altEst.beginCalibration();
     calStartTick = uwTick;
     HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
@@ -551,6 +558,8 @@ void app_loop() {
 //						printf("%.4s cpu=%f, freq=%f\n\r",profilers[i]->name, profilers[i]->cpu_usage, profilers[i]->call_frequency);
 						total_cpu_usage += profilers[i]->cpu_usage;
 					}
+					printf("%.4s cpu=%f, freq=%f\n\r",nrf24_profiler.name, nrf24_profiler.cpu_usage, nrf24_profiler.call_frequency);
+					printf("%.4s cpu=%f, freq=%f\n\r",sd_card_profiler.name, sd_card_profiler.cpu_usage, sd_card_profiler.call_frequency);
 					HWIL_STEP_profiler.metrics();
 					printf("\ttotal cpu usage = %f\n\r", total_cpu_usage);
 					printf("battery voltage = %f\n\r", battery_voltage);
@@ -726,6 +735,7 @@ void tim7_trigger() { // 1 khz low priority
 	}
 	if (baro.hasNewReading()) {
 		g_altEst.pushBaroFrame(baro.getPressurePa());
+		HilNavPushBaro(&g_denizNav, baro.getHeightM(), baro.getPressurePa(), micros() * 1e-6, 1);
 	}
 //    float aw[3];
 //    for (int i = 0; i < 3; ++i)
@@ -941,6 +951,14 @@ void pressure_adc_complete(){
         local_sensor_data.baro_ambientTemp = baro.getTemperatureC();
         local_sensor_data.baro_pressure = baro.getPressurePa();
         local_sensor_data.baro_height = baro.getHeightM();
+
+        local_sensor_data.velocity_target = platform_controller.rtY.V_target;
+        local_sensor_data.acceleration_feedforward = platform_controller.rtY.a_ff;
+        local_sensor_data.acceleration_command = platform_controller.rtY.a_cmd;
+        local_sensor_data.vertical_thrust_command = platform_controller.rtY.VerticalThrustCmd;
+        local_sensor_data.denizHeight = static_cast<float>(g_denizNav.X[HILNAV_H]);
+        local_sensor_data.denizVelocity = static_cast<float>(g_denizNav.X[HILNAV_V]);
+
 //        float ambientTemp;
 //        	float pressure;
 //        	float height;
@@ -1024,11 +1042,19 @@ void onImuReport(const BNO085& r) {
     const float q[4] = { r.gyroIntegratedRV.real, r.gyroIntegratedRV.i, r.gyroIntegratedRV.j, r.gyroIntegratedRV.k };
     const float a[3] = { r.accel.x, r.accel.y, r.accel.z };
     g_altEst.pushImu(a, q, dt);
+
+    // Deniz's HilNav, driven off the same samples, logged only -- see globals.hpp.
+    const double denizQ[4] = { q[0], q[1], q[2], q[3] };
+    const double denizA[3] = { a[0], a[1], a[2] };
+    const double denizW[3] = { r.gyroIntegratedRV.angVelX, r.gyroIntegratedRV.angVelY, r.gyroIntegratedRV.angVelZ };
+    HilNavPushImu(&g_denizNav, denizQ, denizA, denizW, micros() * 1e-6, 1);
 }
 void onLidarFrame(uint16_t distMm, uint16_t strength) {
     const float q[4] = { imu.gyroIntegratedRV.real, imu.gyroIntegratedRV.i,
                          imu.gyroIntegratedRV.j,    imu.gyroIntegratedRV.k };
     g_altEst.pushLidarFrame(distMm, strength, q);
+
+    HilNavPushRange(&g_denizNav, distMm * 0.001, strength, micros() * 1e-6, 1);
 
     if (g_altEst.hasNewProjectedHeight()) {
         static float    s_prevHeight = 0.0f;
