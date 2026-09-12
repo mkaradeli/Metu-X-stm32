@@ -208,8 +208,8 @@ extern const MissionDef missionTable[] = {
 
  { "TF_OPEN",  system_modes::TESTFIRE, controller_modes::POSITION,
    testfireOpenTask,  valveShutdown,
-   TESTFIRE_OPS_MS, 60000, 0,
-   60000,  false, false, 0,
+   TESTFIRE_OPS_MS, 3000, 0,
+   15000,  false, false, 0,
    "Nozzle Dia = 2.8, Nozzle 1, Mission = TESTFIRE opening steps" },
 
  { "TF_CLOSE", system_modes::TESTFIRE, controller_modes::POSITION,

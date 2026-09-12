@@ -76,6 +76,14 @@ typedef struct __attribute__((packed)) {
 	float baro_ambientTemp;
 	float baro_pressure;
 	float baro_height;
+
+
+	float velocity_target;
+	float acceleration_feedforward;
+	float acceleration_command;
+	float vertical_thrust_command;
+
+
 	float battery_voltage;
 	uint16_t crc;
 } SensorData_t;

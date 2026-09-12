@@ -207,7 +207,7 @@ task_timer_t printf_task = {1, 0};
 task_timer_t heartbeat_task = {100, 0}; // period ms, start ms
 
 task_timer_t uart_logging = { 2, 0};
-task_timer_t nrf24_tx_task = {20, 0};   // 50 Hz downlink
+task_timer_t nrf24_tx_task = {10, 0};   // 50 Hz downlink
 task_timer_t baro_task = {10, 0};       // 100 Hz, matches Barometer::init()'s ODR (NORMAL mode)
 
 __attribute__((section(".sram3"), used))

@@ -214,7 +214,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
     PeriphClkInitStruct.PLL3.PLL3M = 32;
     PeriphClkInitStruct.PLL3.PLL3N = 120;
     PeriphClkInitStruct.PLL3.PLL3P = 2;
-    PeriphClkInitStruct.PLL3.PLL3Q = 60;
+    PeriphClkInitStruct.PLL3.PLL3Q = 12;
     PeriphClkInitStruct.PLL3.PLL3R = 120;
     PeriphClkInitStruct.PLL3.PLL3RGE = RCC_PLL3VCIRANGE_1;
     PeriphClkInitStruct.PLL3.PLL3VCOSEL = RCC_PLL3VCOWIDE;

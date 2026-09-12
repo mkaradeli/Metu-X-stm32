@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'platformController'.
 //
-// Model version                  : 1.83
+// Model version                  : 1.87
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Fri Sep 11 22:45:56 2026
+// C/C++ source code generated on : Sat Sep 12 11:43:14 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -180,6 +180,10 @@ class PlatformController final
     real_T Fx_neg;                     // '<Root>/Fx_neg'
     real_T Fx_pos;                     // '<Root>/Fx_pos'
     real_T omega_demand[3];            // '<Root>/omega_demand'
+    real_T V_target;                   // '<Root>/V_target'
+    real_T a_ff;                       // '<Root>/a_ff'
+    real_T a_cmd;                      // '<Root>/a_cmd'
+    real_T VerticalThrustCmd;          // '<Root>/VerticalThrustCmd'
   };
 
   // Real-time Model Data Structure
@@ -297,10 +301,10 @@ class PlatformController final
 //  Block '<S2>/Cast To Boolean' : Unused code path elimination
 //  Block '<S2>/Cast To Boolean1' : Unused code path elimination
 //  Block '<S2>/Cast To Boolean2' : Unused code path elimination
-//  Block '<S2>/Cast To Boolean3' : Unused code path elimination
 //  Block '<S61>/Kt' : Eliminated nontunable gain of 1
 //  Block '<S120>/Kt' : Eliminated nontunable gain of 1
 //  Block '<S5>/Rate Transition2' : Eliminated since input and output rates are identical
+//  Block '<S2>/Cast To Boolean3' : Eliminate redundant data type conversion
 
 
 //-
