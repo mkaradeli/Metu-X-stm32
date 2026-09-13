@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'platformController'.
 //
-// Model version                  : 1.102
+// Model version                  : 1.104
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Sep 13 22:24:52 2026
+// C/C++ source code generated on : Mon Sep 14 00:58:52 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -25,16 +25,16 @@
 // Exported block parameters
 struct_RzX5A87yYhLUhlAxm0ffzC platform_targets{
   0.4,
-  0.35,
+  0.075,
   1.0,
-  10.0,
+  11.3,
   5.0,
   12.0,
   0.02,
   50.0,
 
   {
-    9.8,
+    10.0,
     32.013333333333343,
     18.769230769230766,
     78.285338593030872
