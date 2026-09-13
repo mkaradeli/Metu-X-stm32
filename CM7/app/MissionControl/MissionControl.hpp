@@ -61,7 +61,7 @@ enum class mission_error_t : uint8_t {
 namespace GoNoGo {
 enum : uint8_t {
 	IMU       = 1u << 0,
-	LIDAR     = 1u << 1,
+	LIDAR     = 1u << 1,   // also gates the barometer -- bundled, not a separate bit
 	PRESSURE  = 1u << 2,
 	SD_CARD   = 1u << 3,
 	TELEMETRY = 1u << 4,

@@ -90,7 +90,7 @@ void Actuator::calibrate(){
 	this->updateHallEffect();
 	this->hallEffect.calibrate();
 	this->psSensor->calibrate();
-	if (this->current_meas > -30.0f)
+	if (this->current_meas > -30.0f and this->current_meas < 30.0f)
 		this->current_bias = this->current_meas;
 }
 

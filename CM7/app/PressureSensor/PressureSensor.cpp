@@ -17,7 +17,7 @@ PressureSensor::PressureSensor(uint16_t *raw_value){
 }
 
 void PressureSensor::calibrate(){
-	if (bar>-50.0f)
+	if (bar>-50.0f and bar<330)
 		shift_bar += -bar_filtered;
 
 }

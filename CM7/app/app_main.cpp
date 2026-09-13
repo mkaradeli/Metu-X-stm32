@@ -58,8 +58,10 @@ float lidarDerivedVelocity = 0.0f;
 uint8_t  go_no_go_status = 0u;
 #define IMU_STALE_MS    200u   /* IMU reports at 200-400 Hz; way past one period if stale */
 #define LIDAR_STALE_MS  300u   /* lidar repeats ~100/s, empirically measured  */
+#define BARO_STALE_MS   300u   /* baro_task runs at 100 Hz, same margin as lidar */
 static uint32_t s_last_imu_ok_tick   = 0u;
 static uint32_t s_last_lidar_ok_tick = 0u;
+static uint32_t s_last_baro_ok_tick  = 0u;
 
 /* Battery: 6S LiPo, sensed on adc_dma_buf_pressure[5] through a 1/21 divider.
  * BATTERY_ADC_VREF_V assumes VREF+ = VDDA = 3.3 V (no VREFBUF override found
@@ -716,6 +718,7 @@ void tim7_trigger() { // 1 khz low priority
 	if (baro.hasNewReading()) {
 		g_altEst.pushBaroFrame(baro.getPressurePa());
 		HilNavPushBaro(&g_denizNav, baro.getHeightM(), baro.getPressurePa(), micros() * 1e-6, 1);
+		s_last_baro_ok_tick = uwTick;
 	}
 //    float aw[3];
 //    for (int i = 0; i < 3; ++i)
@@ -1087,19 +1090,28 @@ void LED_Counter_Tick(void)
 		BSP_LED_On(LED_YELLOW);
 
 	/* Go/no-go: recompute which of the 7 gated subsystems are currently
-	 * healthy. See MissionControl::Start(), which ANDs this against
+	 * healthy (barometer is folded into LIDAR -- see below). See
+	 * MissionControl::Start(), which ANDs this against
 	 * missionControl.go_no_go_enabled before allowing an arm. */
 	{
 		uint8_t status = 0;
 
 		if ((uwTick - s_last_imu_ok_tick) < IMU_STALE_MS)
 			status |= GoNoGo::IMU;
-		if ((uwTick - s_last_lidar_ok_tick) < LIDAR_STALE_MS)
+		/* Barometer is bundled into the LIDAR bit rather than getting its own
+		 * (would mean a new enum value + a wire-format bump for ground tools) --
+		 * LIDAR only reads healthy if both altitude sources are fresh, and the
+		 * baro's height reads within a sane range of the pad (+-50 m; a wild
+		 * reading here means a bad/uncalibrated sensor, not a real flight). */
+		bool baro_range_ok = baro.getHeightM() > -50.0f && baro.getHeightM() < 50.0f;
+		if ((uwTick - s_last_lidar_ok_tick) < LIDAR_STALE_MS &&
+		    (uwTick - s_last_baro_ok_tick)  < BARO_STALE_MS  &&
+		    baro_range_ok)
 			status |= GoNoGo::LIDAR;
 
 		bool pressure_ok = true;
 		for (int i = 0; i < 5; i++)
-			if (adc_dma_buf_pressure[i] < 4000 or adc_dma_buf_pressure[i]>60000) pressure_ok = false;
+			if (adc_dma_buf_pressure[i] < 4000 or adc_dma_buf_pressure[i]>61800) pressure_ok = false;
 		if (pressure_ok) status |= GoNoGo::PRESSURE;
 
 		if (logData.ready) status |= GoNoGo::SD_CARD;
