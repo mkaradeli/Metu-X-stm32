@@ -236,14 +236,14 @@ extern const MissionDef missionTable[] = {
   * past it costs a bit of latency but does not stop the log.              */
  { "HOVER", system_modes::HOVER, controller_modes::FORCE,
    hoverTask, valveShutdown,
-   8000, 1000, 2000,
+   6000, 1000, 1,
    300000, true,  true,  0,
    "Mission = HOVER" },
 
  { "DROP",  system_modes::DROP,  controller_modes::FORCE,
    dropTask,  valveShutdown,
-   180000, 5000, 2000,
-   120000, true,  true,  0,
+   5000, 1000, 1,
+   300000, true,  true,  0,
    "Mission = DROP" },
 
 	{ "CONST_THRUST",  system_modes::TESTFIRE,  controller_modes::FORCE,

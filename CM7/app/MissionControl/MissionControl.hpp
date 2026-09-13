@@ -143,8 +143,10 @@ public:
 	 * connector stays (or gets re-)connected for the rest of the flight.
 	 * If not yet armed, behaves exactly like a normal Start(). Button/UART
 	 * must never pass true -- those paths must keep requiring the real
-	 * pin. See MissionControl.cpp for how this interacts with
-	 * SafetyReleasedDebounced() and abort_on_safety_connect. */
+	 * pin. Exception: HOVER and DROP never honor this override regardless
+	 * of what telemetry sends -- those two kinds only ever fire off the
+	 * real safety connector. See MissionControl.cpp for how this interacts
+	 * with SafetyReleasedDebounced() and abort_on_safety_connect. */
 	bool Start(bool telemetryFire = false);
 	void End();
 	void Toggle();

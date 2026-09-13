@@ -242,8 +242,15 @@ bool MissionControl::Start(bool telemetryFire) {
 	 * "pin released" for the rest of this run, whatever the connector
 	 * actually does. Firing itself still happens through the normal
 	 * ARMED -> BeginOps() path in Iter() on the next tick, not directly
-	 * here. */
-	if (telemetryFire && system_mode == system_modes::ARMED) {
+	 * here.
+	 *
+	 * HOVER and DROP never get this override, no matter what telemetry
+	 * sends -- those two only fire off the physical safety connector. Falls
+	 * through to the running/NOT_IDLE check below, same as a repeat
+	 * button/UART Start() while already ARMED. */
+	bool telemetryFireBlocked = active && (active->kind == system_modes::HOVER ||
+	                                        active->kind == system_modes::DROP);
+	if (telemetryFire && system_mode == system_modes::ARMED && !telemetryFireBlocked) {
 		safety_override_active = true;
 		return true;
 	}
