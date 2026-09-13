@@ -377,7 +377,7 @@ void app_init() {
 
 //	  actuator[0].setDuty(1.0f);
 //	  motors[0].setDuty(1.0f);
-      p.lever[2]   = 0.06f;
+      p.lever[2]   = 0.24f;
       p.sigmaAccel = 0.30f;
 #if BENCH_TEST
       /* sigmaAccel sets how much the filter expects height uncertainty to
@@ -919,7 +919,7 @@ void pressure_adc_complete(){
 		local_sensor_data.kf_altitude = hwil.rtY.position;
 		local_sensor_data.kf_velocity = hwil.rtY.velocity;
 #else
-		local_sensor_data.kf_altitude = g_altEst.height();
+		local_sensor_data.kf_altitude = g_altEst.height()+0.18f;
 		local_sensor_data.kf_velocity = g_altEst.velocity();
 #endif
 

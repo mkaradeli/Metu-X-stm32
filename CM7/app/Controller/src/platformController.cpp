@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'platformController'.
 //
-// Model version                  : 1.100
+// Model version                  : 1.102
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Sep 13 15:39:53 2026
+// C/C++ source code generated on : Sun Sep 13 22:24:52 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -23,17 +23,15 @@
 #include "rtwtypes.h"
 
 // Exported block parameters
-struct_mDMskPTuLBbAOKfKE3o5aB platform_targets{
-  0.1,
-  0.25,
+struct_RzX5A87yYhLUhlAxm0ffzC platform_targets{
+  0.4,
+  0.35,
   1.0,
-  9.0,
-  15.0,
+  10.0,
   5.0,
   12.0,
   0.02,
   50.0,
-  2.7404379212089442,
 
   {
     9.8,
@@ -80,6 +78,7 @@ struct_mDMskPTuLBbAOKfKE3o5aB platform_targets{
                                           //    '<S4>/Saturation1'
                                           //    '<S4>/Saturation3'
                                           //    '<S7>/Constant'
+                                          //    '<S9>/Constant'
                                           //    '<S73>/Constant6'
                                           //    '<S137>/Gain3'
                                           //    '<S138>/Gain4'
@@ -485,13 +484,15 @@ void PlatformController::step()
     rtb_Sqrt = std::fmin(rtb_RateTransition4, platform_targets.a_dec);
 
     // Sum: '<S60>/Sum' incorporates:
+    //   Constant: '<S3>/Constant2'
     //   Constant: '<S3>/Constant3'
     //   DiscreteIntegrator: '<S50>/Integrator'
+    //   Product: '<S43>/DProd Out'
     //   Product: '<S55>/PProd Out'
     //   UnaryMinus: '<S44>/Unary Minus'
 
     rtb_Sum_dy = (rtb_Sum_cj * platform_targets.altitude.kP +
-                  rtDW.Integrator_DSTATE_p) + rtb_Sqrt;
+                  rtDW.Integrator_DSTATE_p) + -rtb_Sqrt * -0.9;
 
     // Switch: '<S58>/Switch2' incorporates:
     //   Constant: '<S3>/Constant1'
@@ -561,9 +562,7 @@ void PlatformController::step()
       //   Constant: '<S9>/Constant'
       //   RelationalOperator: '<S9>/Compare'
 
-      if (rtb_RateTransition2 <= 0.25) {
-        rtb_RateTransition4 = 0.0;
-      } else {
+      if (rtb_RateTransition2 >= platform_targets.h_cut) {
         // Product: '<S3>/Product1' incorporates:
         //   Bias: '<S3>/Bias3'
 
@@ -586,6 +585,8 @@ void PlatformController::step()
         }
 
         // End of Switch: '<S12>/Switch2'
+      } else {
+        rtb_RateTransition4 = 0.0;
       }
 
       // End of Switch: '<S3>/Switch1'

@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'platformController'.
 //
-// Model version                  : 1.100
+// Model version                  : 1.102
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Sep 13 15:39:53 2026
+// C/C++ source code generated on : Sun Sep 13 22:24:52 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -77,21 +77,19 @@ struct struct_v979rSJRDDDrYT4G0rVPqH
 
 #endif
 
-#ifndef DEFINED_TYPEDEF_FOR_struct_mDMskPTuLBbAOKfKE3o5aB_
-#define DEFINED_TYPEDEF_FOR_struct_mDMskPTuLBbAOKfKE3o5aB_
+#ifndef DEFINED_TYPEDEF_FOR_struct_RzX5A87yYhLUhlAxm0ffzC_
+#define DEFINED_TYPEDEF_FOR_struct_RzX5A87yYhLUhlAxm0ffzC_
 
-struct struct_mDMskPTuLBbAOKfKE3o5aB
+struct struct_RzX5A87yYhLUhlAxm0ffzC
 {
   real_T V_td;
   real_T h_cut;
   real_T h_blend;
   real_T a_dec;
-  real_T a_dec_high;
   real_T a_dec_low;
   real_T V_max;
   real_T Ts;
   real_T fs;
-  real_T v_blend;
   struct_okYxSE3z6idPvgUgXDzESH altitude;
   struct_Jxr89TJYpsbjCdhVuFSiDD hover;
   struct_v979rSJRDDDrYT4G0rVPqH attitude;
@@ -107,7 +105,7 @@ struct struct_mDMskPTuLBbAOKfKE3o5aB
 //  these parameters and exports their symbols.
 //
 
-extern struct_mDMskPTuLBbAOKfKE3o5aB platform_targets;// Variable: platform_targets
+extern struct_RzX5A87yYhLUhlAxm0ffzC platform_targets;// Variable: platform_targets
                                                          //  Referenced by:
                                                          //    '<S3>/Bias1'
                                                          //    '<S3>/Bias2'
@@ -124,6 +122,7 @@ extern struct_mDMskPTuLBbAOKfKE3o5aB platform_targets;// Variable: platform_targ
                                                          //    '<S4>/Saturation1'
                                                          //    '<S4>/Saturation3'
                                                          //    '<S7>/Constant'
+                                                         //    '<S9>/Constant'
                                                          //    '<S73>/Constant6'
                                                          //    '<S137>/Gain3'
                                                          //    '<S138>/Gain4'
