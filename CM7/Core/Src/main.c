@@ -255,7 +255,6 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-//  uint32_t timeOfLastToggleForGreen=uwTick;
 
   app_init();
   while (1)
@@ -265,16 +264,7 @@ __HAL_TIM_SET_COUNTER(&htim2, htim2.Instance->ARR - 200);    // ~1 µs to first 
     {
       BspButtonState = BUTTON_RELEASED;
       BSP_LED_Toggle(LED_YELLOW);
-//      HAL_GPIO_TogglePin(test_point_GPIO_Port, test_point_Pin);
-//      pc8_active = HAL_GPIO_ReadPin(test_point_GPIO_Port, test_point_Pin);
     }
-
-//    if (task_ready(&heartbeat_task))
-//		LED_Counter_Tick();
-//    if (task_ready(&common_heartbeat_task)) {
-////    	if ((uwTick/1000)%2)
-//		BSP_LED_On(LED_RED);
-//    }
     app_loop();
 
 
@@ -348,49 +338,9 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
-//static int sd_mount(){
-//	FATFS FatFs;
-//	FRESULT FR_Status;
-//	FR_Status = f_mount(&FatFs, "", 1);
-//	if (FR_Status != FR_OK)
-//	{
-//		printf("Error! While Mounting SD Card, Error Code: (%i)\r\n", FR_Status);
-//		return FR_Status;
-//	}
-//	return FR_Status;
-//
-//
-//}
 
-//void sd_mount_check () {
-//
-//
-//
-//};
 extern SensorData_Buffer_t logData;
-//void LED_Counter_Tick(void)
-//{
-//	const static uint8_t timing[] = {1, 0, 1, 0, 0, 0, 0};
-//	const static uint8_t timing_logging[]= {1, 0, 1, 0, 1, 0, 0};
-//	static uint8_t index = 0;
-//	if (logData.record){
-//		if (timing_logging[index])
-//			BSP_LED_On(LED_YELLOW);
-//		else
-//			BSP_LED_Off(LED_YELLOW);
-//		}
-//	else {
-//		if (timing[index])
-//			BSP_LED_On(LED_YELLOW);
-//		else
-//			BSP_LED_Off(LED_YELLOW);
-//	}
-//
-//
-//
-//	index ++;
-//	index %= 7;
-//}
+
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
