@@ -241,7 +241,7 @@ extern const MissionDef missionTable[] = {
 
  { "SAFE_DISCHARGE", system_modes::SAFE_DISCHARGE, controller_modes::POSITION,
    safeDischargeTask, valveShutdown,
-   600000, 3000, 0,
+   600000, 0, 0,
    35000,  false, false, 0,
    "Mission = SAFE_DISCHARGE, all valves 100 deg" },
 
