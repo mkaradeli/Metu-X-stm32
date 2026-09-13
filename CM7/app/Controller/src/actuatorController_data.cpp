@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'actuatorController'.
 //
-// Model version                  : 1.80
+// Model version                  : 1.82
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Fri Sep 11 22:45:47 2026
+// C/C++ source code generated on : Sun Sep 13 15:43:11 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -122,40 +122,10 @@ controller::actuatorController::P controller::actuatorController::rtP{
 
   0.0,
 
-  // Expression: -15
-  //  Referenced by: '<S13>/Constant1'
-
-  -15.0,
-
-  // Expression: -2
-  //  Referenced by: '<S13>/Constant2'
-
-  -2.0,
-
-  // Expression: [0.0]
-  //  Referenced by: '<S13>/Y'
-
-  0.0,
-
   // Expression: 15
   //  Referenced by: '<S13>/Constant'
 
   15.0,
-
-  // Computed Parameter: DiscreteTimeIntegrator_gainval
-  //  Referenced by: '<S13>/Discrete-Time Integrator'
-
-  0.001,
-
-  // Expression: 0
-  //  Referenced by: '<S13>/Discrete-Time Integrator'
-
-  0.0,
-
-  // Computed Parameter: Gain2_Gain
-  //  Referenced by: '<S13>/Gain2'
-
-  4.454289436340332,
 
   // Computed Parameter: Gain_Gain
   //  Referenced by: '<S2>/Gain'
@@ -188,6 +158,16 @@ controller::actuatorController::P controller::actuatorController::rtP{
   { 0.0F, 100.0F, 200.0F, 300.0F, 400.0F, 500.0F, 600.0F, 800.0F, 900.0F,
     1100.0F, 1200.0F },
 
+  // Computed Parameter: Constant2_Value
+  //  Referenced by: '<S12>/Constant2'
+
+  -1000.0F,
+
+  // Computed Parameter: Switch_Threshold
+  //  Referenced by: '<S12>/Switch'
+
+  50.0F,
+
   // Computed Parameter: SpeedDemand_Y0
   //  Referenced by: '<S12>/SpeedDemand'
 
@@ -198,10 +178,45 @@ controller::actuatorController::P controller::actuatorController::rtP{
 
   1000.0F,
 
-  // Computed Parameter: Switch_Threshold
-  //  Referenced by: '<S13>/Switch'
+  // Computed Parameter: Constant1_Value_p
+  //  Referenced by: '<S73>/Constant1'
+
+  -15.0F,
+
+  // Computed Parameter: Constant2_Value_p
+  //  Referenced by: '<S73>/Constant2'
+
+  -2.0F,
+
+  // Computed Parameter: Constant3_Value
+  //  Referenced by: '<S73>/Constant3'
+
+  -1.4F,
+
+  // Computed Parameter: Switch1_Threshold
+  //  Referenced by: '<S73>/Switch1'
+
+  10.0F,
+
+  // Computed Parameter: Switch_Threshold_h
+  //  Referenced by: '<S73>/Switch'
 
   50.0F,
+
+  // Computed Parameter: Y_Y0
+  //  Referenced by: '<S13>/Y'
+
+  0.0F,
+
+  // Computed Parameter: DiscreteTimeIntegrator_gainval
+  //  Referenced by: '<S13>/Discrete-Time Integrator'
+
+  0.001F,
+
+  // Computed Parameter: DiscreteTimeIntegrator_IC
+  //  Referenced by: '<S13>/Discrete-Time Integrator'
+
+  0.0F,
 
   // Computed Parameter: RateLimiter_IC_o
   //  Referenced by: '<S13>/Rate Limiter'
@@ -234,12 +249,12 @@ controller::actuatorController::P controller::actuatorController::rtP{
   0.0F,
 
   // Computed Parameter: DiscreteTimeIntegrator_gainva_l
-  //  Referenced by: '<S73>/Discrete-Time Integrator'
+  //  Referenced by: '<S75>/Discrete-Time Integrator'
 
   0.001F,
 
   // Computed Parameter: DiscreteTimeIntegrator_IC_c
-  //  Referenced by: '<S73>/Discrete-Time Integrator'
+  //  Referenced by: '<S75>/Discrete-Time Integrator'
 
   0.0F,
 
@@ -274,22 +289,22 @@ controller::actuatorController::P controller::actuatorController::rtP{
   0.0F,
 
   // Computed Parameter: K_Gain
-  //  Referenced by: '<S73>/K'
+  //  Referenced by: '<S75>/K'
 
   1.0F,
 
   // Computed Parameter: Gain_Gain_h
-  //  Referenced by: '<S73>/Gain'
+  //  Referenced by: '<S75>/Gain'
 
   188.49556F,
 
   // Computed Parameter: Saturation_UpperSat_kk
-  //  Referenced by: '<S73>/Saturation'
+  //  Referenced by: '<S75>/Saturation'
 
   2400.0F,
 
   // Computed Parameter: Saturation_LowerSat_kk
-  //  Referenced by: '<S73>/Saturation'
+  //  Referenced by: '<S75>/Saturation'
 
   -2400.0F,
 

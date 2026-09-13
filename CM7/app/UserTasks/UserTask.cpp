@@ -88,7 +88,8 @@ static void testfireHoldTask(uint32_t time_ms) {   // position control mode
 /* ======================================================================== */
 static void safeDischargeTask(uint32_t time_ms) {  // position control mode
 	(void)time_ms;
-	setAllValves(60.0f);
+
+	setAllValves(discharge_angle);
 }
 
 /* ======================================================================== */
@@ -122,8 +123,7 @@ static void hoverTask(uint32_t time_ms) {
 		HAL_NVIC_EnableIRQ(TIM7_IRQn);
 	}
 #endif
-
-	{
+	if (time_ms<=5000) {
 
 		/* actuator[i] nozzle position in the IMU frame: 0=+X, 1=-Y, 2=+Y, 3=-X.
 		 * The controller ports are axis roles, not physical sides:
@@ -132,7 +132,14 @@ static void hoverTask(uint32_t time_ms) {
 		actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_neg;	// -Y
 		actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_neg;	// -X
 		actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_pos;	// +Y
+	} else {
+		for (int i = 0; i<4; i++){
+			controller_mode = controller_modes::POSITION;
+			actuator[i].actuatorController.rtU.pos_ref_ext = 5;	// +X
+		}
+
 	}
+
 }
 
 static void dropTask(uint32_t time_ms) {
@@ -154,7 +161,8 @@ static void dropTask(uint32_t time_ms) {
 		HAL_NVIC_EnableIRQ(TIM7_IRQn);
 	}
 #endif
-	{
+
+	if (time_ms <= 4000) {
 		/* actuator[i] nozzle position in the IMU frame: 0=+X, 1=-Y, 2=+Y, 3=-X.
 		 * The controller ports are axis roles, not physical sides:
 		 * Front=+X, Back=-X, Right=+Y, Left=-Y. */
@@ -176,6 +184,13 @@ static void dropTask(uint32_t time_ms) {
 			actuator[2].actuatorController.rtU.F_demand = 0;	// +X
 			actuator[3].actuatorController.rtU.F_demand = 0;	// +X
 		}
+
+	} else {
+		for (int i = 0; i<4; i++){
+			controller_mode = controller_modes::POSITION;
+			actuator[i].actuatorController.rtU.pos_ref_ext = 5;	// +X
+		}
+
 	}
 }
 
@@ -236,13 +251,13 @@ extern const MissionDef missionTable[] = {
   * past it costs a bit of latency but does not stop the log.              */
  { "HOVER", system_modes::HOVER, controller_modes::FORCE,
    hoverTask, valveShutdown,
-   6000, 1000, 1,
+   5500, 500, 1,
    300000, true,  true,  0,
    "Mission = HOVER" },
 
  { "DROP",  system_modes::DROP,  controller_modes::FORCE,
    dropTask,  valveShutdown,
-   5000, 1000, 1,
+   4500, 500, 1,
    300000, true,  true,  0,
    "Mission = DROP" },
 

@@ -82,6 +82,7 @@ enum : uint8_t {
 extern uint8_t go_no_go_status;
 
 extern controller_modes controller_mode;
+extern float discharge_angle;
 
 using Function = void (*)(uint32_t time_ms);
 
@@ -224,6 +225,7 @@ private:
 	volatile bool req_shutdown = false;
 	volatile bool req_discharge = false;
 };
+
 
 extern MissionControl missionControl;
 

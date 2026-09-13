@@ -53,6 +53,8 @@ static bool ieq(const char *a, const char *b) {
 }
 /* ------------------------------------------------------------------------ */
 
+float discharge_angle = 0;
+
 const char *MissionControl::ErrorText(mission_error_t e) {
 	switch (e) {
 	case mission_error_t::NONE:                              return "";
@@ -415,7 +417,11 @@ bool MissionControl::SafeDischarge() {
 	}
 
 	/* already discharging: leave the running timer alone */
-	if (active == m && system_mode == system_modes::SAFE_DISCHARGE) return true;
+	if (active == m && system_mode == system_modes::SAFE_DISCHARGE) {
+		discharge_angle += 20.0f;
+		return true;
+	}
+	discharge_angle = 20.0f;
 
 	/* drop anything the operator queued a moment ago */
 	req_start = req_stop = req_toggle = req_shutdown = false;
