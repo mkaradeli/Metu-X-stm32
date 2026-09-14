@@ -9,7 +9,7 @@
 //
 // Model version                  : 1.82
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Sep 13 15:43:11 2026
+// C/C++ source code generated on : Mon Sep 14 22:16:43 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -38,7 +38,7 @@ struct_IJnI4imAtcq7GOnq1yNUdE currentControllerGains{
   {
     0.624023795F,
     2.77958274F,
-    15.0F,
+    25.0F,
     -15.0F,
     2.0e+15F,
     -2.0e+15F,
@@ -65,11 +65,13 @@ struct_IJnI4imAtcq7GOnq1yNUdE currentControllerGains{
                                           //    '<S12>/Constant1'
                                           //    '<S12>/Gain'
                                           //    '<S12>/Gain1'
+                                          //    '<S13>/Constant'
                                           //    '<S13>/Discrete-Time Integrator'
                                           //    '<S13>/Gain'
                                           //    '<S13>/Gain1'
                                           //    '<S13>/Gain2'
                                           //    '<S13>/Rate Limiter'
+                                          //    '<S73>/Constant1'
                                           //    '<S50>/Integral Gain'
                                           //    '<S58>/Proportional Gain'
 
@@ -342,15 +344,15 @@ namespace controller
       //   Switch: '<S73>/Switch'
       //   Switch: '<S73>/Switch1'
 
-      if (rtb_Switch_l > rtP.Constant_Value_o) {
+      if (rtb_Switch_l > currentControllerGains.speed.SatMax) {
         // Outport: '<Root>/currentDemand'
-        rtY.currentDemand = static_cast<real32_T>(rtP.Constant_Value_o);
+        rtY.currentDemand = currentControllerGains.speed.SatMax;
       } else {
         if (rtU.pos_feedback > rtP.Switch_Threshold_h) {
           // Switch: '<S73>/Switch' incorporates:
           //   Constant: '<S73>/Constant1'
 
-          rtb_Switch_i4 = rtP.Constant1_Value_p;
+          rtb_Switch_i4 = currentControllerGains.speed.SatMin;
         } else if (rtU.pos_feedback > rtP.Switch1_Threshold) {
           // Switch: '<S73>/Switch1' incorporates:
           //   Constant: '<S73>/Constant2'
@@ -487,6 +489,15 @@ namespace controller
     //   Constant: '<S5>/Constant'
 
     if (controller_mode >= rtP.CompareToConstant2_const) {
+      if (!rtDW.uDValveLookupControllerExternal) {
+        // InitializeConditions for DiscreteIntegrator: '<S53>/Integrator'
+        rtDW.Integrator_DSTATE = rtP.PIDController_InitialConditionF;
+
+        // InitializeConditions for RateLimiter: '<S2>/Rate Limiter'
+        rtDW.PrevY = rtP.RateLimiter_IC;
+        rtDW.uDValveLookupControllerExternal = true;
+      }
+
       // Gain: '<S2>/Gain' incorporates:
       //   Inport: '<Root>/P_manifold'
 
@@ -605,6 +616,12 @@ namespace controller
       rtDW.Integrator_DSTATE += (((rtDW.RateLimiter - rtb_SpeedDemand) - rtb_Sum)
         * rtP.PIDController_Kt + currentControllerGains.pressure.Ki *
         rtb_Switch_i4) * rtP.Integrator_gainval;
+    } else if (rtDW.uDValveLookupControllerExternal) {
+      // Disable for RateLimiter: '<S2>/Rate Limiter' incorporates:
+      //   Outport: '<S2>/Theta'
+
+      rtDW.RateLimiter = rtP.Theta_Y0;
+      rtDW.uDValveLookupControllerExternal = false;
     }
 
     // End of RelationalOperator: '<S5>/Compare'

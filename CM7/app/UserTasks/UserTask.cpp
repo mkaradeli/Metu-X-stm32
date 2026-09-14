@@ -43,7 +43,7 @@ static void valveShutdown(uint32_t time_ms) {   // current control mode
 
 	if (time_ms < 1000)
 		for (int i = 0; i < 4; i++)
-			actuator[i].actuatorController.rtY.currentDemand = -1.0f;
+			actuator[i].actuatorController.rtY.currentDemand = -1.4f;
 	else
 		for (int i = 0; i < 4; i++)
 			actuator[i].actuatorController.rtY.currentDemand = 0.0f;
@@ -154,7 +154,7 @@ static void dropTask(uint32_t time_ms) {
 		 * TIM7 (hwil.step()'s ISR, lower prio than this DMA callback)
 		 * so it can't preempt mid-reset -- see hoverTask() for why. */
 		HAL_NVIC_DisableIRQ(TIM7_IRQn);
-		hwil.rtU.X0 = 9.0f;
+		hwil.rtU.X0 = 7.0f;
 		hwil.rtU.V0 = 0.0f;
 //		hwil.rtU.quaternion_true
 		hwil.initialize();

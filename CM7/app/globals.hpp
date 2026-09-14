@@ -6,7 +6,7 @@
  */
 
 #define ENABLE_MOTORS true
-#define HWIL_ENABLED 0
+#define HWIL_ENABLED 1
 
 #ifndef GLOBALS_HPP_
 #define GLOBALS_HPP_

@@ -9,7 +9,7 @@
 //
 // Model version                  : 1.82
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Sep 13 15:43:11 2026
+// C/C++ source code generated on : Mon Sep 14 22:16:43 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -87,7 +87,7 @@ controller::actuatorController::P controller::actuatorController::rtP{
 
   0.0,
 
-  // Computed Parameter: Theta_Y0
+  // Expression: [0]
   //  Referenced by: '<S2>/Theta'
 
   0.0,
@@ -121,11 +121,6 @@ controller::actuatorController::P controller::actuatorController::rtP{
   //  Referenced by: '<S2>/Rate Limiter'
 
   0.0,
-
-  // Expression: 15
-  //  Referenced by: '<S13>/Constant'
-
-  15.0,
 
   // Computed Parameter: Gain_Gain
   //  Referenced by: '<S2>/Gain'
@@ -177,11 +172,6 @@ controller::actuatorController::P controller::actuatorController::rtP{
   //  Referenced by: '<S71>/TSamp'
 
   1000.0F,
-
-  // Computed Parameter: Constant1_Value_p
-  //  Referenced by: '<S73>/Constant1'
-
-  -15.0F,
 
   // Computed Parameter: Constant2_Value_p
   //  Referenced by: '<S73>/Constant2'
