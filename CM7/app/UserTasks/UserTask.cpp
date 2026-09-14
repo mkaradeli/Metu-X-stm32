@@ -43,7 +43,7 @@ static void valveShutdown(uint32_t time_ms) {   // current control mode
 
 	if (time_ms < 1000)
 		for (int i = 0; i < 4; i++)
-			actuator[i].actuatorController.rtY.currentDemand = -1.0f;
+			actuator[i].actuatorController.rtY.currentDemand = -1.4f;
 	else
 		for (int i = 0; i < 4; i++)
 			actuator[i].actuatorController.rtY.currentDemand = 0.0f;
@@ -229,7 +229,7 @@ extern const MissionDef missionTable[] = {
 
  { "TF_CLOSE", system_modes::TESTFIRE, controller_modes::POSITION,
    testfireCloseTask, valveShutdown,
-   TESTFIRE_OPS_MS, 3000, 0,
+   TESTFIRE_OPS_MS, 500, 0,
    15000,  false, false, 0,
    "Nozzle Dia = 2.8, Nozzle 1, Mission = TESTFIRE closing steps" },
 
