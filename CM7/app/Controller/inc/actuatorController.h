@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'actuatorController'.
 //
-// Model version                  : 1.82
+// Model version                  : 1.83
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Sun Sep 13 15:43:11 2026
+// C/C++ source code generated on : Tue Sep 15 14:33:44 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -252,7 +252,7 @@ namespace controller
       real_T RateLimiter_IC;           // Expression: 0
                                           //  Referenced by: '<S2>/Rate Limiter'
 
-      real_T Constant_Value_o;         // Expression: 15
+      real_T Constant_Value_o;         // Expression: 25
                                           //  Referenced by: '<S13>/Constant'
 
       real32_T Gain_Gain;              // Computed Parameter: Gain_Gain

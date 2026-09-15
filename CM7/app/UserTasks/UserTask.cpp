@@ -21,6 +21,8 @@
 
 bool SAFETY_CHECK = true;
 
+int flip_detection_counter = 0;
+
 /* ======================================================================== */
 /*  Safety connector: reads 0 when connected, 1 when pulled out             */
 /* ======================================================================== */
@@ -167,8 +169,12 @@ static void dropTask(uint32_t time_ms) {
 		 * The controller ports are axis roles, not physical sides:
 		 * Front=+X, Back=-X, Right=+Y, Left=-Y. */
 		if (imu.gyroIntegratedRV.i > 0.25 or imu.gyroIntegratedRV.i < -0.25 or imu.gyroIntegratedRV.j > 0.25 or imu.gyroIntegratedRV.j < -0.25) {
-			SAFETY_CHECK = false;
+			//SAFETY_CHECK = false;
+			flip_detection_counter++ ;
+			if (flip_detection_counter == 5) SAFETY_CHECK = false;
 		}
+		else
+		{flip_detection_counter = 0;}
 //		if (g_altEst.height()> 1.5f) {
 //					SAFETY_CHECK = false;
 //				}
