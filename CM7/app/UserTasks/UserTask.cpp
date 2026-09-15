@@ -43,7 +43,7 @@ static void valveShutdown(uint32_t time_ms) {   // current control mode
 
 	if (time_ms < 1000)
 		for (int i = 0; i < 4; i++)
-			actuator[i].actuatorController.rtY.currentDemand = -1.4f;
+			actuator[i].actuatorController.rtY.currentDemand = -1.3f;
 	else
 		for (int i = 0; i < 4; i++)
 			actuator[i].actuatorController.rtY.currentDemand = 0.0f;

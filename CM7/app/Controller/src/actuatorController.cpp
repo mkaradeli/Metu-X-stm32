@@ -38,7 +38,7 @@ struct_IJnI4imAtcq7GOnq1yNUdE currentControllerGains{
   {
     0.624023795F,
     2.77958274F,
-    15.0F,
+    25.0F,
     -15.0F,
     2.0e+15F,
     -2.0e+15F,
