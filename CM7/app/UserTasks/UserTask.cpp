@@ -171,7 +171,7 @@ static void dropTask(uint32_t time_ms) {
 		if (imu.gyroIntegratedRV.i > 0.25 or imu.gyroIntegratedRV.i < -0.25 or imu.gyroIntegratedRV.j > 0.25 or imu.gyroIntegratedRV.j < -0.25) {
 			//SAFETY_CHECK = false;
 			flip_detection_counter++ ;
-			if (flip_detection_counter == 5) SAFETY_CHECK = false;
+			if (flip_detection_counter == 10) SAFETY_CHECK = false;
 		}
 		else
 		{flip_detection_counter = 0;}
