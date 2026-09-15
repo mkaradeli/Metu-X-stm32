@@ -498,9 +498,9 @@ void app_init() {
     HilNavInit(&g_denizNav);   // alternate filter, logged only -- see globals.hpp
 
 
-     baroHealthy = baro.init();
-    printf("BMP581 baro: %s\r\n",
-    		       baroHealthy ? "OK" : "NOT RESPONDING (check I2C4 wiring/address)");
+//     baroHealthy = baro.init();
+//    printf("BMP581 baro: %s\r\n",
+//    		       baroHealthy ? "OK" : "NOT RESPONDING (check I2C4 wiring/address)");
 
     g_altEst.beginCalibration();
     calStartTick = uwTick;
@@ -783,7 +783,7 @@ void tim12_trigger(){ // mid priority 1000hz platform control task
 	// gating) -- see AltitudeEstimator. Was a raw lidar-only bypass while
 	// the filter itself was still being debugged; switched back now that
 	// it's dependable.
-	platform_controller.rtU.Height = g_altEst.height() - 2.0f;
+	platform_controller.rtU.Height = g_altEst.height() - 0.40f;
 	platform_controller.rtU.Velocity = g_altEst.velocity();
 	platform_controller.rtU.gyro[0] = imu.gyroIntegratedRV.angVelX;
 	platform_controller.rtU.gyro[1] = imu.gyroIntegratedRV.angVelY;
@@ -919,7 +919,7 @@ void pressure_adc_complete(){
 		local_sensor_data.kf_altitude = hwil.rtY.position;
 		local_sensor_data.kf_velocity = hwil.rtY.velocity;
 #else
-		local_sensor_data.kf_altitude = g_altEst.height()+0.18f;
+		local_sensor_data.kf_altitude = g_altEst.height();
 		local_sensor_data.kf_velocity = g_altEst.velocity();
 #endif
 

@@ -61,12 +61,13 @@ static const uint32_t TESTFIRE_OPS_MS   = 9000;
 
 static void testfireOpenTask(uint32_t time_ms) {   // position control mode
 	setAllValves((float)(int)(time_ms / TESTFIRE_STEP_MS) * 100.0f);
-	if (imu.gyroIntegratedRV.i > 0.3825 or imu.gyroIntegratedRV.i < -0.3825 or imu.gyroIntegratedRV.j > 0.3825 or imu.gyroIntegratedRV.j < -0.3825) {
+	float rocket_tilt = imu.gyroIntegratedRV.i * imu.gyroIntegratedRV.i + imu.gyroIntegratedRV.j * imu.gyroIntegratedRV.j;
+	if (rocket_tilt > tilt_limit) {
 		SAFETY_CHECK = false;
 	}
-	if (g_altEst.height()> 1.5f) {
-				SAFETY_CHECK = false;
-			}
+//	if (g_altEst.height()> 1.5f) {
+//				SAFETY_CHECK = false;
+//			}
 }
 
 /* ======================================================================== */
@@ -158,7 +159,7 @@ static void dropTask(uint32_t time_ms) {
 		 * TIM7 (hwil.step()'s ISR, lower prio than this DMA callback)
 		 * so it can't preempt mid-reset -- see hoverTask() for why. */
 		HAL_NVIC_DisableIRQ(TIM7_IRQn);
-		hwil.rtU.X0 = 9.0f;
+		hwil.rtU.X0 = 5.0f;
 		hwil.rtU.V0 = 0.0f;
 //		hwil.rtU.quaternion_true
 		hwil.initialize();
