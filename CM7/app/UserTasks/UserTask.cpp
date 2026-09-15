@@ -19,8 +19,10 @@
 #include "platformController.h"
 #include "globals.hpp"
 
-bool SAFETY_CHECK = true;
+#define TILT_LIMIT_ANGLE 45.0f // upper limit for tilt or lean before aborting
 
+constexpr float tilt_limit = sin(TILT_LIMIT_ANGLE/2) * sin(TILT_LIMIT_ANGLE/2) ;
+bool SAFETY_CHECK = true;
 int flip_detection_counter = 0;
 
 /* ======================================================================== */
@@ -168,13 +170,17 @@ static void dropTask(uint32_t time_ms) {
 		/* actuator[i] nozzle position in the IMU frame: 0=+X, 1=-Y, 2=+Y, 3=-X.
 		 * The controller ports are axis roles, not physical sides:
 		 * Front=+X, Back=-X, Right=+Y, Left=-Y. */
-		if (imu.gyroIntegratedRV.i > 0.25 or imu.gyroIntegratedRV.i < -0.25 or imu.gyroIntegratedRV.j > 0.25 or imu.gyroIntegratedRV.j < -0.25) {
+		float rocket_tilt = imu.gyroIntegratedRV.i * imu.gyroIntegratedRV.i + imu.gyroIntegratedRV.j * imu.gyroIntegratedRV.j;
+		if (rocket_tilt > tilt_limit) {
 			//SAFETY_CHECK = false;
 			flip_detection_counter++ ;
-			if (flip_detection_counter == 10) SAFETY_CHECK = false;
+			if (flip_detection_counter == 10)
+				SAFETY_CHECK = false;
 		}
 		else
-		{flip_detection_counter = 0;}
+		{
+			flip_detection_counter = 0;
+		}
 //		if (g_altEst.height()> 1.5f) {
 //					SAFETY_CHECK = false;
 //				}
