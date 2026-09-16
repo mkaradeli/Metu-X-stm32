@@ -812,7 +812,7 @@ void HWIL::initialize()
 
   // initialize the HIL as well
   double PositionXYZ[3] = {0.0, 0.0, this->rtU.X0};
-  double EulerRPY[3] = {0.15, 0.0, 0.0};
+  double EulerRPY[3] = {0.15, 0.22, 0.0};
   double VelocityXYZ[3] = {0.0, 0.0, this->rtU.V0};
   double RatesPQR[3] = {0.0, 0.0, 0.0};
 
