@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'platformController'.
 //
-// Model version                  : 1.115
+// Model version                  : 1.116
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Wed Sep 16 21:01:05 2026
+// C/C++ source code generated on : Wed Sep 16 22:36:40 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -27,9 +27,9 @@ struct_RzX5A87yYhLUhlAxm0ffzC platform_targets{
   0.6,
   0.1,
   1.0,
-  3.0,
+  3.5,
   5.0,
-  4.0,
+  4.7,
   0.02,
   50.0,
 
@@ -566,7 +566,7 @@ void PlatformController::step()
       rtb_Product1_d = std::abs(rtb_RateTransition3) / rtb_Sqrt *
         platform_targets.a_dec;
     } else {
-      rtb_Product1_d = -9.8;
+      rtb_Product1_d = 0.0;
     }
 
     // End of Switch: '<S3>/Switch'
