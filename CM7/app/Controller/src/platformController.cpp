@@ -9,7 +9,7 @@
 //
 // Model version                  : 1.116
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Thu Sep 17 00:58:50 2026
+// C/C++ source code generated on : Thu Sep 17 01:17:07 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -24,10 +24,10 @@
 
 // Exported block parameters
 struct_RzX5A87yYhLUhlAxm0ffzC platform_targets{
-  0.2,
+  0.3,
   0.1,
   1.0,
-  3.5,
+  3.7,
   5.0,
   5.0,
   0.02,
