@@ -783,7 +783,7 @@ void tim12_trigger(){ // mid priority 1000hz platform control task
 	// gating) -- see AltitudeEstimator. Was a raw lidar-only bypass while
 	// the filter itself was still being debugged; switched back now that
 	// it's dependable.
-	platform_controller.rtU.Height = g_altEst.height() - 0.40f;  // ayak acik pozisyondan bias
+	platform_controller.rtU.Height = g_altEst.height() - 0.75f;  // ayak acik pozisyondan bias
 	platform_controller.rtU.Velocity = g_altEst.velocity();
 	platform_controller.rtU.gyro[0] = imu.gyroIntegratedRV.angVelX;
 	platform_controller.rtU.gyro[1] = imu.gyroIntegratedRV.angVelY;
