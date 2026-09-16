@@ -159,7 +159,7 @@ static void dropTask(uint32_t time_ms) {
 		 * TIM7 (hwil.step()'s ISR, lower prio than this DMA callback)
 		 * so it can't preempt mid-reset -- see hoverTask() for why. */
 		HAL_NVIC_DisableIRQ(TIM7_IRQn);
-		hwil.rtU.X0 = 5.0f;
+		hwil.rtU.X0 = 9.0f;
 		hwil.rtU.V0 = 0.0f;
 //		hwil.rtU.quaternion_true
 		hwil.initialize();

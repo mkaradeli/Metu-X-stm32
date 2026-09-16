@@ -115,8 +115,8 @@ namespace CFG {
   constexpr NozzleSpec kNozzles[] = {
       {  0.330,  0.000, -0.2834282,  0.0, 0.0, 1.0,  6.5e-3, 4.7e-3, 12.6e-3, 15.0, 1.0 }, // N1
       {  0.000,  -0.330, -0.2834282,  0.0, 0.0, 1.0,  6.5e-3, 4.7e-3, 12.6e-3, 15.0, 1.0 }, // N2
-      {  0.000, 0.330, -0.2834282,  0.0, 0.0, 1.0,  6.5e-3, 4.7e-3, 12.6e-3, 15.0, 1.0 }, // N3
-      { -0.330,  0.000, -0.2834282,  0.0, 0.0, 1.0,  6.5e-3, 4.7e-3, 12.6e-3, 15.0, 1.0 }, // N4
+      {  -0.330, 0.000, -0.2834282,  0.0, 0.0, 1.0,  6.5e-3, 4.7e-3, 12.6e-3, 15.0, 1.0 }, // N3
+      { 0.000,  0.330, -0.2834282,  0.0, 0.0, 1.0,  6.5e-3, 4.7e-3, 12.6e-3, 15.0, 1.0 }, // N4
   };
 
   constexpr int kNozzleCount = static_cast<int>(sizeof(kNozzles) / sizeof(kNozzles[0]));
@@ -812,7 +812,7 @@ void HWIL::initialize()
 
   // initialize the HIL as well
   double PositionXYZ[3] = {0.0, 0.0, this->rtU.X0};
-  double EulerRPY[3] = {0.00, 0.0, 0.0};
+  double EulerRPY[3] = {0.15, 0.0, 0.0};
   double VelocityXYZ[3] = {0.0, 0.0, this->rtU.V0};
   double RatesPQR[3] = {0.0, 0.0, 0.0};
 
