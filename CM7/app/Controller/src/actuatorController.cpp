@@ -9,7 +9,7 @@
 //
 // Model version                  : 1.83
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Sep 15 20:11:14 2026
+// C/C++ source code generated on : Wed Sep 16 22:02:48 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -38,7 +38,7 @@ struct_IJnI4imAtcq7GOnq1yNUdE currentControllerGains{
   {
     0.624023795F,
     2.77958274F,
-    25.0F,
+    15.0F,
     -15.0F,
     2.0e+15F,
     -2.0e+15F,
@@ -70,6 +70,7 @@ struct_IJnI4imAtcq7GOnq1yNUdE currentControllerGains{
                                           //    '<S13>/Gain1'
                                           //    '<S13>/Gain2'
                                           //    '<S13>/Rate Limiter'
+                                          //    '<S73>/Constant1'
                                           //    '<S50>/Integral Gain'
                                           //    '<S58>/Proportional Gain'
 
@@ -350,7 +351,7 @@ namespace controller
           // Switch: '<S73>/Switch' incorporates:
           //   Constant: '<S73>/Constant1'
 
-          rtb_Switch_i4 = rtP.Constant1_Value_p;
+          rtb_Switch_i4 = currentControllerGains.speed.SatMin;
         } else if (rtU.pos_feedback > rtP.Switch1_Threshold) {
           // Switch: '<S73>/Switch1' incorporates:
           //   Constant: '<S73>/Constant2'

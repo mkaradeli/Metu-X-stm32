@@ -9,7 +9,7 @@
 //
 // Model version                  : 1.83
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Sep 15 20:11:14 2026
+// C/C++ source code generated on : Wed Sep 16 22:02:48 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -177,11 +177,6 @@ controller::actuatorController::P controller::actuatorController::rtP{
   //  Referenced by: '<S71>/TSamp'
 
   1000.0F,
-
-  // Computed Parameter: Constant1_Value_p
-  //  Referenced by: '<S73>/Constant1'
-
-  -15.0F,
 
   // Computed Parameter: Constant2_Value_p
   //  Referenced by: '<S73>/Constant2'

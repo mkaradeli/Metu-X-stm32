@@ -9,7 +9,7 @@
 //
 // Model version                  : 1.83
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Tue Sep 15 20:11:14 2026
+// C/C++ source code generated on : Wed Sep 16 22:02:48 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -126,6 +126,7 @@ extern struct_IJnI4imAtcq7GOnq1yNUdE currentControllerGains;// Variable: control
                                                                //    '<S13>/Gain1'
                                                                //    '<S13>/Gain2'
                                                                //    '<S13>/Rate Limiter'
+                                                               //    '<S73>/Constant1'
                                                                //    '<S50>/Integral Gain'
                                                                //    '<S58>/Proportional Gain'
 
@@ -285,9 +286,6 @@ namespace controller
 
       real32_T TSamp_WtEt;             // Computed Parameter: TSamp_WtEt
                                           //  Referenced by: '<S71>/TSamp'
-
-      real32_T Constant1_Value_p;      // Computed Parameter: Constant1_Value_p
-                                          //  Referenced by: '<S73>/Constant1'
 
       real32_T Constant2_Value_p;      // Computed Parameter: Constant2_Value_p
                                           //  Referenced by: '<S73>/Constant2'
