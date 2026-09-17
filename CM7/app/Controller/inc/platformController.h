@@ -7,9 +7,9 @@
 //
 // Code generated for Simulink model 'platformController'.
 //
-// Model version                  : 1.116
+// Model version                  : 1.121
 // Simulink Coder version         : 25.2 (R2025b) 28-Jul-2025
-// C/C++ source code generated on : Thu Sep 17 01:48:27 2026
+// C/C++ source code generated on : Thu Sep 17 23:35:41 2026
 //
 // Target selection: ert.tlc
 // Embedded hardware selection: ARM Compatible->ARM Cortex-M
@@ -124,12 +124,13 @@ extern struct_RzX5A87yYhLUhlAxm0ffzC platform_targets;// Variable: platform_targ
                                                          //    '<S8>/Constant'
                                                          //    '<S10>/Constant'
                                                          //    '<S74>/Constant6'
+                                                         //    '<S138>/Constant'
+                                                         //    '<S138>/Constant1'
                                                          //    '<S138>/Gain3'
                                                          //    '<S139>/Gain4'
                                                          //    '<S139>/Gain5'
-                                                         //    '<S168>/Kb'
-                                                         //    '<S173>/Integral Gain'
-                                                         //    '<S181>/Proportional Gain'
+                                                         //    '<S174>/Integral Gain'
+                                                         //    '<S182>/Proportional Gain'
 
 extern mission_modes mission_mode;     // Variable: mission_mode
                                           //  Referenced by: '<S2>/Constant'
@@ -142,7 +143,9 @@ class PlatformController final
  public:
   // Block signals and states (default storage) for system '<Root>'
   struct DW {
-    real_T Integrator_DSTATE_f[3];     // '<S176>/Integrator'
+    real_T Integrator_DSTATE_l[3];     // '<S197>/Integrator'
+    real_T Integrator_DSTATE_l2[3];    // '<S198>/Integrator'
+    real_T Integrator_DSTATE_f[3];     // '<S177>/Integrator'
     real_T RateTransition6_Buffer[4];  // '<S2>/Rate Transition6'
     real_T Gain;                       // '<S2>/Gain'
     real_T Height;                     // '<S133>/Height'
@@ -159,18 +162,20 @@ class PlatformController final
     int8_T Integrator_PrevResetState;  // '<S112>/Integrator'
     int8_T DiscreteTimeIntegrator_PrevRe_j;// '<S73>/Discrete-Time Integrator'
     int8_T Integrator_PrevResetState_n;// '<S51>/Integrator'
-    int8_T Integrator_PrevResetState_m;// '<S176>/Integrator'
+    int8_T Integrator_PrevResetState_p;// '<S197>/Integrator'
+    int8_T Integrator_PrevResetState_e;// '<S198>/Integrator'
+    int8_T Integrator_PrevResetState_m;// '<S177>/Integrator'
     boolean_T Compare;                 // '<S6>/Compare'
     boolean_T DelayInput1_DSTATE;      // '<S132>/Delay Input1'
     boolean_T UnitDelay_DSTATE;        // '<S136>/Unit Delay'
-    boolean_T UnitDelay_DSTATE_b;      // '<S194>/Unit Delay'
+    boolean_T UnitDelay_DSTATE_b;      // '<S199>/Unit Delay'
     boolean_T RateTransition5_Buffer;  // '<S2>/Rate Transition5'
   };
 
   // Invariant block signals (default storage)
   struct ConstB {
     boolean_T LogicalOperator;         // '<S136>/Logical Operator'
-    boolean_T LogicalOperator_d;       // '<S194>/Logical Operator'
+    boolean_T LogicalOperator_d;       // '<S199>/Logical Operator'
   };
 
   // External inputs (root inport signals with default storage)
@@ -305,8 +310,8 @@ extern const PlatformController::ConstB rtConstB;// constant block i/o
 //  Block '<S4>/Scope4' : Unused code path elimination
 //  Block '<S4>/Scope5' : Unused code path elimination
 //  Block '<S4>/Scope8' : Unused code path elimination
-//  Block '<S140>/Data Type Duplicate' : Unused code path elimination
-//  Block '<S140>/Data Type Propagation' : Unused code path elimination
+//  Block '<S141>/Data Type Duplicate' : Unused code path elimination
+//  Block '<S141>/Data Type Propagation' : Unused code path elimination
 //  Block '<S138>/Scope' : Unused code path elimination
 //  Block '<S139>/Scope' : Unused code path elimination
 //  Block '<S139>/Scope1' : Unused code path elimination
@@ -316,22 +321,25 @@ extern const PlatformController::ConstB rtConstB;// constant block i/o
 //  Block '<S2>/Cast To Boolean' : Unused code path elimination
 //  Block '<S2>/Cast To Boolean1' : Unused code path elimination
 //  Block '<S2>/Cast To Boolean2' : Unused code path elimination
-//  Block '<S194>/Logical Operator3' : Unused code path elimination
+//  Block '<S2>/Scope' : Unused code path elimination
+//  Block '<S199>/Logical Operator3' : Unused code path elimination
 //  Block '<S63>/Kt' : Eliminated nontunable gain of 1
 //  Block '<S124>/Kt' : Eliminated nontunable gain of 1
 //  Block '<S136>/Data Type Conversion' : Eliminate redundant data type conversion
 //  Block '<S136>/Data Type Conversion1' : Eliminate redundant data type conversion
 //  Block '<S5>/Rate Transition' : Eliminated since input and output rates are identical
 //  Block '<S5>/Rate Transition6' : Eliminated since input and output rates are identical
+//  Block '<S197>/Saturation' : Eliminated Saturate block
+//  Block '<S198>/Saturation' : Eliminated Saturate block
 //  Block '<S2>/Cast To Boolean3' : Eliminate redundant data type conversion
-//  Block '<S194>/Data Type Conversion' : Eliminate redundant data type conversion
-//  Block '<S194>/Data Type Conversion1' : Eliminate redundant data type conversion
+//  Block '<S199>/Data Type Conversion' : Eliminate redundant data type conversion
+//  Block '<S199>/Data Type Conversion1' : Eliminate redundant data type conversion
 //  Block '<S136>/Constant' : Unused code path elimination
 //  Block '<S136>/Logical Operator1' : Unused code path elimination
 //  Block '<S136>/Logical Operator2' : Unused code path elimination
-//  Block '<S194>/Constant' : Unused code path elimination
-//  Block '<S194>/Logical Operator1' : Unused code path elimination
-//  Block '<S194>/Logical Operator2' : Unused code path elimination
+//  Block '<S199>/Constant' : Unused code path elimination
+//  Block '<S199>/Logical Operator1' : Unused code path elimination
+//  Block '<S199>/Logical Operator2' : Unused code path elimination
 
 
 //-
@@ -488,61 +496,66 @@ extern const PlatformController::ConstB rtConstB;// constant block i/o
 //  '<S137>' : 'platformController/PlatformController/PlatformController1/Altitude Controller Hover/Subsystem1/Subsystem/Compare To Constant'
 //  '<S138>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Position Loop'
 //  '<S139>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop'
-//  '<S140>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Position Loop/Saturation Dynamic'
-//  '<S141>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller'
-//  '<S142>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Anti-windup'
-//  '<S143>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/D Gain'
-//  '<S144>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/External Derivative'
-//  '<S145>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Filter'
-//  '<S146>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Filter ICs'
-//  '<S147>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/I Gain'
-//  '<S148>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Ideal P Gain'
-//  '<S149>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Ideal P Gain Fdbk'
-//  '<S150>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Integrator'
-//  '<S151>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Integrator ICs'
-//  '<S152>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/N Copy'
-//  '<S153>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/N Gain'
-//  '<S154>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/P Copy'
-//  '<S155>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Parallel P Gain'
-//  '<S156>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Reset Signal'
-//  '<S157>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Saturation'
-//  '<S158>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Saturation Fdbk'
-//  '<S159>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Sum'
-//  '<S160>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Sum Fdbk'
-//  '<S161>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tracking Mode'
-//  '<S162>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tracking Mode Sum'
-//  '<S163>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tsamp - Integral'
-//  '<S164>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tsamp - Ngain'
-//  '<S165>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/postSat Signal'
-//  '<S166>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/preInt Signal'
-//  '<S167>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/preSat Signal'
-//  '<S168>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Anti-windup/Back Calculation'
-//  '<S169>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/D Gain/Disabled'
-//  '<S170>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/External Derivative/Disabled'
-//  '<S171>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Filter/Disabled'
-//  '<S172>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Filter ICs/Disabled'
-//  '<S173>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/I Gain/Internal Parameters'
-//  '<S174>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Ideal P Gain/Passthrough'
-//  '<S175>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Ideal P Gain Fdbk/Disabled'
-//  '<S176>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Integrator/Discrete'
-//  '<S177>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Integrator ICs/Internal IC'
-//  '<S178>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/N Copy/Disabled wSignal Specification'
-//  '<S179>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/N Gain/Disabled'
-//  '<S180>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/P Copy/Disabled'
-//  '<S181>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Parallel P Gain/Internal Parameters'
-//  '<S182>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Reset Signal/External Reset'
-//  '<S183>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Saturation/Enabled'
-//  '<S184>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Saturation Fdbk/Disabled'
-//  '<S185>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Sum/Sum_PI'
-//  '<S186>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Sum Fdbk/Disabled'
-//  '<S187>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tracking Mode/Disabled'
-//  '<S188>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tracking Mode Sum/Passthrough'
-//  '<S189>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tsamp - Integral/TsSignalSpecification'
-//  '<S190>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tsamp - Ngain/Passthrough'
-//  '<S191>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/postSat Signal/Forward_Path'
-//  '<S192>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/preInt Signal/Internal PreInt'
-//  '<S193>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/preSat Signal/Forward_Path'
-//  '<S194>' : 'platformController/PlatformController/PlatformController1/Set-Reset Flip-Flop/Discrete'
+//  '<S140>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Second-Order Filter'
+//  '<S141>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Position Loop/Saturation Dynamic'
+//  '<S142>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller'
+//  '<S143>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Anti-windup'
+//  '<S144>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/D Gain'
+//  '<S145>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/External Derivative'
+//  '<S146>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Filter'
+//  '<S147>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Filter ICs'
+//  '<S148>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/I Gain'
+//  '<S149>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Ideal P Gain'
+//  '<S150>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Ideal P Gain Fdbk'
+//  '<S151>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Integrator'
+//  '<S152>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Integrator ICs'
+//  '<S153>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/N Copy'
+//  '<S154>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/N Gain'
+//  '<S155>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/P Copy'
+//  '<S156>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Parallel P Gain'
+//  '<S157>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Reset Signal'
+//  '<S158>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Saturation'
+//  '<S159>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Saturation Fdbk'
+//  '<S160>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Sum'
+//  '<S161>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Sum Fdbk'
+//  '<S162>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tracking Mode'
+//  '<S163>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tracking Mode Sum'
+//  '<S164>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tsamp - Integral'
+//  '<S165>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tsamp - Ngain'
+//  '<S166>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/postSat Signal'
+//  '<S167>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/preInt Signal'
+//  '<S168>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/preSat Signal'
+//  '<S169>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Anti-windup/Back Calculation'
+//  '<S170>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/D Gain/Disabled'
+//  '<S171>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/External Derivative/Disabled'
+//  '<S172>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Filter/Disabled'
+//  '<S173>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Filter ICs/Disabled'
+//  '<S174>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/I Gain/Internal Parameters'
+//  '<S175>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Ideal P Gain/Passthrough'
+//  '<S176>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Ideal P Gain Fdbk/Disabled'
+//  '<S177>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Integrator/Discrete'
+//  '<S178>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Integrator ICs/Internal IC'
+//  '<S179>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/N Copy/Disabled wSignal Specification'
+//  '<S180>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/N Gain/Disabled'
+//  '<S181>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/P Copy/Disabled'
+//  '<S182>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Parallel P Gain/Internal Parameters'
+//  '<S183>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Reset Signal/External Reset'
+//  '<S184>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Saturation/Enabled'
+//  '<S185>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Saturation Fdbk/Disabled'
+//  '<S186>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Sum/Sum_PI'
+//  '<S187>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Sum Fdbk/Disabled'
+//  '<S188>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tracking Mode/Disabled'
+//  '<S189>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tracking Mode Sum/Passthrough'
+//  '<S190>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tsamp - Integral/TsSignalSpecification'
+//  '<S191>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/Tsamp - Ngain/Passthrough'
+//  '<S192>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/postSat Signal/Forward_Path'
+//  '<S193>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/preInt Signal/Internal PreInt'
+//  '<S194>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Rate_Loop/PID Controller/preSat Signal/Forward_Path'
+//  '<S195>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Second-Order Filter/Integrator (Discrete or Continuous)'
+//  '<S196>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Second-Order Filter/Integrator (Discrete or Continuous)1'
+//  '<S197>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Second-Order Filter/Integrator (Discrete or Continuous)/Discrete'
+//  '<S198>' : 'platformController/PlatformController/PlatformController1/Attitude Controller/Second-Order Filter/Integrator (Discrete or Continuous)1/Discrete'
+//  '<S199>' : 'platformController/PlatformController/PlatformController1/Set-Reset Flip-Flop/Discrete'
 
 #endif                                 // platformController_h_
 
