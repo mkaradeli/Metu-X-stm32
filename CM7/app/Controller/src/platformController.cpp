@@ -24,7 +24,7 @@
 
 // Exported block parameters
 struct_RzX5A87yYhLUhlAxm0ffzC platform_targets{
-  0.3,
+  0.5,
   0.1,
   1.0,
   3.7,

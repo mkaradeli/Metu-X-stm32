@@ -186,11 +186,18 @@ static void dropTask(uint32_t time_ms) {
 //					SAFETY_CHECK = false;
 //				}
 		if (SAFETY_CHECK){
+			if (g_altEst.height() > 0.1f){
+				actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_pos;	// +X
+				actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_neg;	// -Y
+				actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_neg;	// -X
+				actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_pos;	// +Y
+			} else {
+				controller_mode = controller_modes::POSITION;
+				for (int i = 0; i<4; i++){
+					actuator[i].actuatorController.rtU.pos_ref_ext = 0.0f;	// +X
+				}
+			}
 
-			actuator[0].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_pos;	// +X
-			actuator[1].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_neg;	// -Y
-			actuator[2].actuatorController.rtU.F_demand = platform_controller.rtY.Fx_neg;	// -X
-			actuator[3].actuatorController.rtU.F_demand = platform_controller.rtY.Fy_pos;	// +Y
 		} else {
 			actuator[0].actuatorController.rtU.F_demand = 0;	// +X
 			actuator[1].actuatorController.rtU.F_demand = 0;	// +X
